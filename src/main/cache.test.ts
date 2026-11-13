@@ -20,9 +20,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FileRow } from "../shared/model.ts";
 import {
 	MODEL_DIR,
+	modelFileText,
 	PENDING_FILE,
 	REPORT_FILE,
-	modelFileText,
 } from "../shared/model.ts";
 import {
 	invalidateProject,
@@ -124,10 +124,10 @@ const MODEL_B = {
 	...MODEL_A,
 	courses: [
 		{
-			...MODEL_A.courses[0]!,
+			...MODEL_A.courses[0],
 			units: [
 				{
-					...MODEL_A.courses[0]!.units[0]!,
+					...MODEL_A.courses[0].units[0],
 					title: "Changed title by a character",
 				},
 			],
@@ -232,9 +232,9 @@ describe("the project's cache", () => {
 	it("serves the model from memory, and picks up a course changed on disk", () => {
 		expect(writeModel(project, MODEL_A)).toEqual({ ok: true });
 		const first = readModel(project);
-		expect(
-			first.ok && first.model.courses[0]?.units[0].title,
-		).toBe("Original title");
+		expect(first.ok && first.model.courses[0]?.units[0].title).toBe(
+			"Original title",
+		);
 
 		// One character longer: a plain change to a file the cache holds.
 		const courseFile = join(project, MODEL_DIR, "grade-7-science.json");
@@ -242,13 +242,18 @@ describe("the project's cache", () => {
 			string,
 			unknown
 		>;
-		(course.units as { title: string }[])[0]!.title =
-			"Original title, longer now";
-		writeFileSync(courseFile, `${JSON.stringify(course, null, "\t")}\n`, "utf8");
+		const unit = (course.units as { title: string }[])[0];
+		if (unit === undefined) throw new Error("the course has no unit");
+		unit.title = "Original title, longer now";
+		writeFileSync(
+			courseFile,
+			`${JSON.stringify(course, null, "\t")}\n`,
+			"utf8",
+		);
 		const changed = readModel(project);
-		expect(
-			changed.ok && changed.model.courses[0]?.units[0].title,
-		).toBe("Original title, longer now");
+		expect(changed.ok && changed.model.courses[0]?.units[0].title).toBe(
+			"Original title, longer now",
+		);
 	});
 
 	it("picks up a model file changed beside the cache", () => {
@@ -257,9 +262,9 @@ describe("the project's cache", () => {
 		// A second write with different content, different length.
 		expect(writeModel(project, MODEL_B)).toEqual({ ok: true });
 		const changed = readModel(project);
-		expect(
-			changed.ok && changed.model.courses[0]?.units[0].title,
-		).toBe("Changed title by a character");
+		expect(changed.ok && changed.model.courses[0]?.units[0].title).toBe(
+			"Changed title by a character",
+		);
 	});
 
 	it("serves the report from memory, and picks up a new one on disk", () => {
@@ -279,16 +284,14 @@ describe("the project's cache", () => {
 		const reportB = { ...reportA, found: 20, read: 20 };
 		expect(writeReport(project, reportA)).toEqual({ ok: true });
 		expect(readReport(project)?.found).toBe(10);
-		writeFileSync(
-			join(project, REPORT_FILE),
-			modelFileText(reportB),
-			"utf8",
-		);
+		writeFileSync(join(project, REPORT_FILE), modelFileText(reportB), "utf8");
 		expect(readReport(project)?.found).toBe(20);
 	});
 
 	it("serves the pending pages from memory, and picks up new ones on disk", () => {
-		expect(writePending(project, [{ id: "abcdef012345", pages: [1, 2] }])).toEqual({
+		expect(
+			writePending(project, [{ id: "abcdef012345", pages: [1, 2] }]),
+		).toEqual({
 			ok: true,
 		});
 		expect(readPending(project)).toEqual([
@@ -299,8 +302,6 @@ describe("the project's cache", () => {
 			modelFileText([{ id: "abcdef012345", pages: [3] }]),
 			"utf8",
 		);
-		expect(readPending(project)).toEqual([
-			{ id: "abcdef012345", pages: [3] },
-		]);
+		expect(readPending(project)).toEqual([{ id: "abcdef012345", pages: [3] }]);
 	});
 });

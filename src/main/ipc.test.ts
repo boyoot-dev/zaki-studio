@@ -243,8 +243,7 @@ describe("the key on the IPC surface", () => {
 					? [project, ["abcdef012345"]]
 					: channel === "studio:noteText"
 						? [project, "abcdef012345"]
-						: channel === "studio:notesRows" ||
-								channel === "studio:reportRows"
+						: channel === "studio:notesRows" || channel === "studio:reportRows"
 							? [project, 0, 200]
 							: channel === "studio:course"
 								? [project, 3, "math"]
@@ -254,50 +253,72 @@ describe("the key on the IPC surface", () => {
 										? [project, ["abcdef012345"]]
 										: channel === "studio:folders"
 											? [project]
-						: channel === "studio:collectJob"
-							? [project, "../../Windows"]
-							: channel === "studio:deleteJob"
-								? [project, "2026-11-13-0830"]
-								: channel === "studio:prepareJob"
-									? [project, ["abcdef012345"], "claude-code"]
-									: channel === "studio:copyText"
-										? ["a prompt"]
-										: channel === "studio:saveNoteSettings"
-											? ["anthropic/claude-haiku-5.5", 3]
-											: channel === "studio:writeNotes"
-												? [project, [], 2]
-												: channel === "studio:saveKey"
-													? [KEY]
-													: channel === "studio:unitsPlan"
-														? [project, 3, "math", "block-1"]
-														: channel === "studio:writeChanges"
-															? [project, 3, "math", "block-1", 2]
-															: channel === "studio:prepareUnitsJob"
-																? [
-																		project,
-																		[
-																			{
-																				grade: 3,
-																				subject: "math",
-																				period: "block-1",
-																			},
-																		],
-																		"claude-code",
-																	]
-																: channel === "studio:collectUnitsJob"
-																	? [project, "../../Windows"]
-																	: channel === "studio:deleteUnitsJob"
-																		? [project, "2026-11-13-0830"]
-																		: channel === "studio:acceptChanges"
+											: channel === "studio:collectJob"
+												? [project, "../../Windows"]
+												: channel === "studio:deleteJob"
+													? [project, "2026-11-13-0830"]
+													: channel === "studio:prepareJob"
+														? [project, ["abcdef012345"], "claude-code"]
+														: channel === "studio:copyText"
+															? ["a prompt"]
+															: channel === "studio:saveNoteSettings"
+																? ["anthropic/claude-haiku-5.5", 3]
+																: channel === "studio:writeNotes"
+																	? [project, [], 2]
+																	: channel === "studio:saveKey"
+																		? [KEY]
+																		: channel === "studio:unitsPlan"
 																			? [project, 3, "math", "block-1"]
-																			: channel === "studio:rejectChanges"
-																				? [project, 3, "math", "block-1"]
-																				: channel === "studio:deleteChanges"
-																					? [project, 3, "math", "block-1"]
-																					: channel ===
-																							"studio:saveUnitsSettings"
-																						? ["anthropic/claude-sonnet-5.5", 3]
-																						: [project];
+																			: channel === "studio:writeChanges"
+																				? [project, 3, "math", "block-1", 2]
+																				: channel === "studio:prepareUnitsJob"
+																					? [
+																							project,
+																							[
+																								{
+																									grade: 3,
+																									subject: "math",
+																									period: "block-1",
+																								},
+																							],
+																							"claude-code",
+																						]
+																					: channel === "studio:collectUnitsJob"
+																						? [project, "../../Windows"]
+																						: channel ===
+																								"studio:deleteUnitsJob"
+																							? [project, "2026-11-13-0830"]
+																							: channel ===
+																									"studio:acceptChanges"
+																								? [
+																										project,
+																										3,
+																										"math",
+																										"block-1",
+																									]
+																								: channel ===
+																										"studio:rejectChanges"
+																									? [
+																											project,
+																											3,
+																											"math",
+																											"block-1",
+																										]
+																									: channel ===
+																											"studio:deleteChanges"
+																										? [
+																												project,
+																												3,
+																												"math",
+																												"block-1",
+																											]
+																										: channel ===
+																												"studio:saveUnitsSettings"
+																											? [
+																													"anthropic/claude-sonnet-5.5",
+																													3,
+																												]
+																											: [project];
 			answers.push(await ask(channel, ...args));
 		}
 		const text = JSON.stringify(answers);
@@ -365,7 +386,9 @@ describe("the list channels (task 168)", () => {
 		const listed = await ask("studio:listTree", project, "");
 		expect(listed).toMatchObject({ ok: true });
 		const nodes = (
-			listed as { nodes: { kind: string; children: unknown[]; files: number }[] }
+			listed as {
+				nodes: { kind: string; children: unknown[]; files: number }[];
+			}
 		).nodes;
 		expect(Array.isArray(nodes)).toBe(true);
 		for (const node of nodes) {
@@ -378,11 +401,19 @@ describe("the list channels (task 168)", () => {
 	});
 
 	it("answers the file's row, or null when the register has no such file", async () => {
-		const found = await ask("studio:fileRow", project, "Grade 3/Math/sheet.pdf");
+		const found = await ask(
+			"studio:fileRow",
+			project,
+			"Grade 3/Math/sheet.pdf",
+		);
 		expect(found).toMatchObject({ ok: true });
 		expect((found as { row: { id: string } }).row.id).toBe("abcdef012345");
 
-		const missing = await ask("studio:fileRow", project, "Grade 9/Nowhere/none.pdf");
+		const missing = await ask(
+			"studio:fileRow",
+			project,
+			"Grade 9/Nowhere/none.pdf",
+		);
 		expect(missing).toEqual({ ok: true, row: null });
 	});
 

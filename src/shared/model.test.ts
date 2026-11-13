@@ -184,12 +184,8 @@ describe("the model's files", () => {
 		expect(parsed.ok).toBe(true);
 		if (parsed.ok) {
 			expect(parsed.model.curriculum.periods).toEqual([]);
-			expect(
-				parsed.model.courses[0]?.units[0]?.lessons[0]?.skills,
-			).toEqual([]);
-			expect(
-				parsed.model.courses[0]?.units[0]?.lessons[0]?.facts,
-			).toEqual([]);
+			expect(parsed.model.courses[0]?.units[0]?.lessons[0]?.skills).toEqual([]);
+			expect(parsed.model.courses[0]?.units[0]?.lessons[0]?.facts).toEqual([]);
 		}
 	});
 
