@@ -17,6 +17,8 @@
 		"icon": "node scripts/icon.ts",
 		"tessdata": "node scripts/tessdata.ts",
 		"material-check": "node scripts/material-check.ts",
+		"bench-project": "node scripts/bench-project.ts",
+		"bench": "node scripts/bench.ts",
 		"notes-trial": "node scripts/notes-trial.ts",
 		"units-trial": "node scripts/units-trial.ts",
 		"dist:win": "npm run build && node scripts/dist.ts --win",
