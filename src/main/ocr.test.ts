@@ -4,6 +4,7 @@
 // owner uses abort on it), and hold the pool to at most four workers.
 
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -44,14 +45,14 @@ describe("the OCR options", () => {
 
 	it("starts Tesseract's worker through the Studio's own file, which exists", () => {
 		expect(options.workerPath).toBe(
-			`${STUDIO}resources\\ocr-worker.cjs`.split("\\").join("\\"),
+			join(STUDIO, "resources", "ocr-worker.cjs"),
 		);
 		expect(existsSync(options.workerPath)).toBe(true);
 	});
 
 	it("reads the language files from resources/tessdata, which git ignores", () => {
 		expect(options.langPath).toBe(tessdataDir(STUDIO));
-		expect(options.langPath.endsWith("resources\\tessdata")).toBe(true);
+		expect(options.langPath.endsWith(join("resources", "tessdata"))).toBe(true);
 		expect(Object.keys(TESSDATA).sort()).toEqual(["ara", "eng", "fra"]);
 		expect([...TESSDATA_LANGS]).toEqual(["ara", "eng", "fra"]);
 		// The hashes are the owner's own files (checked 2026-11-13); they are the download's guard.
@@ -64,7 +65,7 @@ describe("the OCR options", () => {
 		const missing = missingLangs(STUDIO, "ara+eng");
 		expect(Array.isArray(missing)).toBe(true);
 		expect(missingLangs(STUDIO, "eng")).toEqual(
-			existsSync(`${tessdataDir(STUDIO)}\\eng.traineddata`) ? [] : ["eng"],
+			existsSync(join(tessdataDir(STUDIO), "eng.traineddata")) ? [] : ["eng"],
 		);
 	});
 });

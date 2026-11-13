@@ -20,8 +20,8 @@
 		"material-check": "node scripts/material-check.ts",
 		"notes-trial": "node scripts/notes-trial.ts",
 		"units-trial": "node scripts/units-trial.ts",
-		"dist:win": "node scripts/dist.ts --win",
-		"dist:mac": "node scripts/dist.ts --mac"
+		"dist:win": "npm run build && node scripts/dist.ts --win",
+		"dist:mac": "npm run build && node scripts/dist.ts --mac"
 	},
 	"dependencies": {
 		"mammoth": "1.13.0",
