@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
+import { subjectsJson } from "../../scripts/subjects";
 import { parseBundle } from "./format/bundle";
 
 /** The standard folder beside src/. */
@@ -17,7 +18,7 @@ const SUBJECTS_PATH = fileURLToPath(
 );
 
 const subjectIds: string[] = (
-	JSON.parse(readFileSync(SUBJECTS_PATH, "utf8")) as { id: string }[]
+	JSON.parse(subjectsJson(readFileSync(SUBJECTS_PATH, "utf8"))) as { id: string }[]
 ).map((s) => s.id);
 
 const example = (name: string): string =>

@@ -12,7 +12,7 @@ call it can make is your own note or change-set request to OpenRouter, with your
 ## Download and install
 
 Installers for Windows and Mac are on the
-[releases page](https://example.com/mr-zaki-studio/releases). The installers are **unsigned**
+[releases page](https://github.com/boyoot-dev/zaki-studio/releases). The installers are **unsigned**
 for now, so both systems ask for your say-so the first time you open the app:
 
 - **Windows** — SmartScreen shows "Windows protected your PC". Click **More info**, then
