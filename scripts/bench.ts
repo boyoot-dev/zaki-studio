@@ -18,7 +18,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { monitorEventLoopDelay, performance } from "node:perf_hooks";
+import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 import { readChangeSets } from "../src/main/changes.ts";
 import { readProject, readTree } from "../src/main/files.ts";
@@ -66,13 +66,13 @@ function median(times: number[]): number {
 /** One measured call: its name, and the reply the page would get. */
 type BenchCall = { name: string; reply: () => unknown };
 
-/** The folder one level below the top, for the "one deep folder" call. */
+/** The folder one level below the top, for the "one deep folder" call: the first grade's first subject. */
 function deepRel(root: string): string {
 	const top = readTree(root).filter((node) => node.kind === "folder");
-	const first = top[0];
-	if (first === undefined) return "";
-	const child = first.children.find((node) => node.kind === "folder");
-	return child === undefined ? first.rel : child.rel;
+	const grade = top.find((node) => node.rel !== "Inbox");
+	if (grade === undefined) return "";
+	const child = grade.children.find((node) => node.kind === "folder");
+	return child === undefined ? grade.rel : child.rel;
 }
 
 /** Every call the page's clicks make, as plain functions over the project. */
@@ -203,9 +203,18 @@ async function scanStall(
 	const reportPath = join(root, ".studio", "new.json");
 	// The scan rewrites the report even when nothing is new; the report is put back as it was.
 	const backup = existsSync(reportPath) ? readFileSync(reportPath) : null;
-	const histogram = monitorEventLoopDelay({ resolution: 10 });
+	// monitorEventLoopDelay records nothing for a fully synchronous stretch (no timer fires
+	// inside it), so the stall is measured as the longest gap between ticks of a ticker:
+	// a block as long as findFiles shows up as one long-late tick.
+	let last = performance.now();
+	let maxGap = 0;
+	const ticker = setInterval(() => {
+		const now = performance.now();
+		const gap = now - last;
+		if (gap > maxGap) maxGap = gap;
+		last = now;
+	}, 5);
 	const started = performance.now();
-	histogram.enable();
 	try {
 		await scanProject(root, {
 			subjects: [],
@@ -214,11 +223,11 @@ async function scanStall(
 			onProgress: () => {},
 		});
 	} finally {
-		histogram.disable();
+		clearInterval(ticker);
 		if (backup !== null) writeFileSync(reportPath, backup);
 	}
 	return {
-		maxMs: histogram.max / 1e6,
+		maxMs: maxGap,
 		totalMs: performance.now() - started,
 	};
 }

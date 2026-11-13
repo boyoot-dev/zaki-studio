@@ -27,6 +27,11 @@ import {
 import { join } from "node:path";
 import { type FileRow, modelFileText } from "../src/shared/model.ts";
 import {
+	compareRows,
+	newMaterial,
+	type ReportCourse,
+} from "../src/shared/register.ts";
+import {
 	finalExamPeriod,
 	gradeFolder,
 	PROJECT_FILE,
@@ -395,6 +400,7 @@ function build(root: string, files: number): void {
 	const modelDir = join(root, STUDIO_DIR, "model");
 	mkdirSync(modelDir, { recursive: true });
 	const periods = [...presetPeriods("terms-blocks"), finalExamPeriod()];
+	const reportCourses: ReportCourse[] = [];
 	const curriculum = {
 		nameEn: "Made-up School Curriculum",
 		nameAr: "منهج المدرسة المُختلقة",
@@ -458,6 +464,16 @@ function build(root: string, files: number): void {
 			];
 			return courseUnits[0];
 		});
+		reportCourses.push({
+			grade: course.grade,
+			subject: course.subject,
+			units: units.map((unit) => ({
+				number: unit.number,
+				period: unit.period,
+				title: unit.title,
+				source: unit.source,
+			})),
+		});
 		writeFileSync(
 			join(modelDir, `grade-${course.grade}-${course.subject}.json`),
 			modelFileText({
@@ -470,6 +486,26 @@ function build(root: string, files: number): void {
 			"utf8",
 		);
 	}
+
+	// The last scan's report, as the first scan of this project would have left it: found
+	// everything, read everything it had to, and nothing changed since (there was no before).
+	const at = new Date();
+	const pad = (n: number) => String(n).padStart(2, "0");
+	const stamp = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+	const report = newMaterial({
+		at: stamp,
+		since: "",
+		found: rows.length,
+		read: idsWithText.length,
+		changes: compareRows([], rows),
+		courses: reportCourses,
+		today: at,
+	});
+	writeFileSync(
+		join(root, STUDIO_DIR, "new.json"),
+		modelFileText(report),
+		"utf8",
+	);
 
 	// The project file, checked by the Studio's own rules before it is kept.
 	const project = {
