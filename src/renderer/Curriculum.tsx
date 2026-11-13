@@ -111,10 +111,13 @@ export function Curriculum({
 	root,
 	project,
 	onNotify,
+	reloadKey,
 }: {
 	root: string;
 	project: { periods: BundlePeriod[] };
 	onNotify: (text: string) => void;
+	/** Bumped when the project changed (accepted changes, a scan): the tab stays open now. */
+	reloadKey: number;
 }) {
 	const say = useSay();
 	const lang = useLang();
@@ -128,9 +131,13 @@ export function Curriculum({
 	>({});
 	const panes = usePanes("curriculum");
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — the project changed while this tab stayed open.
 	useEffect(() => {
 		let alive = true;
-		setLoaded({ kind: "loading" });
+		// A reload keeps the current view until the new one arrives, so nothing flashes.
+		setLoaded((current) =>
+			current.kind === "ready" ? current : { kind: "loading" },
+		);
 		void window.studio.readModel(root).then((result: ModelOverview) => {
 			if (!alive) return;
 			setLoaded(
@@ -146,7 +153,7 @@ export function Curriculum({
 		return () => {
 			alive = false;
 		};
-	}, [root, lang]);
+	}, [root, lang, reloadKey]);
 
 	const courses = loaded.kind === "ready" ? loaded.courses : [];
 	const chosenCourse =

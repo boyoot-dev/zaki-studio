@@ -63,6 +63,8 @@ function extensionOf(path: string): string {
 	return cut < 0 ? "" : name.slice(cut + 1).toLowerCase();
 }
 
+type Tab = "files" | "curriculum" | "new" | "notes" | "changes";
+
 export function ProjectView({
 	root,
 	project,
@@ -84,9 +86,15 @@ export function ProjectView({
 	const say = useSay();
 	const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 	const [prompt, setPrompt] = useState<PromptSpec | null>(null);
-	const [tab, setTab] = useState<
-		"files" | "curriculum" | "new" | "notes" | "changes"
-	>("files");
+	const [tab, setTabState] = useState<Tab>("files");
+	// The tabs opened so far: they stay mounted (hidden) so switching back is instant.
+	const [seen, setSeen] = useState<ReadonlySet<Tab>>(() => new Set(["files"]));
+	const setTab = useCallback((next: Tab) => {
+		setTabState(next);
+		setSeen((current) =>
+			current.has(next) ? current : new Set([...current, next]),
+		);
+	}, []);
 	const [exportSpec, setExportSpec] = useState<ExportSpec | null>(null);
 	// The register's row for the chosen file, and the last scan's report header.
 	const [row, setRow] = useState<FileRow | null>(null);
@@ -448,155 +456,177 @@ export function ProjectView({
 				</div>
 			</header>
 
-			{tab === "curriculum" ? (
-				<Curriculum root={root} project={project} onNotify={onNotify} />
-			) : tab === "notes" ? (
-				<Notes
-					root={root}
-					onPick={pickFile}
-					onNotify={onNotify}
-					onChanged={reload}
-					reloadKey={reloadKey}
-				/>
-			) : tab === "changes" ? (
-				<Changes
-					root={root}
-					project={project}
-					onNotify={onNotify}
-					onChanged={reload}
-				/>
-			) : tab === "new" ? (
-				<NewMaterialPanel
-					root={root}
-					meta={reportMeta}
-					scanning={scanning}
-					progress={progress}
-					onScan={() => void scan()}
-					onStop={stopScan}
-					onPick={pickFile}
-					onNotify={onNotify}
-					reloadKey={reloadKey}
-				/>
-			) : (
-				<div className="project-body" ref={panes.row} style={panes.style}>
-					<aside
-						className="side"
-						onDragOver={(event) => event.preventDefault()}
-						onDrop={(event) => {
-							event.preventDefault();
-							const dropped = Array.from(event.dataTransfer.files);
-							if (dropped.length > 0) void dropFiles("Inbox", dropped);
-						}}
-					>
-						<div className="side-tools">
-							<button
-								type="button"
-								className="btn btn-quiet"
-								disabled={scanning}
-								onClick={() => void scan()}
-							>
-								{say("project.look")}
-							</button>
-							<button
-								type="button"
-								className="btn btn-quiet"
-								disabled={!canMakeUnit}
-								onClick={newUnit}
-							>
-								{say("project.newUnit")}
-							</button>
-							<button
-								type="button"
-								className="btn btn-quiet"
-								disabled={node === null || fixedRow}
-								onClick={rename}
-							>
-								{say("project.rename")}
-							</button>
-							<button
-								type="button"
-								className="btn btn-quiet btn-danger"
-								disabled={node === null || fixedRow}
-								onClick={remove}
-							>
-								{say("project.delete")}
-							</button>
-						</div>
-						<Tree
-							root={root}
-							firstTop={firstTop}
-							selectedRel={node?.rel ?? null}
-							onSelect={setSelectedNode}
-							onDropFiles={dropFiles}
-							onMove={move}
-							onNotify={onNotify}
-							reloadKey={reloadKey}
-						/>
-					</aside>
-
-					<Divider spec={panes.divider(0)} />
-
-					<main className="pane">
-						{node !== null && node.kind === "file" && row !== null && (
-							<FileDetails
-								key={`${row.id}-${row.grade}-${row.block}`}
-								file={row}
-								onSave={async (fields) => {
-									await saveFields(row.id, fields);
-								}}
-							/>
-						)}
-						{node !== null && node.kind === "file" && (
-							<Viewer
-								key={node.rel}
-								root={root}
-								node={node}
-								onNotify={onNotify}
-							/>
-						)}
-						{row !== null && node !== null && node.kind === "file" && (
-							<FileNote
-								key={`note-${row.id}`}
-								root={root}
-								row={row}
-								lang={lang}
-								onNotify={onNotify}
-							/>
-						)}
-						{node !== null &&
-							node.kind === "folder" &&
-							node.rel === "Inbox" && (
-								<Inbox
-									root={root}
-									project={project}
-									onMove={async (fromRel, toRel) => {
-										await move(fromRel, toRel);
-									}}
-									reloadKey={reloadKey}
-								/>
-							)}
-						{node !== null &&
-							node.kind === "folder" &&
-							node.rel !== "Inbox" && (
-								<FolderPanel
-									node={node}
-									root={root}
-									project={project}
-									lang={lang}
-									reloadKey={reloadKey}
-								/>
-							)}
-						{node === null && (
-							<div className="empty-pane">
-								<p className="empty-sign" aria-hidden="true">
-									🗂️
-								</p>
-								<p className="muted">{say("project.pickFile")}</p>
-								<p className="muted">{say("project.pickFolder")}</p>
-								<p className="muted">{say("project.dropHint")}</p>
+			{/* A tab, once opened, stays alive and is only hidden: coming back to it shows what it
+			    had at once, instead of loading it again (owner, 2026-11-13). */}
+			{seen.has("curriculum") && (
+				<div className="tab-panel" hidden={tab !== "curriculum"}>
+					<Curriculum
+						root={root}
+						project={project}
+						onNotify={onNotify}
+						reloadKey={reloadKey}
+					/>
+				</div>
+			)}
+			{seen.has("notes") && (
+				<div className="tab-panel" hidden={tab !== "notes"}>
+					<Notes
+						root={root}
+						onPick={pickFile}
+						onNotify={onNotify}
+						onChanged={reload}
+						reloadKey={reloadKey}
+					/>
+				</div>
+			)}
+			{seen.has("changes") && (
+				<div className="tab-panel" hidden={tab !== "changes"}>
+					<Changes
+						root={root}
+						project={project}
+						onNotify={onNotify}
+						onChanged={reload}
+						reloadKey={reloadKey}
+					/>
+				</div>
+			)}
+			{seen.has("new") && (
+				<div className="tab-panel" hidden={tab !== "new"}>
+					<NewMaterialPanel
+						root={root}
+						meta={reportMeta}
+						scanning={scanning}
+						progress={progress}
+						onScan={() => void scan()}
+						onStop={stopScan}
+						onPick={pickFile}
+						onNotify={onNotify}
+						reloadKey={reloadKey}
+					/>
+				</div>
+			)}
+			{seen.has("files") && (
+				<div className="tab-panel" hidden={tab !== "files"}>
+					<div className="project-body" ref={panes.row} style={panes.style}>
+						<aside
+							className="side"
+							onDragOver={(event) => event.preventDefault()}
+							onDrop={(event) => {
+								event.preventDefault();
+								const dropped = Array.from(event.dataTransfer.files);
+								if (dropped.length > 0) void dropFiles("Inbox", dropped);
+							}}
+						>
+							<div className="side-tools">
+								<button
+									type="button"
+									className="btn btn-quiet"
+									disabled={scanning}
+									onClick={() => void scan()}
+								>
+									{say("project.look")}
+								</button>
+								<button
+									type="button"
+									className="btn btn-quiet"
+									disabled={!canMakeUnit}
+									onClick={newUnit}
+								>
+									{say("project.newUnit")}
+								</button>
+								<button
+									type="button"
+									className="btn btn-quiet"
+									disabled={node === null || fixedRow}
+									onClick={rename}
+								>
+									{say("project.rename")}
+								</button>
+								<button
+									type="button"
+									className="btn btn-quiet btn-danger"
+									disabled={node === null || fixedRow}
+									onClick={remove}
+								>
+									{say("project.delete")}
+								</button>
 							</div>
-						)}
-					</main>
+							<Tree
+								root={root}
+								firstTop={firstTop}
+								selectedRel={node?.rel ?? null}
+								onSelect={setSelectedNode}
+								onDropFiles={dropFiles}
+								onMove={move}
+								onNotify={onNotify}
+								reloadKey={reloadKey}
+							/>
+						</aside>
+
+						<Divider spec={panes.divider(0)} />
+
+						<main className="pane">
+							{node !== null && node.kind === "file" && row !== null && (
+								<FileDetails
+									key={`${row.id}-${row.grade}-${row.block}`}
+									file={row}
+									onSave={async (fields) => {
+										await saveFields(row.id, fields);
+									}}
+								/>
+							)}
+							{node !== null && node.kind === "file" && (
+								<Viewer
+									key={node.rel}
+									root={root}
+									node={node}
+									onNotify={onNotify}
+								/>
+							)}
+							{row !== null && node !== null && node.kind === "file" && (
+								<FileNote
+									key={`note-${row.id}`}
+									root={root}
+									row={row}
+									lang={lang}
+									onNotify={onNotify}
+								/>
+							)}
+							{node !== null &&
+								node.kind === "folder" &&
+								node.rel === "Inbox" && (
+									<Inbox
+										root={root}
+										project={project}
+										onMove={async (fromRel, toRel) => {
+											await move(fromRel, toRel);
+										}}
+										reloadKey={reloadKey}
+									/>
+								)}
+							{node !== null &&
+								node.kind === "folder" &&
+								node.rel !== "Inbox" && (
+									<FolderPanel
+										node={node}
+										root={root}
+										project={project}
+										lang={lang}
+										reloadKey={reloadKey}
+									/>
+								)}
+							{node === null && (
+								<div className="empty-pane">
+									<p className="empty-sign" aria-hidden="true">
+										🗂️
+									</p>
+									<p className="muted">{say("project.pickFile")}</p>
+									<p className="muted">{say("project.pickFolder")}</p>
+									<p className="muted">{say("project.dropHint")}</p>
+								</div>
+							)}
+						</main>
+					</div>
 				</div>
 			)}
 

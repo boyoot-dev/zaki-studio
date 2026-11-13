@@ -407,11 +407,14 @@ export function Changes({
 	project,
 	onNotify,
 	onChanged,
+	reloadKey,
 }: {
 	root: string;
 	project: { periods: BundlePeriod[] };
 	onNotify: (text: string) => void;
 	onChanged: () => void;
+	/** Bumped when the project changed elsewhere: the tab stays open now, so it re-reads. */
+	reloadKey: number;
 }) {
 	const say = useSay();
 	const lang = useLang();
@@ -447,9 +450,10 @@ export function Changes({
 		setModelInput(next.settings.model);
 	}, [lang, onNotify, root]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — the project changed while this tab stayed open.
 	useEffect(() => {
 		void load();
-	}, [load]);
+	}, [load, reloadKey]);
 
 	// The paths of the files the pending sets' facts name, so the chips can show them.
 	useEffect(() => {

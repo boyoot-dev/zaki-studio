@@ -1464,3 +1464,12 @@ mark {
 	white-space: nowrap;
 	font-size: 0.9rem;
 }
+
+/* A tab panel lays its content out as if the wrapper weren't there; a hidden one is gone
+   from the layout but keeps its state (ProjectView keeps opened tabs mounted). */
+.tab-panel {
+	display: contents;
+}
+.tab-panel[hidden] {
+	display: none;
+}
