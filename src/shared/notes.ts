@@ -4,7 +4,7 @@
 // program writes (never the model), and what a run is likely to cost. Pure and tested: the
 // requests, the files and the job folders are in src/main.
 
-import type { FileRow } from "./model";
+import type { FileRow } from "./model.ts";
 
 /** Where the Studio keeps the notes it collected: one Markdown file per file id. */
 export const NOTES_DIR = ".studio/notes";

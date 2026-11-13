@@ -25,10 +25,10 @@ import {
 	PENDING_FILE,
 	REPORT_FILE,
 	TEXT_DIR,
-} from "../shared/model";
-import { NOTES_DIR } from "../shared/notes";
-import { setFileFields } from "./model";
-import { scanProject } from "./scan";
+} from "../shared/model.ts";
+import { NOTES_DIR } from "../shared/notes.ts";
+import { setFileFields } from "./model.ts";
+import { scanProject } from "./scan.ts";
 
 /** A page of text: the words, and whether the page is a picture (fewer than 40 characters). */
 type Page = { text: string };

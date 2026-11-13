@@ -17,13 +17,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { TreeNode } from "../shared/api";
+import type { TreeNode } from "../shared/api.ts";
 import {
 	type Project,
 	presetPeriods,
 	type SubjectLabel,
 	wizardProject,
-} from "../shared/project";
+} from "../shared/project.ts";
 import {
 	createProject,
 	freeName,
@@ -39,7 +39,7 @@ import {
 	safePath,
 	savePastedImage,
 	stamp,
-} from "./files";
+} from "./files.ts";
 
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";
 const SUBJECTS: SubjectLabel[] = [

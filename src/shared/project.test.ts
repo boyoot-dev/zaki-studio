@@ -22,7 +22,7 @@ import {
 	validFolderName,
 	type WizardAnswers,
 	wizardProject,
-} from "./project";
+} from "./project.ts";
 
 /** A lowercase UUID, as a project id is written. */
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";

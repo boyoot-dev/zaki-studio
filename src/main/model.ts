@@ -15,7 +15,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import type { Failure, FileFields } from "../shared/api";
+import type { Failure, FileFields } from "../shared/api.ts";
 import {
 	type CurriculumModel,
 	courseFile,
@@ -33,8 +33,8 @@ import {
 	parseModelText,
 	REPORT_FILE,
 	TEXT_DIR,
-} from "../shared/model";
-import { AUTHORITIES, KINDS, type NewMaterial } from "../shared/register";
+} from "../shared/model.ts";
+import { AUTHORITIES, KINDS, type NewMaterial } from "../shared/register.ts";
 
 const failure = (code: Failure["code"], detail?: string): Failure => ({
 	ok: false,

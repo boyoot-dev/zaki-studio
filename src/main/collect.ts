@@ -12,7 +12,7 @@ import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { insideProject } from "../shared/inside.ts";
-import type { FileRow } from "../shared/model";
+import type { FileRow } from "../shared/model.ts";
 import {
 	currentAcademicYear,
 	fileRow,

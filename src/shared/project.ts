@@ -10,8 +10,8 @@ import {
 	BUNDLE_LIMITS,
 	type BundlePeriod,
 	checkText,
-} from "./format/bundle";
-import { GRADE_MAX, GRADE_MIN, gradeName } from "./format/grades";
+} from "./format/bundle.ts";
+import { GRADE_MAX, GRADE_MIN, gradeName } from "./format/grades.ts";
 
 /** The marker in curriculum.json that says this folder is a Studio project. */
 export const PROJECT_FORMAT = "mr-zaki-studio-project";

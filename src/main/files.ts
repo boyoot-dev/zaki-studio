@@ -34,8 +34,8 @@ import type {
 	Imported,
 	Made,
 	TreeNode,
-} from "../shared/api";
-import { insideProject, isProjectRoot } from "../shared/inside";
+} from "../shared/api.ts";
+import { insideProject, isProjectRoot } from "../shared/inside.ts";
 import {
 	INBOX_DIR,
 	nextUnitFolder,
@@ -46,7 +46,7 @@ import {
 	STUDIO_DIR,
 	unitNumber,
 	validFolderName,
-} from "../shared/project";
+} from "../shared/project.ts";
 
 /** The largest file a viewer is asked to show. A whole textbook is far smaller. */
 export const MAX_READ_BYTES = 200 * 1024 * 1024;

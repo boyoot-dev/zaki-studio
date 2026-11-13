@@ -16,13 +16,13 @@ import {
 	checkText,
 	parseBundle,
 	parseCourseExams,
-} from "./format/bundle";
-import { GRADE_MAX, GRADE_MIN } from "./format/grades";
-import { type Project, readPeriods, STUDIO_DIR } from "./project";
+} from "./format/bundle.ts";
+import { GRADE_MAX, GRADE_MIN } from "./format/grades.ts";
+import { type Project, readPeriods, STUDIO_DIR } from "./project.ts";
 
 // The text files' own format lives in ./text, so a check script can read a page without
 // loading this file's bundle imports (task 156).
-export { pageText } from "./text";
+export { pageText } from "./text.ts";
 
 /** Where the Studio keeps an adopted project's record and the text read from its files. */
 export const MODEL_DIR = `${STUDIO_DIR}/model`;

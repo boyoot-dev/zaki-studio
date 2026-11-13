@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FileRow } from "./model";
+import type { FileRow } from "./model.ts";
 import {
 	clean,
 	cost,
@@ -18,7 +18,7 @@ import {
 	splitParts,
 	unreadImages,
 	usable,
-} from "./notes";
+} from "./notes.ts";
 
 const TODAY = new Date(2026, 9, 29);
 

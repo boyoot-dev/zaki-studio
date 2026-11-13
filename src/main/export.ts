@@ -7,16 +7,21 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { BrowserWindow, dialog } from "electron";
-import type { ExportCheck, Exported, Failure } from "../shared/api";
+import type { ExportCheck, Exported, Failure } from "../shared/api.ts";
 import {
 	bundleText,
 	exportFileName,
 	filledModel,
 	issueLines,
-} from "../shared/export";
-import { modelSummary, nextVersion } from "../shared/model";
-import { readProject, writeProject } from "./files";
-import { exportNames, readModel, writeExportCopy, writeModel } from "./model";
+} from "../shared/export.ts";
+import { modelSummary, nextVersion } from "../shared/model.ts";
+import { readProject, writeProject } from "./files.ts";
+import {
+	exportNames,
+	readModel,
+	writeExportCopy,
+	writeModel,
+} from "./model.ts";
 
 const failure = (code: Failure["code"], detail?: string): Failure => ({
 	ok: false,

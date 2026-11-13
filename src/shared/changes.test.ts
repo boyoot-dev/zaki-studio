@@ -16,8 +16,8 @@ import {
 	reviewUnits,
 	stem,
 	words,
-} from "./changes";
-import type { FileRow, ModelCourse, ModelFact } from "./model";
+} from "./changes.ts";
+import type { FileRow, ModelCourse, ModelFact } from "./model.ts";
 
 const ID = "9a010f4b4816";
 const OTHER = "abcdef012345";

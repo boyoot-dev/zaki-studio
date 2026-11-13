@@ -5,7 +5,7 @@
 // This file holds the decisions (what a row means, which folder a course lives in, what the
 // project says) and is pure; src/main/adopt.ts reads and writes the folders.
 
-import { BUNDLE_LIMITS, checkText } from "./format/bundle";
+import { BUNDLE_LIMITS, checkText } from "./format/bundle.ts";
 import {
 	type CurriculumModel,
 	type FactStatus,
@@ -13,7 +13,7 @@ import {
 	type ModelCourse,
 	type ModelCurriculum,
 	parseModelCourse,
-} from "./model";
+} from "./model.ts";
 import {
 	gradeFolder,
 	PROJECT_FORMAT,
@@ -26,7 +26,7 @@ import {
 	readPeriods,
 	subjectFolder,
 	validFolderName,
-} from "./project";
+} from "./project.ts";
 
 // The work folder's index and subjects are the register's own rules (task 156): adoption and a
 // scan must read them one way, so they live in src/shared/register.ts and are re-exported here.
@@ -36,7 +36,7 @@ export {
 	readIndex,
 	readSubjectFolders,
 	registerRows,
-} from "./register";
+} from "./register.ts";
 
 /** The register rows a project keeps, with paths relative to the project root. */
 export type AdoptInput = {

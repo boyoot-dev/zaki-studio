@@ -4,8 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { RecentProject } from "./api";
-import { RECENT_MAX, rememberRecent, sameRoot } from "./recent";
+import type { RecentProject } from "./api.ts";
+import { RECENT_MAX, rememberRecent, sameRoot } from "./recent.ts";
 
 const entry = (root: string, opened: number): RecentProject => ({
 	root,

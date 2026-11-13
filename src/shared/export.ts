@@ -3,14 +3,14 @@
 // dialog suggests. Pure and tested; src/main/export.ts reads the project, asks where to save
 // and writes the file.
 
-import { BUNDLE_LIMITS, type BundleIssue, checkText } from "./format/bundle";
+import { BUNDLE_LIMITS, type BundleIssue, checkText } from "./format/bundle.ts";
 import {
 	type CurriculumModel,
 	checkBundle,
 	modelFileText,
 	toBundle,
-} from "./model";
-import type { Project } from "./project";
+} from "./model.ts";
+import type { Project } from "./project.ts";
 
 /**
  * The bundle text, or the parser's problems. The subject list is the app's own

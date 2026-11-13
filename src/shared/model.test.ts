@@ -4,7 +4,7 @@
 // export can never write something the server would refuse.
 
 import { describe, expect, it } from "vitest";
-import { parseBundle } from "./format/bundle";
+import { parseBundle } from "./format/bundle.ts";
 
 import {
 	type CurriculumModel,
@@ -20,8 +20,8 @@ import {
 	parseModelText,
 	parseSource,
 	toBundle,
-} from "./model";
-import { type Project, presetPeriods, wizardProject } from "./project";
+} from "./model.ts";
+import { type Project, presetPeriods, wizardProject } from "./project.ts";
 
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";
 const SUBJECTS = [{ id: "science", nameEn: "Science", nameAr: "العلوم" }];

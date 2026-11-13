@@ -14,10 +14,16 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { FileRow } from "../shared/model";
-import { NOTES_DIR } from "../shared/notes";
-import { collectJob, deleteJob, JOBS_DIR, listJobs, prepareJob } from "./job";
-import { writeFiles } from "./model";
+import type { FileRow } from "../shared/model.ts";
+import { NOTES_DIR } from "../shared/notes.ts";
+import {
+	collectJob,
+	deleteJob,
+	JOBS_DIR,
+	listJobs,
+	prepareJob,
+} from "./job.ts";
+import { writeFiles } from "./model.ts";
 
 const ID = "abcdef012345";
 const OTHER = "0123456789ab";

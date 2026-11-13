@@ -16,13 +16,13 @@ import {
 	readIndex,
 	readSubjectFolders,
 	registerRows,
-} from "../shared/adopt";
-import type { Failure } from "../shared/api";
-import type { CurriculumModel, ModelCourse } from "../shared/model";
-import type { Project } from "../shared/project";
-import { readProject, writeProject } from "./files";
-import { copyTexts, writeFiles, writeModel } from "./model";
-import { copyNotes } from "./notes";
+} from "../shared/adopt.ts";
+import type { Failure } from "../shared/api.ts";
+import type { CurriculumModel, ModelCourse } from "../shared/model.ts";
+import type { Project } from "../shared/project.ts";
+import { readProject, writeProject } from "./files.ts";
+import { copyTexts, writeFiles, writeModel } from "./model.ts";
+import { copyNotes } from "./notes.ts";
 
 const failure = (code: Failure["code"], detail?: string): Failure => ({
 	ok: false,

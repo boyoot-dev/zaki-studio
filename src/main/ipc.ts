@@ -45,12 +45,12 @@ import type {
 	Scanned,
 	ScanState,
 	UnitsPlanView,
-} from "../shared/api";
-import type { JobTool } from "../shared/job";
-import type { CurriculumModel, FileRow } from "../shared/model";
-import { notingOrder } from "../shared/notes";
-import { rememberRecent } from "../shared/recent";
-import { currentAcademicYear } from "../shared/register";
+} from "../shared/api.ts";
+import type { JobTool } from "../shared/job.ts";
+import type { CurriculumModel, FileRow } from "../shared/model.ts";
+import { notingOrder } from "../shared/notes.ts";
+import { rememberRecent } from "../shared/recent.ts";
+import { currentAcademicYear } from "../shared/register.ts";
 import {
 	type AcceptChoice,
 	changeName,
@@ -59,8 +59,8 @@ import {
 	periodUnits,
 	type Target,
 	targetRows,
-} from "../shared/targets";
-import { adoptMaterial } from "./adopt";
+} from "../shared/targets.ts";
+import { adoptMaterial } from "./adopt.ts";
 import {
 	acceptChange,
 	collectUnitsJob,
@@ -71,8 +71,8 @@ import {
 	readUnitsSettings,
 	rejectChange,
 	writeUnitsSettings,
-} from "./changes";
-import { exportProject, summaryFor } from "./export";
+} from "./changes.ts";
+import { exportProject, summaryFor } from "./export.ts";
 import {
 	createProject,
 	guessFolders,
@@ -88,17 +88,23 @@ import {
 	renameEntry,
 	safePath,
 	savePastedImage,
-} from "./files";
-import { canonicalRoot, grantedRoot, sameFolder } from "./grants";
-import { collectJob, deleteJob, listJobs, prepareJob } from "./job";
-import { clearKey, loadKey, readKeyState, type Secrets, saveKey } from "./key";
+} from "./files.ts";
+import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
+import { collectJob, deleteJob, listJobs, prepareJob } from "./job.ts";
+import {
+	clearKey,
+	loadKey,
+	readKeyState,
+	type Secrets,
+	saveKey,
+} from "./key.ts";
 import {
 	readFiles,
 	readModel,
 	readPageText,
 	readReport,
 	setFileFields,
-} from "./model";
+} from "./model.ts";
 import {
 	noteIds,
 	planNotes,
@@ -106,14 +112,14 @@ import {
 	readNoteSettings,
 	writeNoteSettings,
 	writeNotes,
-} from "./notes";
-import { ocrEngine } from "./ocr";
-import { modelInfo, testKey } from "./openrouter";
-import { openRenderer } from "./render";
+} from "./notes.ts";
+import { ocrEngine } from "./ocr.ts";
+import { modelInfo, testKey } from "./openrouter.ts";
+import { openRenderer } from "./render.ts";
 import { studioRootPath } from "./root.ts";
-import { scanProject } from "./scan";
-import { planChangeSet, writeChangeSet } from "./units";
-import { watchProject } from "./watch";
+import { scanProject } from "./scan.ts";
+import { planChangeSet, writeChangeSet } from "./units.ts";
+import { watchProject } from "./watch.ts";
 
 /** A string argument, cut to a sane length; anything else is "". */
 function text(value: unknown, max = 4000): string {

@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FileRow, ModelCourse } from "./model";
+import type { FileRow, ModelCourse } from "./model.ts";
 import {
 	acceptKey,
 	blockOf,
@@ -20,7 +20,7 @@ import {
 	periodUnits,
 	targetOf,
 	targetRows,
-} from "./targets";
+} from "./targets.ts";
 
 /** A register row of made-up material. */
 function row(id: string, over: Partial<FileRow> = {}): FileRow {

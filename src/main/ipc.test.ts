@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { FileRow } from "../shared/model";
-import { writeModel } from "./model";
+import type { FileRow } from "../shared/model.ts";
+import { writeModel } from "./model.ts";
 
 /** Everything the Electron fake keeps, made before the mock is hoisted. */
 const fake = vi.hoisted(() => ({

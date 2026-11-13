@@ -3,10 +3,10 @@
 // path stays inside it, so the page never gets a file system, a shell or a network door. The
 // renderer and the preload share these types; nothing here runs.
 
-import type { JobSummary, JobTool } from "./job";
-import type { CurriculumModel, FileRow, ModelSummary } from "./model";
-import type { Project } from "./project";
-import type { NewMaterial } from "./register";
+import type { JobSummary, JobTool } from "./job.ts";
+import type { CurriculumModel, FileRow, ModelSummary } from "./model.ts";
+import type { Project } from "./project.ts";
+import type { NewMaterial } from "./register.ts";
 
 /** One row of the tree: a folder of the project, or a file in it. */
 export type TreeNode = {

@@ -25,7 +25,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import type { FileRow } from "../shared/model";
+import type { FileRow } from "../shared/model.ts";
 import {
 	cost,
 	DEFAULT_LIMIT_USD,
@@ -34,17 +34,17 @@ import {
 	NOTES_DIR,
 	notingOrder,
 	unreadImages,
-} from "../shared/notes";
-import { currentAcademicYear } from "../shared/register";
-import { safePath } from "./files";
-import { readTextFile } from "./model";
-import { oneNote, type UsageRow } from "./onenote";
+} from "../shared/notes.ts";
+import { currentAcademicYear } from "../shared/register.ts";
+import { safePath } from "./files.ts";
+import { readTextFile } from "./model.ts";
+import { oneNote, type UsageRow } from "./onenote.ts";
 import {
 	type AskNotes,
 	askOpenRouter,
 	type ModelInfo,
 	modelInfo,
-} from "./openrouter";
+} from "./openrouter.ts";
 
 /** How many note requests run at once; more would only queue at OpenRouter. */
 export const NOTE_WORKERS = 2;

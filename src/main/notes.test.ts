@@ -15,9 +15,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { FileRow } from "../shared/model";
-import { NOTES_DIR } from "../shared/notes";
-import { writeFiles } from "./model";
+import type { FileRow } from "../shared/model.ts";
+import { NOTES_DIR } from "../shared/notes.ts";
+import { writeFiles } from "./model.ts";
 import {
 	copyNotes,
 	noteIds,
@@ -26,8 +26,8 @@ import {
 	readNoteSettings,
 	writeNoteSettings,
 	writeNotes,
-} from "./notes";
-import type { AskNotes, NoteReply } from "./openrouter";
+} from "./notes.ts";
+import type { AskNotes, NoteReply } from "./openrouter.ts";
 
 const TODAY = new Date(2026, 10, 13, 8, 30);
 const RULES = "You write study notes.\n\n## What it covers\n";

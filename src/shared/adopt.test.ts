@@ -11,8 +11,8 @@ import {
 	readIndex,
 	readSubjectFolders,
 	registerRows,
-} from "./adopt";
-import type { FileRow } from "./model";
+} from "./adopt.ts";
+import type { FileRow } from "./model.ts";
 
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";
 const PERIODS = [

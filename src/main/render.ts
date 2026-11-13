@@ -10,13 +10,13 @@
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
 
-import { pngProblem } from "../shared/png";
+import { pngProblem } from "../shared/png.ts";
 import {
 	READER_CHANNELS,
 	READER_SCALE,
 	type ReaderJob,
-} from "../shared/reader";
-import { WEB_PREFERENCES } from "./window";
+} from "../shared/reader.ts";
+import { WEB_PREFERENCES } from "./window.ts";
 
 /** How long one page may take before the scan gives up on it. */
 export const RENDER_TIMEOUT_MS = 60_000;

@@ -14,7 +14,7 @@ import {
 	pageText,
 	textFile,
 	withOcr,
-} from "./text";
+} from "./text.ts";
 
 const ID = "9a010f4b4816";
 

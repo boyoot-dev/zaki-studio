@@ -23,7 +23,7 @@ import {
 	toggleSource,
 	widthBucket,
 	withSaved,
-} from "./panes";
+} from "./panes.ts";
 
 /** The widths a row adds up to, dividers included. */
 const totalOf = (columns: number[]) =>

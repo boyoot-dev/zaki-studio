@@ -2,7 +2,7 @@
 // same keys: a missing Arabic text is a type error. The Studio is English first and Arabic
 // second (docs/STUDIO.md), and the window turns right to left in Arabic.
 
-import { gradeName } from "./format/grades";
+import { gradeName } from "./format/grades.ts";
 
 export type Lang = "en" | "ar";
 

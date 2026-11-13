@@ -9,8 +9,8 @@ import { app, BrowserWindow, dialog, session, shell } from "electron";
 // app/ at run time.
 import iconIco from "../../resources/icon.ico?asset";
 import iconPng from "../../resources/icon.png?asset";
-import { registerIpc } from "./ipc";
-import { contentSecurityPolicy, windowOptions } from "./window";
+import { registerIpc } from "./ipc.ts";
+import { contentSecurityPolicy, windowOptions } from "./window.ts";
 
 /** The Vite dev server in development; empty in the packaged app. */
 const devServer = process.env.ELECTRON_RENDERER_URL ?? "";

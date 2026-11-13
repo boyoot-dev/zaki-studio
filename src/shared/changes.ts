@@ -11,16 +11,16 @@
 // Today's Arabic text layers can be reversed, so a failed page check is a warning, not a
 // refusal (found 2026-10-25, docs/CURRICULA.md).
 
-import { BUNDLE_LIMITS, type BundleSkill, checkText } from "./format/bundle";
+import { BUNDLE_LIMITS, type BundleSkill, checkText } from "./format/bundle.ts";
 import type {
 	FileRow,
 	ModelCourse,
 	ModelFact,
 	ModelLesson,
 	ModelUnit,
-} from "./model";
-import { parseSource } from "./model";
-import type { AcceptChoice, Target } from "./targets";
+} from "./model.ts";
+import { parseSource } from "./model.ts";
+import type { AcceptChoice, Target } from "./targets.ts";
 
 /** Where a project keeps the change sets waiting for review, under .studio. */
 export const CHANGES_DIR = ".studio/changes";
