@@ -227,7 +227,9 @@ afterEach(() => {
 	rmSync(base, { recursive: true, force: true });
 });
 
-describe("a scan of a project", () => {
+// A scan reads real PDFs and runs OCR; GitHub's Windows runner needed more than Vitest's
+// default 5 s (v0.1.2 build, 2026-11-13).
+describe("a scan of a project", { timeout: 30_000 }, () => {
 	it("registers a new file, reads it page by page, and draws its picture page", async () => {
 		put(
 			"Grade 3/2026-2027/Math/Math-B1-Sheet1 - Main.pdf",
@@ -550,7 +552,7 @@ describe("a scan of a project", () => {
 	});
 });
 
-describe("the page pictures a scan keeps", () => {
+describe("the page pictures a scan keeps", { timeout: 30_000 }, () => {
 	it("are under .studio/pages, and never in the material", async () => {
 		put("Grade 3/2026-2027/Math/sheet.pdf", pdf([{ text: "1" }]));
 		const outcome = await scan();
@@ -565,7 +567,7 @@ describe("the page pictures a scan keeps", () => {
 // helper honest when a slide deck is written with deflate instead of store.
 void deflateRawSync;
 
-describe("the register's own file", () => {
+describe("the register's own file", { timeout: 30_000 }, () => {
 	it("keeps every field a later step needs", async () => {
 		put("Grade 3/2026-2027/Math/sheet.pdf", pdf([{ text: "1" }]));
 		const outcome = await scan();
