@@ -131,11 +131,10 @@ resources/      the icon the window and the installer show, the rules the model 
                 by git); `npm run icon` makes the icon
 ```
 
-`src/shared/format/` holds copies of the app's shared files (`bundle.ts`, `grades.ts`,
-`web-address.ts` and the subject list), so the Studio and the server can never disagree
-about what a valid file is. The copies carry a first line saying where they come from and are
-not edited in this repository; in the Mr. Zaki monorepo `npm run sync-format` refreshes them
-and a test fails when they drift (see "Working in the Mr. Zaki monorepo").
+`src/shared/format/` is the reference reader of the bundle format (`bundle.ts`, `grades.ts`,
+`web-address.ts` and the subject list). This repository is its home. Apps that read bundles,
+such as Mr. Zaki, copy these files byte for byte from a tagged commit here, so the Studio and
+the apps can never disagree about what a valid file is. Change them here, never in a copy.
 
 ## Opening an existing curriculum built elsewhere
 
@@ -373,21 +372,13 @@ and `.ppt` (the old formats), watching a project folder while the Studio is open
 coverage map, editing in the Curriculum view, rebuilding, and the import button are not in
 this build.
 
-## Working in the Mr. Zaki monorepo
+## Developer notes
 
-This repository is also `studio/` inside the private Mr. Zaki monorepo, where it is built
-with an `../app` beside it. Two differences:
-
-- The shared format files under `src/shared/format/` are copies. After the app's copies
-  change, run `npm run sync-format` to refresh them. `src/shared/format-sync.test.ts` checks
-  each copy against what `sync-format` would write, and fails when they drift; the check is
-  skipped in this repository, where there is no `../app`.
 - The trials (`notes-trial`, `units-trial`) and `material-check` are the architect's tools
   for measuring the Studio against already-built curricula. Their folders are required
   arguments; nothing is copied into the repository, and nothing they read is written back.
 
-The task specs live in the monorepo (`docs/STUDIO.md` and the task briefs), not in this
-repository.
+The design notes and task briefs are kept privately by the maintainer.
 
 ## Licence
 

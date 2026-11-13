@@ -1,12 +1,11 @@
-// Makes the Studio's own icon from the app's (task 154): the Mr. Zaki face, so the window's
-// title bar and the Windows taskbar stop showing Electron's. The png is copied into
-// resources/ at build time and never read from app/ when the app runs; the .ico is drawn from
-// it. Node only, no package: the png is decoded here, each size is averaged down from the
+// Makes the Studio's .ico and .icns from its own png (resources/icon.png, the Mr. Zaki face),
+// so the window's title bar and the Windows taskbar stop showing Electron's. The .ico is drawn
+// from the png. Node only, no package: the png is decoded here, each size is averaged down from the
 // pixels it covers, and the .ico is written with plain 32-bit bitmaps, which every Windows
 // version reads (and the installer task can hand to the exe). The .icns is the png itself in
 // its one chunk, which macOS reads.
 //
-// Run it when app/public/icon-512.png changes: node scripts/icon.ts
+// Run it when resources/icon.png changes: node scripts/icon.ts
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -15,10 +14,8 @@ import { inflateSync } from "node:zlib";
 /** The sizes Windows asks a taskbar or Explorer for; 256 is the large tile. */
 const SIZES = [16, 24, 32, 48, 64, 256] as const;
 
-/** The app's own icon, shared with the website. */
-const SOURCE = fileURLToPath(
-	new URL("../../app/public/icon-512.png", import.meta.url),
-);
+/** The Studio's own icon, 512 pixels square. */
+const SOURCE = fileURLToPath(new URL("../resources/icon.png", import.meta.url));
 
 /** Where the Studio keeps what it ships. */
 const RESOURCES = fileURLToPath(new URL("../resources/", import.meta.url));

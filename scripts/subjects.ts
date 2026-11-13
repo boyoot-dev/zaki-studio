@@ -1,8 +1,7 @@
-// The subject list, read from the Studio's own copy of the app's subjects.json
-// (src/shared/format/subjects.json, kept in step by scripts/sync-format.ts) when the Studio is
-// built, and handed to the page as the virtual module "virtual:subjects". It is read rather
+// The subject list, read from src/shared/format/subjects.json (the format's fixed subject ids,
+// which apps that read bundles copy from here) when the Studio is built, and handed to the page as the virtual module "virtual:subjects". It is read rather
 // than imported so the build has one subject list without a second copy by hand.
-// The copy starts with two // lines naming where it comes from; they are not JSON.
+// Leading // lines, which older copies carried, are skipped: they are not JSON.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

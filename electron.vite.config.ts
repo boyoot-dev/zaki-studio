@@ -3,9 +3,9 @@
 // config, restarts the app on a main-process change, and keeps the preload's output format
 // under our control, which sandboxing needs).
 //
-// The shared format code is a copy kept in src/shared/format (npm run sync-format keeps it
-// in step with the app); the import-guard test (src/import-guard.test.ts) fails on any path
-// that leaves studio/.
+// The bundle format's code lives in src/shared/format: this repository is its home, and apps
+// that read bundles copy it from a tagged release. The import-guard test
+// (src/import-guard.test.ts) fails on any path that leaves this folder.
 
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";

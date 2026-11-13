@@ -1,6 +1,6 @@
 // The Studio is built from its own folder alone (task 163): no file may import anything that
-// resolves outside studio/. The format files are copies kept by scripts/sync-format.ts, so
-// nothing reaches into the app repository. This test reads every source file of studio/ and
+// resolves outside this folder. The format files live in src/shared/format, so nothing reaches
+// into another repository. This test reads every source file of studio/ and
 // fails on any path that escapes the folder, so a shortcut (a colour constant, a helper, an
 // i18n table) is caught here rather than at the next build.
 

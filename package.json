@@ -16,7 +16,6 @@
 		"typecheck": "tsc --noEmit",
 		"icon": "node scripts/icon.ts",
 		"tessdata": "node scripts/tessdata.ts",
-		"sync-format": "node scripts/sync-format.ts",
 		"material-check": "node scripts/material-check.ts",
 		"notes-trial": "node scripts/notes-trial.ts",
 		"units-trial": "node scripts/units-trial.ts",
