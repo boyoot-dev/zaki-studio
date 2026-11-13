@@ -18,7 +18,9 @@ const SUBJECTS_PATH = fileURLToPath(
 );
 
 const subjectIds: string[] = (
-	JSON.parse(subjectsJson(readFileSync(SUBJECTS_PATH, "utf8"))) as { id: string }[]
+	JSON.parse(subjectsJson(readFileSync(SUBJECTS_PATH, "utf8"))) as {
+		id: string;
+	}[]
 ).map((s) => s.id);
 
 const example = (name: string): string =>
