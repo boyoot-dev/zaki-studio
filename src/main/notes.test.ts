@@ -362,7 +362,7 @@ describe("the plan before a run", () => {
 			)) as typeof fetch;
 		const got = await planNotes(
 			project,
-			[row("abcdef012345"), row("0123456789ab")],
+			[row("abcdef012345", { imagePages: 1 }), row("0123456789ab")],
 			[],
 			"anthropic/claude-haiku-5.5",
 			TODAY,

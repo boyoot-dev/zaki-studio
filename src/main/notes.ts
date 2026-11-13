@@ -241,6 +241,8 @@ export function chosenRows(
 
 /** The unread picture pages a file's text still names. */
 function unreadPagesOf(root: string, row: FileRow): number {
+	// A file with no picture pages has nothing unread; the register says so already.
+	if (row.imagePages === 0) return 0;
 	return unreadImages(readTextFile(root, row.id)).length;
 }
 

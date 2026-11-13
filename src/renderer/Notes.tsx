@@ -487,12 +487,17 @@ export function Notes({
 							<>
 								<h3>{say("notes.failedTitle")}</h3>
 								<ul className="new-list issues">
-									{failed.map((entry) => (
+									{failed.slice(0, 300).map((entry) => (
 										<li key={entry.id} dir="auto">
 											{fileName(entry.path)}: {entry.reason}
 										</li>
 									))}
 								</ul>
+								{failed.length > 300 && (
+									<p className="muted">
+										{say("notes.failedMore", { n: failed.length - 300 })}
+									</p>
+								)}
 							</>
 						)}
 					</div>

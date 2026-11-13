@@ -546,12 +546,10 @@ function copyBytes(root: string, rel: string): Buffer {
 	return readFileSync(join(root, ...rel.split("/")));
 }
 
-/** The folder must be empty but for hidden files it already holds nothing. */
-function refuseUnlessEmpty(folder: string): void {
-	if (!existsSync(folder)) return;
-	for (const name of readdirSync(folder)) {
-		throw new Error(`the folder is not empty (it holds "${name}")`);
-	}
+/** The folder is absent, or empty but for nothing at all. Any entry refuses the build. */
+function isEmpty(folder: string): boolean {
+	if (!existsSync(folder)) return true;
+	return readdirSync(folder).length === 0;
 }
 
 function main(): void {
@@ -567,7 +565,13 @@ function main(): void {
 		process.exitCode = 2;
 		return;
 	}
-	refuseUnlessEmpty(folder);
+	if (!isEmpty(folder)) {
+		console.error(
+			`the folder isn't empty (it holds "${readdirSync(folder)[0] ?? "?"}"): refusing to write a synthetic project into it`,
+		);
+		process.exitCode = 2;
+		return;
+	}
 	mkdirSync(folder, { recursive: true });
 	build(folder, files);
 }
