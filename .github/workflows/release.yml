@@ -1,0 +1,64 @@
+# Builds both installers when a v* tag is pushed, and attaches them to the release for that
+# tag. The macOS build can only be checked here; the Windows one is checked on the machine
+# that builds it. The installers are unsigned.
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the release for this tag, unless it already exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "Mr. Zaki Studio $TAG" --generate-notes
+
+  windows:
+    needs: create
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run tessdata
+      - run: npm test
+      - run: npm run dist:win
+      - name: Attach the Windows installer
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" dist/*.exe --clobber
+
+  mac:
+    needs: create
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run tessdata
+      - run: npm test
+      - run: npm run dist:mac
+      - name: Attach the Mac disk image
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" dist/*.dmg --clobber

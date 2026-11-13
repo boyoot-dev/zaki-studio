@@ -1,0 +1,1333 @@
+/* Mr. Zaki Studio: calm and clear, with the app's colours and type as the starting point
+   (app/src/styles.css). The Studio is a desktop window on Windows, so it asks no server for a
+   font: Segoe UI for English, and Segoe UI's Arabic fallback (or Tahoma) for Arabic. Every
+   side and start is a logical property, so the layout turns over in Arabic by itself. */
+
+:root {
+	--bg: #f6f8fc;
+	--surface: #ffffff;
+	--ink: #1f2a44;
+	--ink-soft: #5d6883;
+	--line: #e3e8f2;
+	--accent: #2d68d6;
+	--accent-soft: #e8effc;
+	--sun: #ffc845;
+	--danger: #b4352b;
+	--radius: 14px;
+	--shadow: 0 6px 24px rgba(31, 42, 68, 0.08);
+	--font: "Segoe UI", "Nunito", ui-rounded, system-ui, sans-serif;
+	--font-ar: "Segoe UI", "Cairo", Tahoma, sans-serif;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--bg);
+	color: var(--ink);
+	font-family: var(--font);
+	font-size: 15px;
+	line-height: 1.45;
+}
+
+[lang="ar"],
+.ar {
+	font-family: var(--font-ar);
+}
+
+button {
+	font: inherit;
+	color: inherit;
+}
+
+h1,
+h2,
+h3 {
+	margin: 0;
+	line-height: 1.25;
+}
+
+h1 {
+	font-size: 1.55rem;
+}
+
+h2 {
+	font-size: 1.1rem;
+}
+
+h3 {
+	font-size: 0.95rem;
+}
+
+.muted {
+	color: var(--ink-soft);
+	margin: 0;
+}
+
+.spacer {
+	flex: 1;
+}
+
+:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Buttons ------------------------------------------------------------------------ */
+
+.btn {
+	border: 1px solid var(--accent);
+	background: var(--accent);
+	color: #fff;
+	border-radius: 999px;
+	padding: 9px 18px;
+	cursor: pointer;
+	box-shadow: 0 2px 6px rgba(45, 104, 214, 0.18);
+}
+
+.btn:hover:not(:disabled) {
+	background: #2559ba;
+}
+
+.btn:disabled {
+	opacity: 0.45;
+	cursor: default;
+	box-shadow: none;
+}
+
+.btn-quiet {
+	background: var(--surface);
+	color: var(--ink);
+	border-color: var(--line);
+	box-shadow: none;
+}
+
+.btn-quiet:hover:not(:disabled) {
+	background: var(--accent-soft);
+	border-color: var(--accent);
+}
+
+.btn-danger {
+	color: var(--danger);
+}
+
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.chip {
+	border: 1px solid var(--line);
+	background: var(--surface);
+	border-radius: 999px;
+	padding: 6px 14px;
+	cursor: pointer;
+}
+
+.chip-on {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-weight: 600;
+}
+
+/* The start screen --------------------------------------------------------------- */
+
+.start {
+	max-width: 62rem;
+	margin: 0 auto;
+	padding: 48px 28px 32px;
+	display: grid;
+	gap: 28px;
+}
+
+.start-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.brand {
+	font-size: 2rem;
+	letter-spacing: -0.01em;
+}
+
+.tagline {
+	margin: 4px 0 0;
+	color: var(--ink-soft);
+	font-size: 1.05rem;
+}
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	gap: 16px;
+}
+
+.card {
+	display: grid;
+	gap: 6px;
+	align-content: start;
+	text-align: start;
+	padding: 22px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	cursor: pointer;
+}
+
+.card:hover {
+	border-color: var(--accent);
+	transform: translateY(-1px);
+}
+
+.card-sign {
+	font-size: 1.6rem;
+	line-height: 1;
+	color: var(--accent);
+}
+
+.card-title {
+	font-size: 1.15rem;
+	font-weight: 700;
+}
+
+.card-hint {
+	color: var(--ink-soft);
+}
+
+.recent h2 {
+	margin-bottom: 10px;
+}
+
+.recent-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 8px;
+}
+
+.recent-row {
+	width: 100%;
+	display: grid;
+	gap: 2px;
+	text-align: start;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 10px 14px;
+	cursor: pointer;
+}
+
+.recent-row:hover {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+
+.recent-name {
+	font-weight: 600;
+}
+
+.recent-path {
+	color: var(--ink-soft);
+	font-size: 0.82rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* The wizard --------------------------------------------------------------------- */
+
+.wizard {
+	height: 100%;
+	display: grid;
+	grid-template-rows: auto auto minmax(0, 1fr) auto;
+	max-width: 54rem;
+	margin: 0 auto;
+	padding: 26px 28px 20px;
+	gap: 14px;
+}
+
+.wizard-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.step-line {
+	margin: 0 0 2px;
+	color: var(--accent);
+	font-weight: 600;
+	font-size: 0.85rem;
+}
+
+.dots {
+	display: flex;
+	gap: 6px;
+}
+
+.dot {
+	width: 28px;
+	height: 4px;
+	border-radius: 999px;
+	background: var(--line);
+}
+
+.dot-on {
+	background: var(--accent);
+}
+
+.wizard-body {
+	overflow: auto;
+	padding: 6px 2px 2px;
+}
+
+.form {
+	display: grid;
+	gap: 14px;
+}
+
+.field {
+	display: grid;
+	gap: 4px;
+}
+
+.field-label {
+	font-weight: 600;
+	font-size: 0.9rem;
+}
+
+.field input {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 9px 12px;
+	font: inherit;
+	background: var(--surface);
+	color: var(--ink);
+}
+
+.field input[aria-invalid="true"] {
+	border-color: var(--danger);
+}
+
+.field-hint {
+	color: var(--ink-soft);
+	font-size: 0.82rem;
+}
+
+.field-problem {
+	color: var(--danger);
+	font-size: 0.82rem;
+}
+
+.grade-picks {
+	margin: 12px 0 18px;
+}
+
+.grade-block {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 14px 16px;
+	margin-bottom: 12px;
+}
+
+.grade-block h2 {
+	margin-bottom: 10px;
+}
+
+.count {
+	font-weight: 400;
+	font-size: 0.85rem;
+}
+
+.subject-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+	gap: 6px 14px;
+}
+
+.subject {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0;
+	cursor: pointer;
+}
+
+.periods {
+	display: grid;
+	gap: 12px;
+	margin: 14px 0;
+}
+
+.period {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 12px 14px;
+}
+
+.period-blocks {
+	grid-column: 1 / -1;
+	display: grid;
+	gap: 10px;
+	padding-inline-start: 16px;
+	border-inline-start: 3px solid var(--accent-soft);
+}
+
+.period-blocks .period {
+	background: var(--bg);
+}
+
+.check {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.issues {
+	background: #fdeeec;
+	border: 1px solid #f3c9c4;
+	color: var(--danger);
+	border-radius: 10px;
+	padding: 9px 13px;
+	margin: 12px 0 0;
+}
+
+.planned {
+	margin-top: 18px;
+	border-top: 1px solid var(--line);
+	padding-top: 14px;
+}
+
+.folder-list {
+	margin: 8px 0 0;
+	padding: 0;
+	list-style: none;
+	columns: 2;
+	gap: 18px;
+	color: var(--ink-soft);
+	font-size: 0.86rem;
+	font-family: Consolas, "Cascadia Mono", monospace;
+}
+
+.wizard-foot {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+/* The project window ------------------------------------------------------------- */
+
+.project {
+	height: 100%;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+}
+
+.project-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px 20px;
+	background: var(--surface);
+	border-bottom: 1px solid var(--line);
+}
+
+.project-name {
+	margin: 0;
+	font-weight: 700;
+	font-size: 1.05rem;
+}
+
+.project-head .muted {
+	font-size: 0.78rem;
+}
+
+.head-tools {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.project-body {
+	display: grid;
+	/* The columns come from the panes the author drags (task 154). */
+	min-height: 0;
+	overflow: hidden;
+}
+
+.side {
+	background: var(--surface);
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	min-height: 0;
+}
+
+.side-tools {
+	display: flex;
+	gap: 6px;
+	padding: 10px;
+	border-bottom: 1px solid var(--line);
+	flex-wrap: wrap;
+}
+
+.side-tools .btn {
+	padding: 6px 12px;
+	font-size: 0.85rem;
+}
+
+.tree {
+	overflow: auto;
+	padding: 6px 4px 20px;
+}
+
+.row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 8px;
+	margin: 1px 4px;
+	border-radius: 8px;
+	cursor: default;
+	user-select: none;
+}
+
+.row:hover {
+	background: var(--bg);
+}
+
+.row-on {
+	background: var(--accent-soft);
+}
+
+.row-over {
+	outline: 2px dashed var(--accent);
+	background: var(--accent-soft);
+}
+
+.twisty {
+	width: 18px;
+	padding: 0;
+	border: none;
+	background: none;
+	color: var(--ink-soft);
+	cursor: pointer;
+}
+
+.row-sign {
+	width: 20px;
+	text-align: center;
+}
+
+.row-name {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.row-file .row-name {
+	color: var(--ink-soft);
+}
+
+.row-count {
+	color: var(--ink-soft);
+	font-size: 0.72rem;
+}
+
+.badge {
+	background: var(--sun);
+	color: #4a3a00;
+	border-radius: 999px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	padding: 1px 8px;
+}
+
+/* The right-hand pane ------------------------------------------------------------- */
+
+.pane {
+	overflow: auto;
+	min-height: 0;
+	padding: 22px 26px;
+}
+
+.empty-pane {
+	max-width: 26rem;
+	margin: 12vh auto 0;
+	text-align: center;
+	display: grid;
+	gap: 6px;
+}
+
+.empty-sign {
+	font-size: 2.4rem;
+	margin: 0;
+}
+
+.viewer {
+	display: grid;
+	gap: 16px;
+}
+
+.viewer-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.viewer-head .muted {
+	font-size: 0.8rem;
+	word-break: break-all;
+}
+
+.viewer-body {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 16px;
+	min-height: 12rem;
+}
+
+.text-view pre {
+	margin: 0;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	font-family: Consolas, "Cascadia Mono", monospace;
+	font-size: 0.86rem;
+	line-height: 1.55;
+	max-height: 68vh;
+	overflow: auto;
+}
+
+.image-view {
+	margin: 0;
+	display: grid;
+	place-items: center;
+}
+
+.image-view img {
+	max-width: 100%;
+	max-height: 70vh;
+	border-radius: 8px;
+}
+
+.audio-view {
+	display: grid;
+	gap: 10px;
+}
+
+.audio-view audio {
+	width: 100%;
+}
+
+.pdf-view {
+	display: grid;
+	gap: 10px;
+}
+
+.pdf-bar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pdf-bar .btn {
+	padding: 4px 12px;
+}
+
+.pdf-page {
+	overflow: auto;
+	display: grid;
+	place-items: start center;
+	background: var(--bg);
+	border-radius: 10px;
+	padding: 12px;
+	max-height: 70vh;
+}
+
+.pdf-page canvas {
+	box-shadow: var(--shadow);
+	background: #fff;
+}
+
+.other-view {
+	display: grid;
+	gap: 8px;
+}
+
+/* The folder panel and the Inbox --------------------------------------------------- */
+
+.folder-panel {
+	display: grid;
+	gap: 12px;
+}
+
+.drop-big {
+	border: 2px dashed var(--line);
+	border-radius: var(--radius);
+	background: var(--surface);
+	padding: 26px 18px;
+	text-align: center;
+	color: var(--ink-soft);
+	margin: 0;
+}
+
+.folder-children {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 4px;
+	color: var(--ink-soft);
+}
+
+.inbox {
+	display: grid;
+	gap: 12px;
+	max-width: 44rem;
+}
+
+.inbox-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 6px;
+}
+
+.inbox-row {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	text-align: start;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 9px 13px;
+	cursor: pointer;
+}
+
+.inbox-row:hover {
+	border-color: var(--accent);
+}
+
+.inbox-row-on {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+
+.move-picker {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 14px 16px;
+	display: grid;
+	gap: 12px;
+	justify-items: start;
+}
+
+.picker-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.picker-field {
+	display: grid;
+	gap: 3px;
+	font-size: 0.82rem;
+	color: var(--ink-soft);
+}
+
+.picker-field select,
+.picker-field input {
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 7px 10px;
+	background: var(--bg);
+	font: inherit;
+	color: var(--ink);
+	min-width: 9rem;
+}
+
+/* The New material panel and a file's details -------------------------------------- */
+
+.new-material {
+	display: grid;
+	gap: 14px;
+	max-width: 52rem;
+	padding: 6px 2px 30px;
+}
+
+.new-head {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.new-head h2 {
+	margin: 0;
+}
+
+.new-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.new-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 6px;
+}
+
+.new-list li {
+	line-height: 1.45;
+}
+
+.link-button {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: var(--accent);
+	cursor: pointer;
+	text-align: start;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.file-details {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 12px 16px 14px;
+	display: grid;
+	gap: 8px;
+	margin-bottom: 14px;
+}
+
+.file-details h3 {
+	margin: 0;
+	font-size: 0.95rem;
+}
+
+.detail-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	gap: 10px;
+}
+
+/* Dialogs and the line at the bottom ----------------------------------------------- */
+
+.veil {
+	position: fixed;
+	inset: 0;
+	background: rgba(31, 42, 68, 0.35);
+	display: grid;
+	place-items: center;
+	padding: 20px;
+}
+
+.dialog {
+	width: min(26rem, 100%);
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	padding: 20px;
+	display: grid;
+	gap: 12px;
+}
+
+.dialog input {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 9px 12px;
+	font: inherit;
+}
+
+.dialog-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+.toast {
+	position: fixed;
+	inset-inline: 0;
+	bottom: 18px;
+	margin-inline: auto;
+	width: fit-content;
+	background: var(--ink);
+	color: #fff;
+	border-radius: 999px;
+	padding: 8px 20px;
+	font-size: 0.9rem;
+	box-shadow: var(--shadow);
+}
+
+/* Narrow windows keep the tree usable, and the page loses its padding, never its words. */
+@media (max-width: 900px) {
+	.pane {
+		padding: 14px;
+	}
+}
+
+/* The tabs, the Curriculum view and the export dialog (task 153) --------------------- */
+
+.tabs {
+	display: flex;
+	gap: 4px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	padding: 3px;
+}
+
+.tab {
+	border: none;
+	background: none;
+	border-radius: 999px;
+	padding: 5px 14px;
+	font-size: 0.86rem;
+	cursor: pointer;
+	color: var(--ink-soft);
+}
+
+.tab-on {
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-weight: 600;
+}
+
+.curriculum {
+	display: grid;
+	/* The columns come from the panes the author drags and the source viewer's button. */
+	min-height: 0;
+	overflow: hidden;
+}
+
+.curriculum-note {
+	padding: 22px 26px;
+}
+
+.curriculum-nav {
+	background: var(--surface);
+	overflow: auto;
+	padding: 14px 10px 24px;
+}
+
+.curriculum-nav h2 {
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ink-soft);
+	margin: 12px 6px 6px;
+}
+
+.curriculum-nav ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 4px;
+}
+
+.curriculum-subject {
+	width: 100%;
+	text-align: start;
+}
+
+.course {
+	overflow: auto;
+	padding: 20px 24px 40px;
+	display: grid;
+	gap: 10px;
+	align-content: start;
+}
+
+.course-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.course-head .btn {
+	padding: 5px 12px;
+	font-size: 0.82rem;
+	white-space: nowrap;
+}
+
+.course-exams ul {
+	margin: 4px 0 0;
+	padding-inline-start: 18px;
+}
+
+.prose {
+	margin: 4px 0 0;
+	white-space: pre-wrap;
+}
+
+.units-head {
+	margin-top: 12px;
+}
+
+.units,
+.lessons,
+.facts,
+.skills {
+	margin: 6px 0 0;
+	padding-inline-start: 20px;
+	display: grid;
+	gap: 6px;
+}
+
+.unit {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	padding: 14px 16px;
+}
+
+.unit h3 {
+	margin: 0;
+}
+
+.lesson {
+	padding: 8px 0;
+	border-top: 1px solid var(--line);
+}
+
+.lesson:first-child {
+	border-top: none;
+}
+
+.lesson h4 {
+	margin: 0 0 4px;
+	font-size: 0.95rem;
+}
+
+.lesson-part {
+	margin-top: 8px;
+}
+
+.lesson-part h5 {
+	margin: 0 0 2px;
+	font-size: 0.76rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ink-soft);
+}
+
+.skills li {
+	font-size: 0.92rem;
+}
+
+.code {
+	font-family: Consolas, "Cascadia Mono", monospace;
+	font-size: 0.74rem;
+	color: var(--accent);
+	margin-inline-end: 6px;
+}
+
+.fact {
+	margin: 0;
+}
+
+.source-chip {
+	font-size: 0.76rem;
+	padding: 3px 10px;
+	color: var(--ink-soft);
+}
+
+.source-chip:hover {
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+.source-panel {
+	background: var(--surface);
+	overflow: auto;
+	padding: 16px 18px 30px;
+	display: grid;
+	gap: 12px;
+	align-content: start;
+}
+
+.source-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.source-head .muted {
+	font-size: 0.8rem;
+}
+
+.page-text {
+	margin-top: 14px;
+	border-top: 1px solid var(--line);
+	padding-top: 10px;
+}
+
+.page-text h3 {
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ink-soft);
+}
+
+.page-text pre {
+	margin: 6px 0 0;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	font-family: Consolas, "Cascadia Mono", monospace;
+	font-size: 0.82rem;
+	line-height: 1.5;
+	max-height: 40vh;
+	overflow: auto;
+}
+
+.export-dialog {
+	width: min(34rem, 100%);
+}
+
+.export-counts {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.export-counts li {
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	padding: 4px 12px;
+	font-size: 0.85rem;
+	background: var(--bg);
+}
+
+.issues ul {
+	margin: 6px 0 0;
+	padding-inline-start: 18px;
+	font-size: 0.85rem;
+}
+
+@media (max-width: 1100px) {
+	.course {
+		padding: 16px;
+	}
+}
+
+/* The borders the author moves between the panes (task 154) ------------------------- */
+
+.pane-divider {
+	position: relative;
+	cursor: col-resize;
+	background: var(--bg);
+	touch-action: none;
+}
+
+/* A hairline in the middle of the gap, which turns into the accent when it is used. */
+.pane-divider::before {
+	content: "";
+	position: absolute;
+	inset-block: 0;
+	inset-inline: 50%;
+	width: 1px;
+	translate: -50% 0;
+	background: var(--line);
+}
+
+.pane-divider:hover::before,
+.pane-divider:focus-visible::before {
+	width: 2px;
+	background: var(--accent);
+}
+
+/* While a divider is held, the whole window keeps the cursor and stops selecting text. */
+body.pane-dragging {
+	cursor: col-resize;
+	user-select: none;
+}
+
+/* The Notes tab and a file's note (task 157) ---------------------------------------- */
+
+.notes {
+	padding: 24px 28px;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.notes h2,
+.notes h3 {
+	margin: 0 0 6px;
+}
+
+.notes-settings,
+.notes-job,
+.notes-actions,
+.file-note {
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 16px 18px;
+	background: var(--surface);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.notes-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 10px;
+}
+
+.notes-row .field {
+	min-width: 220px;
+	flex: 1;
+}
+
+.notes-row select {
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 8px 10px;
+	background: var(--surface);
+	color: var(--ink);
+	font: inherit;
+}
+
+.notes-group {
+	margin-bottom: 12px;
+}
+
+.notes-group .check {
+	font-weight: 600;
+}
+
+.job-prompt textarea {
+	width: 100%;
+	font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+	font-size: 0.82rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 10px;
+	resize: vertical;
+	background: var(--bg);
+	color: var(--ink);
+}
+
+.notes-job .new-list li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.file-note {
+	margin-top: 16px;
+}
+
+/* The Changes tab (task 158) ---------------------------------------------------------- */
+
+.changes-pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 18px;
+	align-items: start;
+}
+
+.changes-side {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 12px 14px;
+	background: var(--bg);
+	min-width: 0;
+}
+
+.changes-side h5 {
+	margin: 12px 0 6px;
+}
+
+.changes-side h6 {
+	margin: 14px 0 6px;
+	font-size: 0.9rem;
+}
+
+.fact-flag {
+	border-radius: 999px;
+	padding: 2px 8px;
+	background: var(--warn, #fdf0d5);
+	color: var(--ink);
+	font-size: 0.78rem;
+}
+
+mark {
+	background: #ffe9a8;
+	color: inherit;
+	padding: 0 1px;
+	border-radius: 3px;
+}
+
+.note-text {
+	margin: 0;
+	padding: 12px 14px;
+	border-radius: 8px;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	max-height: 420px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+	font-size: 0.84rem;
+	line-height: 1.5;
+	text-align: start;
+}

@@ -1,0 +1,46 @@
+Mr. Zaki Studio Licence
+
+Copyright (c) 2026 Amr Bedair. All rights reserved.
+
+This licence covers the Mr. Zaki Studio software in this repository: its source code and
+the apps built from it ("the Studio"). It does not cover the folder `standard/` (see 4).
+
+1. Using the Studio
+   You may download, install and use the released Studio, free of charge, for any
+   purpose, including commercial use. For example, a school or a learning centre may use
+   it to make curricula for its own students.
+
+2. What you make is yours
+   The curriculum files (bundles) and other material you make with the Studio belong to
+   you. This licence claims no rights in them.
+
+3. Reading the source
+   You may read the source code in this repository. You may build it on your own computer
+   to check that a released Studio matches it.
+
+   Unless you have the copyright holder's written permission, you may not:
+   a. copy, modify, translate or adapt the source code or the Studio, in whole or in part,
+      except as needed for the building in 3;
+   b. publish, distribute, sell, rent or sublicense the source code, the Studio or a
+      changed version of either;
+   c. use any part of the source code in another product or service.
+
+4. The bundle standard
+   The folder `standard/` has its own licences. Its text is licensed under CC BY 4.0 (see
+   `standard/LICENSE-TEXT`). Its JSON Schema and examples are licensed under MIT (see
+   `standard/LICENSE-SCHEMA`). This licence does not limit them.
+
+5. Other people's software
+   The Studio includes software by others, such as Electron, React, pdf.js, mammoth and
+   Tesseract with its language data. That software keeps its own licence, listed in
+   THIRD-PARTY-NOTICES.md, and nothing here limits your rights under those licences.
+
+6. No warranty
+   The Studio is provided "as is", without warranty of any kind. You use it at your own
+   risk. Check every curriculum you make before you use it with children. To the extent
+   the law allows, the copyright holder is not liable for any damage that comes from using
+   the Studio.
+
+7. Contact
+   To ask for a permission that this licence does not give, open an issue in this
+   repository.

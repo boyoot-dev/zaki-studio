@@ -1,0 +1,250 @@
+{
+	"format": "mr-zaki-curriculum",
+	"formatVersion": 1,
+	"id": "8b4e1a6c-2f7d-4a9b-b3e5-9c0d6f1a2847",
+	"version": 2,
+	"nameEn": "Starlight Astronomy",
+	"nameAr": "علم الفلك",
+	"author": "R. Farouk",
+	"rights": "Written from common-knowledge astronomy texts, for anyone to use and share.",
+	"periods": [
+		{
+			"id": "term-1",
+			"nameEn": "Term 1",
+			"nameAr": "الفصل الأول",
+			"periods": [
+				{ "id": "block-1", "nameEn": "Block 1", "nameAr": "الوحدة الأولى" },
+				{ "id": "block-2", "nameEn": "Block 2", "nameAr": "الوحدة الثانية" }
+			]
+		},
+		{
+			"id": "term-2",
+			"nameEn": "Term 2",
+			"nameAr": "الفصل الثاني",
+			"periods": [
+				{ "id": "block-3", "nameEn": "Block 3", "nameAr": "الوحدة الثالثة" }
+			]
+		},
+		{
+			"id": "final",
+			"nameEn": "Final exam",
+			"nameAr": "الامتحان النهائي",
+			"wholeYear": true
+		}
+	],
+	"courses": [
+		{
+			"grade": 9,
+			"subject": "science",
+			"examStyle": "Two papers.\nPaper 1: reading, 40 minutes.\nPaper 2: listening in Arabic, played twice.",
+			"exams": [
+				{
+					"period": "final",
+					"name": "End of year exam",
+					"papers": [
+						{
+							"name": "Paper 1: Reading",
+							"skill": "reading",
+							"language": "en",
+							"minutes": 40,
+							"marks": 20,
+							"parts": [
+								{
+									"id": "astro-r1",
+									"name": "Part 1",
+									"nameEn": "Part 1",
+									"instruction": "Read the article, then answer the questions.",
+									"instructionEn": "Read the article, then answer the questions.",
+									"marks": 10,
+									"minutes": 20,
+									"material": {
+										"kind": "article",
+										"description": "A factual article about the phases of the Moon.",
+										"words": [250, 350],
+										"topic": "units",
+										"layout": ["paragraph-numbers"]
+									},
+									"questions": {
+										"count": 5,
+										"types": { "short": 5 },
+										"maxWords": 40,
+										"marksEach": 2,
+										"totalMarks": 10,
+										"example": false,
+										"copiedExactly": false
+									},
+									"notes": "Answers must rest on the article.",
+									"marking": "2 marks per question: 1 for the idea, 1 for the wording."
+								},
+								{
+									"id": "astro-r2",
+									"name": "Part 2",
+									"nameEn": "Part 2",
+									"instruction": "Write a short paragraph in your own words.",
+									"instructionEn": "Write a short paragraph in your own words.",
+									"marks": 10,
+									"minutes": 20,
+									"material": {
+										"kind": "extracts",
+										"description": "Two short extracts about the Sun.",
+										"words": [100, 200],
+										"topic": "outside-units",
+										"layout": ["line-numbers"]
+									},
+									"questions": {
+										"count": 1,
+										"types": { "essay": 1 },
+										"marksEach": 10,
+										"totalMarks": 10,
+										"example": true,
+										"copiedExactly": false
+									},
+									"notes": "The example at the top of the part is worked out.",
+									"marking": "10 marks for content and clear writing."
+								}
+							]
+						},
+						{
+							"name": "Paper 2: الاستماع",
+							"skill": "listening",
+							"language": "ar",
+							"minutes": 25,
+							"marks": 16,
+							"parts": [
+								{
+									"id": "astro-l1",
+									"name": "الجزء الأول",
+									"nameEn": "Part 1",
+									"instruction": "استمع إلى الحوار، ثم أجب عن الأسئلة.",
+									"instructionEn": "Listen to the dialogue, then answer the questions.",
+									"marks": 16,
+									"minutes": 25,
+									"material": {
+										"kind": "dialogue",
+										"description": "A dialogue between two students planning a visit to an observatory.",
+										"words": [200, 300],
+										"speakers": 2,
+										"topic": "units",
+										"layout": ["line-numbers"],
+										"timing": {
+											"readingSeconds": 60,
+											"plays": 2,
+											"repeat": "segment",
+											"pauseSeconds": 5,
+											"checkSeconds": 30
+										}
+									},
+									"questions": {
+										"count": 16,
+										"types": {
+											"choice": 1,
+											"truefalse": 1,
+											"gap": 1,
+											"short": 1,
+											"form": 1,
+											"yesno": 1,
+											"match": 1,
+											"picture": 1,
+											"multi": 1,
+											"truefalse-justify": 1,
+											"extract": 1,
+											"essay": 1,
+											"calculation": 1,
+											"labelling": 1,
+											"ordering": 1,
+											"other": 1
+										},
+										"choiceOptions": 4,
+										"maxWords": 3,
+										"marksByType": {
+											"choice": 1,
+											"truefalse": 1,
+											"gap": 1,
+											"short": 1,
+											"form": 1,
+											"yesno": 1,
+											"match": 1,
+											"picture": 1,
+											"multi": 1,
+											"truefalse-justify": 1,
+											"extract": 1,
+											"essay": 1,
+											"calculation": 1,
+											"labelling": 1,
+											"ordering": 1,
+											"other": 1
+										},
+										"totalMarks": 16,
+										"example": true,
+										"copiedExactly": true
+									},
+									"notes": "The recording plays twice.",
+									"marking": "One mark per question. Half marks are not given."
+								}
+							]
+						}
+					]
+				}
+			],
+			"units": [
+				{
+					"number": 1,
+					"period": "block-1",
+					"title": "The Earth and the Moon",
+					"source": "sheet",
+					"keywords": ["moon", "orbit", "phases"],
+					"evidence": ["Phases worksheet"],
+					"lessons": [
+						{
+							"number": 1,
+							"title": "Day and night",
+							"skills": ["State why we have day and night"],
+							"facts": [
+								"The Earth spins on its axis once every 24 hours.",
+								"The Sun appears to rise in the east and set in the west."
+							],
+							"activity": "reading"
+						},
+						{
+							"number": 2,
+							"title": "The phases of the Moon",
+							"skills": [
+								{
+									"code": "9-1-2",
+									"text": "Explain the phases of the Moon"
+								}
+							],
+							"facts": [
+								"The Moon orbits Earth once every 27 and a third days.",
+								"We see phases because the sunlit half of the Moon faces us in different amounts."
+							]
+						}
+					]
+				},
+				{
+					"number": 2,
+					"period": "block-2",
+					"title": "The Sun",
+					"source": "provisional",
+					"keywords": ["sun", "energy"],
+					"evidence": ["Sun factsheet"],
+					"lessons": [
+						{
+							"number": 1,
+							"title": "What the Sun is made of",
+							"skills": [
+								"State what the Sun is mostly made of",
+								"Describe how the Sun gives us light and heat"
+							],
+							"facts": [
+								"The Sun is a star made mostly of hydrogen and helium.",
+								"The Sun gives Earth light and heat."
+							],
+							"activity": "writing"
+						}
+					]
+				}
+			]
+		}
+	]
+}

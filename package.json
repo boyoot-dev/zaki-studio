@@ -1,0 +1,106 @@
+{
+	"name": "mr-zaki-studio",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Mr. Zaki Studio: turns your own material into a curriculum",
+	"author": "BoyOot",
+	"homepage": "https://github.com/boyoot-dev/zaki-studio",
+	"type": "module",
+	"main": "./out/main/index.cjs",
+	"scripts": {
+		"dev": "electron-vite dev",
+		"build": "electron-vite build",
+		"start": "electron-vite preview",
+		"test": "vitest run",
+		"check": "biome check",
+		"typecheck": "tsc --noEmit",
+		"icon": "node scripts/icon.ts",
+		"tessdata": "node scripts/tessdata.ts",
+		"sync-format": "node scripts/sync-format.ts",
+		"material-check": "node scripts/material-check.ts",
+		"notes-trial": "node scripts/notes-trial.ts",
+		"units-trial": "node scripts/units-trial.ts",
+		"dist:win": "node scripts/dist.ts --win",
+		"dist:mac": "node scripts/dist.ts --mac"
+	},
+	"dependencies": {
+		"mammoth": "1.13.0",
+		"pdfjs-dist": "6.4.299",
+		"react": "19.3.1",
+		"react-dom": "19.3.1",
+		"tesseract.js": "7.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.5",
+		"ajv": "8.20.0",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
+		"@vitejs/plugin-react": "6.1.2",
+		"electron": "45.1.0",
+		"electron-builder": "26.18.0",
+		"electron-vite": "6.0.0",
+		"typescript": "7.0.2",
+		"vite": "8.3.5",
+		"vitest": "5.0.5"
+	},
+	"build": {
+		"appId": "dev.boyoot.studio",
+		"productName": "Mr. Zaki Studio",
+		"directories": {
+			"output": "dist"
+		},
+		"files": [
+			"out/**",
+			"resources/**",
+			"package.json"
+		],
+		"asarUnpack": [
+			"resources/ocr-worker.cjs",
+			"resources/rules/**",
+			"resources/tessdata/**",
+			"node_modules/tesseract.js/**",
+			"node_modules/tesseract.js-core/**",
+			"node_modules/wasm-feature-detect/**",
+			"node_modules/regenerator-runtime/**",
+			"node_modules/is-url/**",
+			"node_modules/bmp-js/**",
+			"node_modules/zlibjs/**",
+			"node_modules/idb-keyval/**",
+			"node_modules/node-fetch/**",
+			"node_modules/whatwg-url/**",
+			"node_modules/tr46/**",
+			"node_modules/webidl-conversions/**",
+			"node_modules/opencollective-postinstall/**"
+		],
+		"win": {
+			"target": [
+				{
+					"target": "nsis",
+					"arch": [
+						"x64"
+					]
+				}
+			],
+			"icon": "resources/icon.ico"
+		},
+		"nsis": {
+			"perMachine": false,
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"shortcutName": "Mr. Zaki Studio"
+		},
+		"mac": {
+			"target": [
+				{
+					"target": "dmg",
+					"arch": [
+						"universal"
+					]
+				}
+			],
+			"icon": "resources/icon.icns",
+			"category": "public.app-category.education",
+			"identity": null
+		}
+	}
+}

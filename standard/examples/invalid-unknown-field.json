@@ -1,0 +1,43 @@
+{
+	"format": "mr-zaki-curriculum",
+	"formatVersion": 1,
+	"id": "3f2a9c1e-7d4b-4e8a-9c6f-2b5d8a0e1f47",
+	"version": 1,
+	"nameEn": "Starlight Astronomy",
+	"nameAr": "علم الفلك",
+	"author": "R. Farouk",
+	"rights": "Written from common-knowledge astronomy texts, for anyone to use and share.",
+	"periods": [
+		{
+			"id": "year",
+			"nameEn": "The school year",
+			"nameAr": "العام الدراسي",
+			"wholeYear": true
+		}
+	],
+	"courses": [
+		{
+			"grade": 8,
+			"subject": "science",
+			"units": [
+				{
+					"number": 1,
+					"period": "year",
+					"title": "The Moon",
+					"summary": "A short unit on the Moon.",
+					"keywords": ["moon"],
+					"lessons": [
+						{
+							"number": 1,
+							"title": "Why the Moon changes shape",
+							"skills": ["Describe how the Moon's phases work"],
+							"facts": [
+								"The Moon orbits Earth once every 27 and a third days."
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}
