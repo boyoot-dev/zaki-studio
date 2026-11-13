@@ -1331,3 +1331,136 @@ mark {
 	line-height: 1.5;
 	text-align: start;
 }
+
+/* The windowed lists (task 168) ------------------------------------------------------------ */
+
+/* The tree scrolls inside the side pane, one row per item, only visible rows in the DOM. */
+.tree {
+	display: flex;
+	flex-direction: column;
+	padding: 6px 4px 8px;
+}
+.tree-item {
+	padding-inline: 2px;
+}
+.tree .tree-row {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding-block: 0;
+	align-items: center;
+	border-radius: 8px;
+}
+
+/* The Notes and New material lists: one row per item, in a box that sizes itself. */
+.notes-list,
+.report-list {
+	height: 48vh;
+	min-height: 240px;
+}
+.notes-item .row,
+.report-item .row {
+	height: 100%;
+	align-items: center;
+	overflow: hidden;
+	white-space: nowrap;
+	margin: 0;
+	padding-inline: 6px;
+}
+.notes-item .row-head h3,
+.report-item .row-head h3 {
+	margin: 0;
+	font-size: 0.98rem;
+}
+.notes-item .row-head,
+.report-item .row-head {
+	gap: 10px;
+}
+.report-item .row-sub {
+	padding-inline-start: 20px;
+	font-size: 0.9rem;
+}
+.notes-item .row-head .check,
+.notes-item .row .check {
+	min-width: 0;
+}
+.row-pending {
+	color: var(--ink-soft);
+	align-items: center;
+}
+
+/* The Inbox's files, one per row. */
+.inbox-list {
+	display: block;
+	height: 46vh;
+	min-height: 180px;
+}
+.inbox-item {
+	padding: 2px 2px;
+}
+.inbox-item .inbox-row {
+	height: 100%;
+	margin: 0;
+}
+
+/* The folder panel's children. */
+.folder-list {
+	height: 40vh;
+	min-height: 150px;
+	margin-block: 4px;
+}
+.folder-item {
+	padding-inline: 4px;
+}
+.folder-child {
+	display: flex;
+	align-items: center;
+	height: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* The Changes tab: the periods to choose from, one per row. */
+.targets-list {
+	height: 336px;
+	margin-block: 4px;
+}
+.targets-item {
+	padding-inline: 2px;
+}
+.changes-target {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+}
+.changes-target .check {
+	min-width: 0;
+}
+.changes-target .check span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.changes-target .muted {
+	font-size: 0.85rem;
+}
+
+/* The Changes tab: jobs and rejected sets, one per row. */
+.jobs-list {
+	height: 200px;
+	margin-block: 4px;
+}
+.jobs-item {
+	padding-inline: 2px;
+}
+.job-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	font-size: 0.9rem;
+}

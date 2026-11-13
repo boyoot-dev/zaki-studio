@@ -27,11 +27,6 @@ import {
 import { join } from "node:path";
 import { type FileRow, modelFileText } from "../src/shared/model.ts";
 import {
-	compareRows,
-	newMaterial,
-	type ReportCourse,
-} from "../src/shared/register.ts";
-import {
 	finalExamPeriod,
 	gradeFolder,
 	PROJECT_FILE,
@@ -41,6 +36,11 @@ import {
 	STUDIO_DIR,
 	subjectFolder,
 } from "../src/shared/project.ts";
+import {
+	compareRows,
+	newMaterial,
+	type ReportCourse,
+} from "../src/shared/register.ts";
 import { SUBJECTS_FILE, subjectsJson } from "./subjects.ts";
 
 /** The files the project holds unless asked otherwise. */

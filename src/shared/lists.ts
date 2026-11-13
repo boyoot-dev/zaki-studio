@@ -5,12 +5,8 @@
 // is on screen. Nothing here runs or reads files; it arranges what the register and the
 // report already hold.
 
-import type {
-	AffectedLine,
-	LookReason,
-	NewMaterial,
-} from "./register.ts";
 import type { FileRow } from "./model.ts";
+import type { AffectedLine, LookReason, NewMaterial } from "./register.ts";
 
 /** One item of the Notes tab's flattened list: a group's header, or one file. */
 export type NotesListItem =
@@ -27,12 +23,16 @@ export type NotesListItem =
 	| { kind: "row"; row: FileRow };
 
 /** The files without a note, grouped and sorted the way the Notes panel shows them. */
-export function notesListItems(
-	missing: readonly FileRow[],
-): NotesListItem[] {
+export function notesListItems(missing: readonly FileRow[]): NotesListItem[] {
 	const groups = new Map<
 		string,
-		{ key: string; grade: number | null; subject: string; block: string; rows: FileRow[] }
+		{
+			key: string;
+			grade: number | null;
+			subject: string;
+			block: string;
+			rows: FileRow[];
+		}
 	>();
 	for (const row of missing) {
 		const key = `${row.grade ?? "?"}|${row.subject}|${row.block}`;
@@ -121,7 +121,8 @@ export function reportListItems(report: NewMaterial): ReportListItem[] {
 		}
 	}
 	items.push({ kind: "lookTitle", count: report.look.length });
-	for (const { row, why } of report.look) items.push({ kind: "look", row, why });
+	for (const { row, why } of report.look)
+		items.push({ kind: "look", row, why });
 	items.push({
 		kind: "totals",
 		copies: report.copies.length,

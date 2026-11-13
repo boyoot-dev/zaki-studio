@@ -11,15 +11,15 @@ import { join } from "node:path";
 import {
 	type ItemsPage,
 	type NotesListItem,
-	type ReportListItem,
 	notesListItems,
 	pageSlice,
+	type ReportListItem,
 	reportListItems,
 } from "../shared/lists.ts";
+import type { FileRow } from "../shared/model.ts";
 import { FILES_FILE } from "../shared/model.ts";
 import { NOTES_DIR, notingOrder } from "../shared/notes.ts";
 import { currentAcademicYear } from "../shared/register.ts";
-import type { FileRow } from "../shared/model.ts";
 import { readFiles, readReport } from "./model.ts";
 import { noteIds } from "./notes.ts";
 

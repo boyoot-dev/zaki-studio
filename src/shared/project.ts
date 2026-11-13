@@ -610,11 +610,12 @@ export function readPeriods(
 	return { ok: true, periods };
 }
 
-/** The periods of a project file, or null when one is wrong. */
+/** The periods of a project file; absent is an empty year, like an empty list. */
 function parsePeriods(
 	value: unknown,
 	add: (path: string, message: string) => void,
 ): BundlePeriod[] | null {
+	if (value === undefined || value === null) return [];
 	if (!Array.isArray(value)) {
 		add("periods", "expected an array");
 		return null;

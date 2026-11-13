@@ -23,16 +23,12 @@ import type {
 } from "../shared/changes";
 import type { BundlePeriod } from "../shared/format/bundle";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
-import type { JobSummary, JobTool } from "../shared/job";
-import type {
-	FileRow,
-	ModelFact,
-	ModelLesson,
-	ModelUnit,
-} from "../shared/model";
+import type { JobTool } from "../shared/job";
+import type { ModelFact, ModelLesson, ModelUnit } from "../shared/model";
 import { fileLabel, parseSource } from "../shared/model";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
+import { WindowedList } from "./WindowedList";
 
 /** A word of the window, as the panel's helpers take it. */
 type Say = (key: TextKey, vars?: Record<string, string | number>) => string;
@@ -74,13 +70,15 @@ function pageLabel(from: number | null, to: number | null): string {
 	return `p.${from}`;
 }
 
-/** The chip a source shows: the register's file name and the page. */
-function sourceLabel(source: string, files: readonly FileRow[]): string {
+/** The chip a source shows: the register's file name and the page, or the source itself. */
+function sourceLabel(
+	source: string,
+	paths: Record<string, { path: string; size: number }>,
+): string {
 	const parsed = parseSource(source);
-	const row =
-		parsed === null ? undefined : files.find((entry) => entry.id === parsed.id);
-	if (row === undefined || parsed === null) return source;
-	return [fileLabel(row.path), pageLabel(parsed.from, parsed.to)]
+	const known = parsed === null ? undefined : paths[parsed.id];
+	if (known === undefined || parsed === null) return source;
+	return [fileLabel(known.path), pageLabel(parsed.from, parsed.to)]
 		.filter((part) => part !== "")
 		.join(" · ");
 }
@@ -118,11 +116,11 @@ function FactChecks({ fact, say }: { fact: CleanFact; say: Say }) {
 /** One proposed fact: its text, its checks, and the pages it came from. */
 function ProposedFact({
 	fact,
-	files,
+	paths,
 	say,
 }: {
 	fact: CleanFact;
-	files: readonly FileRow[];
+	paths: Record<string, { path: string; size: number }>;
 	say: Say;
 }) {
 	return (
@@ -133,7 +131,7 @@ function ProposedFact({
 			<div className="chips">
 				{fact.sources.map((source) => (
 					<span key={source} className="chip">
-						{sourceLabel(source, files)}
+						{sourceLabel(source, paths)}
 					</span>
 				))}
 				<FactChecks fact={fact} say={say} />
@@ -193,13 +191,13 @@ function NowLesson({ lesson, say }: { lesson: ModelLesson; say: Say }) {
 /** The proposed side of one lesson: its checks, new and removed facts, and the choice. */
 function ProposedLesson({
 	review,
-	files,
+	paths,
 	say,
 	accepted,
 	onAccept,
 }: {
 	review: ReviewLesson;
-	files: readonly FileRow[];
+	paths: Record<string, { path: string; size: number }>;
 	say: Say;
 	accepted: boolean;
 	onAccept: () => void;
@@ -234,7 +232,7 @@ function ProposedLesson({
 			)}
 			<ul className="facts">
 				{proposed.facts.map((fact) => (
-					<ProposedFact key={fact.text} fact={fact} files={files} say={say} />
+					<ProposedFact key={fact.text} fact={fact} paths={paths} say={say} />
 				))}
 			</ul>
 			<button
@@ -253,13 +251,13 @@ function ProposedLesson({
 function UnitPair({
 	review,
 	reviewSet,
-	files,
+	paths,
 	say,
 	onAccept,
 }: {
 	review: ReviewUnit;
 	reviewSet: ChangeReview;
-	files: readonly FileRow[];
+	paths: Record<string, { path: string; size: number }>;
 	say: Say;
 	onAccept: (unit: number, lesson?: number) => void;
 }) {
@@ -293,7 +291,7 @@ function UnitPair({
 						<ProposedLesson
 							key={lesson.number}
 							review={lesson}
-							files={files}
+							paths={paths}
 							say={say}
 							accepted={reviewSet.accepted.includes(
 								`${review.number}.${lesson.number}`,
@@ -419,7 +417,10 @@ export function Changes({
 	const lang = useLang();
 	const [state, setState] = useState<ChangesState | null>(null);
 	const [error, setError] = useState("");
-	const [files, setFiles] = useState<FileRow[]>([]);
+	// The paths of the files the pending sets' facts name, for the chips.
+	const [paths, setPaths] = useState<
+		Record<string, { path: string; size: number }>
+	>({});
 	const [modelInput, setModelInput] = useState("");
 	const [limit, setLimit] = useState(2);
 	const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -434,13 +435,6 @@ export function Changes({
 
 	/** Reads the periods, the sets and the jobs; nothing is sent. */
 	const load = useCallback(async () => {
-		const answer = await window.studio.readModel(root);
-		if (!answer.ok) {
-			setError(failureText(lang, answer));
-			onNotify(failureText(lang, answer));
-			return;
-		}
-		setFiles(answer.files);
 		const next = await window.studio.changesState(root);
 		if (!next.ok) {
 			setError(failureText(lang, next));
@@ -456,6 +450,30 @@ export function Changes({
 	useEffect(() => {
 		void load();
 	}, [load]);
+
+	// The paths of the files the pending sets' facts name, so the chips can show them.
+	useEffect(() => {
+		if (state?.ok !== true || state.sets.length === 0) return;
+		const ids = new Set<string>();
+		for (const set of state.sets) {
+			for (const unit of set.units) {
+				for (const lesson of unit.lessons) {
+					for (const fact of lesson.proposed.facts) {
+						for (const source of fact.sources) {
+							const parsed = parseSource(source);
+							if (parsed !== null) ids.add(parsed.id);
+						}
+					}
+				}
+			}
+		}
+		const wanted = [...ids].slice(0, 1500);
+		if (wanted.length === 0) return;
+		void (async () => {
+			const found = await window.studio.filePaths(root, wanted);
+			if (found.ok) setPaths((current) => ({ ...current, ...found.paths }));
+		})();
+	}, [state, root]);
 
 	const targets = state?.ok === true ? state.targets : [];
 	const sets = state?.ok === true ? state.sets : [];
@@ -680,15 +698,20 @@ export function Changes({
 
 			<section>
 				<h3>{say("changes.targets")}</h3>
-				<ul className="new-list">
-					{targets.map((target) => {
+				<WindowedList
+					count={targets.length}
+					rowHeight={44}
+					className="targets-list"
+					itemClassName="targets-item"
+					listRole="list"
+					ariaLabel={say("changes.targets")}
+				>
+					{(index) => {
+						const target = targets[index];
+						if (target === undefined) return null;
 						const key = targetKey(target);
-						const planHere =
-							plan !== null && targetKey(plan.target) === key
-								? plan.view
-								: null;
 						return (
-							<li key={key}>
+							<li className="changes-target">
 								<label className="check">
 									<input
 										type="checkbox"
@@ -720,48 +743,49 @@ export function Changes({
 								>
 									{say("changes.write")}
 								</button>
-								{planHere?.ok && (
-									<div className="notes-actions">
-										<p className="muted">
-											{planHere.plan.estimateUsd === null
-												? say("changes.noPrice")
-												: say("changes.plan", {
-														units: planHere.plan.units,
-														notes: planHere.plan.notes,
-														cost: `$${planHere.plan.estimateUsd.toFixed(4)}`,
-														model: planHere.plan.model,
-													})}
-										</p>
-										<div className="notes-row">
-											<button
-												type="button"
-												className="btn"
-												disabled={!keySet || writing}
-												onClick={() => void writeIt()}
-											>
-												{writing
-													? say("changes.writing")
-													: say("changes.confirmWrite")}
-											</button>
-											{!keySet && (
-												<span className="muted">
-													{say("changes.noKeyHint")}
-												</span>
-											)}
-											<button
-												type="button"
-												className="btn btn-quiet"
-												onClick={() => setPlan(null)}
-											>
-												{say("common.cancel")}
-											</button>
-										</div>
-									</div>
-								)}
 							</li>
 						);
-					})}
-				</ul>
+					}}
+				</WindowedList>
+				{plan?.view.ok === true && (
+					<div className="notes-actions">
+						<p className="muted">
+							{gradeLabel(lang, plan.target.grade)} ·{" "}
+							{subjectName(plan.target.subject, lang)} ·{" "}
+							{periodName(project.periods, plan.target.period, lang)}
+						</p>
+						<p className="muted">
+							{plan.view.plan.estimateUsd === null
+								? say("changes.noPrice")
+								: say("changes.plan", {
+										units: plan.view.plan.units,
+										notes: plan.view.plan.notes,
+										cost: `$${plan.view.plan.estimateUsd.toFixed(4)}`,
+										model: plan.view.plan.model,
+									})}
+						</p>
+						<div className="notes-row">
+							<button
+								type="button"
+								className="btn"
+								disabled={!keySet || writing}
+								onClick={() => void writeIt()}
+							>
+								{writing ? say("changes.writing") : say("changes.confirmWrite")}
+							</button>
+							{!keySet && (
+								<span className="muted">{say("changes.noKeyHint")}</span>
+							)}
+							<button
+								type="button"
+								className="btn btn-quiet"
+								onClick={() => setPlan(null)}
+							>
+								{say("common.cancel")}
+							</button>
+						</div>
+					</div>
+				)}
 				<p className="muted">{say("changes.pickHint")}</p>
 			</section>
 
@@ -810,35 +834,46 @@ export function Changes({
 				{jobs.length === 0 ? (
 					<p className="muted">{say("changes.jobsNone")}</p>
 				) : (
-					<ul className="new-list">
-						{jobs.map((job: JobSummary) => (
-							<li key={job.name}>
-								<span dir="ltr">{job.name}</span>
-								<span className="muted">
-									{" "}
-									{say("changes.jobLine", {
-										created: job.created,
-										tool: say(`notes.tool.${job.tool}` as TextKey),
-										n: job.files,
-									})}
-								</span>
-								<button
-									type="button"
-									className="btn btn-quiet"
-									onClick={() => void collect(job.name)}
-								>
-									{say("changes.collect")}
-								</button>
-								<button
-									type="button"
-									className="btn btn-quiet btn-danger"
-									onClick={() => void removeJob(job.name)}
-								>
-									{say("notes.deleteJob")}
-								</button>
-							</li>
-						))}
-					</ul>
+					<WindowedList
+						count={jobs.length}
+						rowHeight={36}
+						className="jobs-list"
+						itemClassName="jobs-item"
+						listRole="list"
+						ariaLabel={say("changes.jobs")}
+					>
+						{(index) => {
+							const job = jobs[index];
+							if (job === undefined) return null;
+							return (
+								<li className="job-row">
+									<span dir="ltr">{job.name}</span>
+									<span className="muted">
+										{" "}
+										{say("changes.jobLine", {
+											created: job.created,
+											tool: say(`notes.tool.${job.tool}` as TextKey),
+											n: job.files,
+										})}
+									</span>
+									<button
+										type="button"
+										className="btn btn-quiet"
+										onClick={() => void collect(job.name)}
+									>
+										{say("changes.collect")}
+									</button>
+									<button
+										type="button"
+										className="btn btn-quiet btn-danger"
+										onClick={() => void removeJob(job.name)}
+									>
+										{say("notes.deleteJob")}
+									</button>
+								</li>
+							);
+						}}
+					</WindowedList>
 				)}
 				{collected?.ok === true && (
 					<div>
@@ -906,7 +941,7 @@ export function Changes({
 									key={review.number}
 									review={review}
 									reviewSet={set}
-									files={files}
+									paths={paths}
 									say={say}
 									onAccept={(unit, lesson) => void accept(set, unit, lesson)}
 								/>
@@ -920,30 +955,41 @@ export function Changes({
 			{rejected.length > 0 && (
 				<section>
 					<h3>{say("changes.rejected")}</h3>
-					<ul className="new-list">
-						{rejected.map((set) => (
-							<li key={set.key}>
-								<span dir="auto">
-									{gradeLabel(lang, set.grade)} ·{" "}
-									{subjectName(set.subject, lang)} ·{" "}
-									{periodName(project.periods, set.period, lang)}
-								</span>
-								<span className="muted">
-									{say("changes.rejectedLine", {
-										at: set.at,
-										model: set.model,
-									})}
-								</span>
-								<button
-									type="button"
-									className="btn btn-quiet btn-danger"
-									onClick={() => void deleteSet(set)}
-								>
-									{say("changes.deleteSet")}
-								</button>
-							</li>
-						))}
-					</ul>
+					<WindowedList
+						count={rejected.length}
+						rowHeight={36}
+						className="jobs-list"
+						itemClassName="jobs-item"
+						listRole="list"
+						ariaLabel={say("changes.rejected")}
+					>
+						{(index) => {
+							const set = rejected[index];
+							if (set === undefined) return null;
+							return (
+								<li className="job-row">
+									<span dir="auto">
+										{gradeLabel(lang, set.grade)} ·{" "}
+										{subjectName(set.subject, lang)} ·{" "}
+										{periodName(project.periods, set.period, lang)}
+									</span>
+									<span className="muted">
+										{say("changes.rejectedLine", {
+											at: set.at,
+											model: set.model,
+										})}
+									</span>
+									<button
+										type="button"
+										className="btn btn-quiet btn-danger"
+										onClick={() => void deleteSet(set)}
+									>
+										{say("changes.deleteSet")}
+									</button>
+								</li>
+							);
+						}}
+					</WindowedList>
 				</section>
 			)}
 		</div>

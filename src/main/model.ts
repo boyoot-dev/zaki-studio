@@ -13,10 +13,10 @@ import {
 	mkdirSync,
 	readdirSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	writeFileSync,
-	realpathSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -98,10 +98,7 @@ function slot(root: string): ProjectCache {
 	return entry;
 }
 
-const failure = (
-	code: Failure["code"],
-	detail?: string,
-): Failure => ({
+const failure = (code: Failure["code"], detail?: string): Failure => ({
 	ok: false,
 	code,
 	...(detail === undefined ? {} : { detail }),
@@ -144,8 +141,6 @@ function sameStat(a: Stat, b: Stat): boolean {
 	if (a === null || b === null) return a === b;
 	return a.mtimeNs === b.mtimeNs && a.size === b.size;
 }
-
-
 
 /** Writes the model: the header, then one file per course, replacing any earlier model. */
 export function writeModel(
@@ -437,12 +432,38 @@ export function readReport(root: string): NewMaterial | null {
 		try {
 			const value: unknown = JSON.parse(readFileSync(file, "utf8"));
 			if (typeof value === "object" && value !== null) {
-				const candidate = value as NewMaterial;
-				if (
-					typeof candidate.at === "string" &&
-					Array.isArray(candidate.groups)
-				)
-					report = candidate;
+				const candidate = value as Record<string, unknown>;
+				// The writer leaves an empty list out, so an absent list reads back as an
+				// empty one; only the scan's own time is worth refusing a file over.
+				if (typeof candidate.at === "string") {
+					report = {
+						at: candidate.at,
+						since: typeof candidate.since === "string" ? candidate.since : "",
+						found: typeof candidate.found === "number" ? candidate.found : 0,
+						read: typeof candidate.read === "number" ? candidate.read : 0,
+						groups: Array.isArray(candidate.groups)
+							? (candidate.groups as NewMaterial["groups"])
+							: [],
+						affected: Array.isArray(candidate.affected)
+							? (candidate.affected as NewMaterial["affected"])
+							: [],
+						look: Array.isArray(candidate.look)
+							? (candidate.look as NewMaterial["look"])
+							: [],
+						copies: Array.isArray(candidate.copies)
+							? (candidate.copies as NewMaterial["copies"])
+							: [],
+						moved: Array.isArray(candidate.moved)
+							? (candidate.moved as NewMaterial["moved"])
+							: [],
+						removed: Array.isArray(candidate.removed)
+							? (candidate.removed as NewMaterial["removed"])
+							: [],
+						tessdataMissing: Array.isArray(candidate.tessdataMissing)
+							? (candidate.tessdataMissing as NewMaterial["tessdataMissing"])
+							: [],
+					};
+				}
 			}
 		} catch {
 			report = null;

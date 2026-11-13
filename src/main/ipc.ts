@@ -5,7 +5,13 @@
 // no channel that hands the page a file system, a process or a network call.
 
 import { randomUUID } from "node:crypto";
-import { existsSync, lstatSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	readdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import subjects from "virtual:subjects";
 import {
@@ -48,6 +54,7 @@ import type {
 	UnitsPlanView,
 } from "../shared/api.ts";
 import type { JobTool } from "../shared/job.ts";
+import { reportMeta } from "../shared/lists.ts";
 import type { CurriculumModel, FileRow } from "../shared/model.ts";
 import { notingOrder } from "../shared/notes.ts";
 import { rememberRecent } from "../shared/recent.ts";
@@ -61,7 +68,6 @@ import {
 	type Target,
 	targetRows,
 } from "../shared/targets.ts";
-import { invalidateItems, notesItems, notesPage, reportPage } from "./items.ts";
 import { adoptMaterial } from "./adopt.ts";
 import {
 	acceptChange,
@@ -92,6 +98,7 @@ import {
 	savePastedImage,
 } from "./files.ts";
 import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
+import { invalidateItems, notesItems, notesPage, reportPage } from "./items.ts";
 import { collectJob, deleteJob, listJobs, prepareJob } from "./job.ts";
 import {
 	clearKey,
@@ -101,14 +108,13 @@ import {
 	saveKey,
 } from "./key.ts";
 import {
+	invalidateProject,
 	readFiles,
 	readModel,
 	readPageText,
 	readReport,
 	setFileFields,
 } from "./model.ts";
-import { invalidateProject } from "./model.ts";
-import { reportMeta } from "../shared/lists.ts";
 import {
 	noteIds,
 	planNotes,
@@ -470,29 +476,25 @@ export function registerIpc(): void {
 
 	ipcMain.handle("studio:recentProjects", (): RecentProject[] => readRecents());
 
-	ipcMain.handle(
-		"studio:model",
-		(event, root: unknown): ModelOverview => {
-			const where = text(root, 400);
-			if (!allowed(event, where)) return notOpen();
-			const model = readModel(where);
-			if (!model.ok)
-				return {
-					ok: false,
-					code: model.code,
-					...(model.detail === undefined ? {} : { detail: model.detail }),
-				};
-			const courses: CourseHead[] = model.model.courses.map((course) => ({
-				grade: course.grade,
-				subject: course.subject,
-			}));
-			courses.sort(
-				(a, b) =>
-					a.grade - b.grade || a.subject.localeCompare(b.subject),
-			);
-			return { ok: true, curriculum: model.model.curriculum, courses };
-		},
-	);
+	ipcMain.handle("studio:model", (event, root: unknown): ModelOverview => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		const model = readModel(where);
+		if (!model.ok)
+			return {
+				ok: false,
+				code: model.code,
+				...(model.detail === undefined ? {} : { detail: model.detail }),
+			};
+		const courses: CourseHead[] = model.model.courses.map((course) => ({
+			grade: course.grade,
+			subject: course.subject,
+		}));
+		courses.sort(
+			(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),
+		);
+		return { ok: true, curriculum: model.model.curriculum, courses };
+	});
 
 	ipcMain.handle(
 		"studio:course",
@@ -516,37 +518,30 @@ export function registerIpc(): void {
 		},
 	);
 
-	ipcMain.handle(
-		"studio:fileRow",
-		(event, root: unknown, path: unknown) => {
-			const where = text(root, 400);
-			if (!allowed(event, where)) return notOpen();
-			const wanted = text(path, 400);
-			const files = readFiles(where);
-			if (!files.ok) return files;
-			const row =
-				files.files.find((entry) => entry.path === wanted) ?? null;
-			return { ok: true as const, row };
-		},
-	);
+	ipcMain.handle("studio:fileRow", (event, root: unknown, path: unknown) => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		const wanted = text(path, 400);
+		const files = readFiles(where);
+		if (!files.ok) return files;
+		const row = files.files.find((entry) => entry.path === wanted) ?? null;
+		return { ok: true as const, row };
+	});
 
-	ipcMain.handle(
-		"studio:filePaths",
-		(event, root: unknown, ids: unknown) => {
-			const where = text(root, 400);
-			if (!allowed(event, where)) return notOpen();
-			const wanted = texts(ids, 1500).filter((id) => /^[0-9a-f]{12}$/.test(id));
-			const files = readFiles(where);
-			if (!files.ok) return files;
-			const byId = new Map(files.files.map((row) => [row.id, row.path]));
-			const paths: Record<string, string> = {};
-			for (const id of new Set(wanted)) {
-				const path = byId.get(id);
-				if (path !== undefined) paths[id] = path;
-			}
-			return { ok: true as const, paths };
-		},
-	);
+	ipcMain.handle("studio:filePaths", (event, root: unknown, ids: unknown) => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		const wanted = texts(ids, 1500).filter((id) => /^[0-9a-f]{12}$/.test(id));
+		const files = readFiles(where);
+		if (!files.ok) return files;
+		const byId = new Map(files.files.map((row) => [row.id, row]));
+		const paths: Record<string, { path: string; size: number }> = {};
+		for (const id of new Set(wanted)) {
+			const row = byId.get(id);
+			if (row !== undefined) paths[id] = { path: row.path, size: row.size };
+		}
+		return { ok: true as const, paths };
+	});
 
 	ipcMain.handle("studio:folders", (event, root: unknown) => {
 		const where = text(root, 400);
@@ -628,19 +623,16 @@ export function registerIpc(): void {
 		},
 	);
 
-	ipcMain.handle(
-		"studio:listTree",
-		(event, root: unknown, rel: unknown) => {
-			const where = text(root, 400);
-			if (!allowed(event, where)) return notOpen();
-			// One level at a time: "" is the top, otherwise a folder inside the project.
-			const wanted = text(rel, 400);
-			if (wanted.includes("\0")) return failure("outside");
-			const nodes = readLevel(where, wanted);
-			if (Array.isArray(nodes)) return { ok: true as const, nodes };
-			return nodes;
-		},
-	);
+	ipcMain.handle("studio:listTree", (event, root: unknown, rel: unknown) => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		// One level at a time: "" is the top, otherwise a folder inside the project.
+		const wanted = text(rel, 400);
+		if (wanted.includes("\0")) return failure("outside");
+		const nodes = readLevel(where, wanted);
+		if (Array.isArray(nodes)) return { ok: true as const, nodes };
+		return nodes;
+	});
 
 	ipcMain.handle(
 		"studio:importPaths",
@@ -858,7 +850,8 @@ export function registerIpc(): void {
 		(event, root: unknown, offset: unknown, limit: unknown) => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const at = typeof offset === "number" && Number.isFinite(offset) ? offset : 0;
+			const at =
+				typeof offset === "number" && Number.isFinite(offset) ? offset : 0;
 			const take =
 				typeof limit === "number" && Number.isFinite(limit)
 					? Math.min(400, Math.max(1, Math.floor(limit)))
@@ -872,7 +865,8 @@ export function registerIpc(): void {
 		(event, root: unknown, offset: unknown, limit: unknown) => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const at = typeof offset === "number" && Number.isFinite(offset) ? offset : 0;
+			const at =
+				typeof offset === "number" && Number.isFinite(offset) ? offset : 0;
 			const take =
 				typeof limit === "number" && Number.isFinite(limit)
 					? Math.min(400, Math.max(1, Math.floor(limit)))

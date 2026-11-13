@@ -416,6 +416,9 @@ function readSkills(
 	at: string,
 	add: (path: string, message: string) => void,
 ): BundleSkill[] | null {
+	// A lesson with no skills says nothing; the file writer leaves an empty list out,
+	// so an absent list reads back as an empty one.
+	if (value === undefined) return [];
 	if (!Array.isArray(value)) {
 		add(at, "expected a list of skills");
 		return null;
@@ -467,12 +470,14 @@ export function parseModelCourse(
 			? { exams: [], issues: [] }
 			: parseCourseExams(raw.exams, `${where}.exams`);
 	for (const issue of exams.issues) add(issue.path, issue.message);
-	if (!Array.isArray(raw.units)) {
+	// The writer leaves an empty list out, so an absent list reads back as an empty one.
+	const rawUnits = raw.units === undefined ? [] : raw.units;
+	if (!Array.isArray(rawUnits)) {
 		add(`${where}.units`, "expected a list of units");
 		return fail();
 	}
 	const units: ModelUnit[] = [];
-	for (const [i, item] of raw.units.entries()) {
+	for (const [i, item] of rawUnits.entries()) {
 		const at = `${where}.units[${i}]`;
 		if (typeof item !== "object" || item === null) {
 			add(at, "expected a unit");
@@ -488,12 +493,13 @@ export function parseModelCourse(
 			add(`${at}.number`, "expected a whole number");
 			continue;
 		}
-		if (!Array.isArray(unit.lessons)) {
+		const rawLessons = unit.lessons === undefined ? [] : unit.lessons;
+		if (!Array.isArray(rawLessons)) {
 			add(`${at}.lessons`, "expected a list of lessons");
 			continue;
 		}
 		const lessons: ModelLesson[] = [];
-		for (const [j, entry] of unit.lessons.entries()) {
+		for (const [j, entry] of rawLessons.entries()) {
 			const lessonAt = `${at}.lessons[${j}]`;
 			if (typeof entry !== "object" || entry === null) {
 				add(lessonAt, "expected a lesson");

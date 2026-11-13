@@ -1,15 +1,16 @@
 // The list every long list in the page is drawn with (task 168): only the rows on screen
-// exist in the DOM, never more than 300 of them, whatever the list holds. Each row is a real
-// list item with its label, so a screen reader hears the list as it scrolls, and the arrow
-// keys still reach every row. The height math lives in shared/window.ts, which is tested on
-// its own.
+// exist in the DOM, never more than 300 of them, whatever the list holds. The scroll box
+// carries the list's role; each row inside is a real list or tree item with its label, the
+// row count the caller gave it, and its place in the list, so a screen reader hears the list
+// as it scrolls and the arrow keys still reach every row. The height math lives in
+// shared/window.ts, which is tested on its own.
 
 import {
+	type ReactNode,
+	type UIEvent,
 	useEffect,
 	useRef,
 	useState,
-	type ReactNode,
-	type UIEvent,
 } from "react";
 
 import { totalHeight, visibleRange } from "../shared/window.ts";
@@ -19,16 +20,16 @@ const OVERSCAN = 8;
 
 /**
  * Renders `children(index)` for the rows currently visible in a scroll box of `rowHeight`
- * pixels each, with `count` rows in total. Pass `listRole` and `itemRole` for a semantic
- * list or tree.
+ * pixels each, with `count` rows in total. Each child is a real list or tree item; the
+ * scroll box keeps the list's role.
  */
 export function WindowedList({
 	count,
 	rowHeight,
 	className,
 	listRole = "list",
-	itemRole = "listitem",
 	ariaLabel,
+	itemClassName,
 	onRangeChange,
 	children,
 }: {
@@ -36,8 +37,9 @@ export function WindowedList({
 	rowHeight: number;
 	className?: string;
 	listRole?: "list" | "tree";
-	itemRole?: "listitem" | "treeitem";
 	ariaLabel?: string;
+	/** A class for each row's absolutely placed container, for the list's own insets. */
+	itemClassName?: string;
 	/** Called with the visible index range after each scroll; the caller pages data in. */
 	onRangeChange?: (start: number, end: number) => void;
 	children: (index: number) => ReactNode;
@@ -72,15 +74,15 @@ export function WindowedList({
 		rows.push(
 			<div
 				key={index}
-				role={itemRole}
-				aria-setsize={count}
-				aria-posinset={index + 1}
+				className={itemClassName}
+				role="presentation"
 				style={{
 					position: "absolute",
 					top: index * rowHeight,
 					left: 0,
 					right: 0,
 					height: rowHeight,
+					boxSizing: "border-box",
 				}}
 			>
 				{children(index)}
@@ -90,6 +92,7 @@ export function WindowedList({
 
 	return (
 		// The scroll box is the list; the inner div only reserves the full height.
+		// biome-ignore lint/a11y/useAriaPropsSupportedByRole: the role is the caller's; a list or a tree may both carry a label.
 		<div
 			ref={ref}
 			className={className}

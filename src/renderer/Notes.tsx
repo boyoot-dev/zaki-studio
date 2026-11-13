@@ -1,76 +1,56 @@
 // The Notes tab (task 157): the files that have no note yet, the author's key and model, the
 // cost of a run before it starts, and the job folders for an AI tool the author runs himself.
 // Nothing here ever sees the key: the page saves it once and is told only whether one is set.
+// The list of files without a note comes in pages and draws only what is on screen
+// (task 168), so a first scan of a huge project stays quick.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
 	JobCollected,
 	JobMade,
 	NotesPlan,
 	NotesProgress,
-} from "../shared/api";
+} from "../shared/api.ts";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
-import type { JobSummary, JobTool } from "../shared/job";
-import type { FileRow } from "../shared/model";
+import type { JobSummary, JobTool } from "../shared/job.ts";
+import type { NotesListItem } from "../shared/lists.ts";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
+import { WindowedList } from "./WindowedList";
 
 /** A word of the window, as the panel's helpers take it. */
 type Say = (key: TextKey, vars?: Record<string, string | number>) => string;
 
-/** One grade, subject and block of files, as the list groups them. */
-type Group = {
-	key: string;
-	grade: number | null;
-	subject: string;
-	block: string;
-	rows: FileRow[];
-};
-
-/** The files of one note-less list, grouped and sorted the way the panel shows them. */
-export function noteGroups(rows: readonly FileRow[]): Group[] {
-	const groups = new Map<string, Group>();
-	for (const row of rows) {
-		const key = `${row.grade ?? "?"}|${row.subject}|${row.block}`;
-		const group = groups.get(key) ?? {
-			key,
-			grade: row.grade,
-			subject: row.subject,
-			block: row.block,
-			rows: [],
-		};
-		group.rows.push(row);
-		groups.set(key, group);
-	}
-	return [...groups.values()].sort(
-		(a, b) =>
-			(a.grade ?? -1) - (b.grade ?? -1) ||
-			a.subject.localeCompare(b.subject) ||
-			a.block.localeCompare(b.block),
-	);
-}
-
-/** A file's own name, as the list shows it. */
-function fileName(path: string): string {
-	return path.split("/").pop() ?? path;
-}
+/** The page size of the flattened list over IPC. */
+const PAGE = 200;
+/** The height of one row of the flattened list, in pixels. */
+const ROW = 34;
 
 export function Notes({
 	root,
 	onPick,
 	onNotify,
 	onChanged,
+	reloadKey,
 }: {
 	root: string;
 	onPick: (rel: string) => void;
 	onNotify: (text: string) => void;
 	onChanged: () => void;
+	/** Bumped when the folder changed on disk; the list is re-read. */
+	reloadKey: number;
 }) {
 	const say = useSay();
 	const lang = useLang();
-	const [rows, setRows] = useState<FileRow[]>([]);
-	const [missing, setMissing] = useState<FileRow[]>([]);
+	// The flattened list of files without a note, page by page as the window reaches it.
+	const [items, setItems] = useState<Map<number, NotesListItem>>(
+		() => new Map(),
+	);
+	const [total, setTotal] = useState(0);
+	const [totalMissing, setTotalMissing] = useState(0);
+	const requested = useRef(new Set<number>());
+
 	const [keySet, setKeySet] = useState(false);
 	const [jobs, setJobs] = useState<JobSummary[]>([]);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -87,24 +67,62 @@ export function Notes({
 		{ id: string; path: string; reason: string }[]
 	>([]);
 
-	/** Reads the register, the settings and the jobs; nothing is sent. */
+	/** One page of the flattened list, into the map the rows read from. */
+	const loadPage = useCallback(
+		async (offset: number) => {
+			const result = await window.studio.notesRows(root, offset, PAGE);
+			if (!result.ok) {
+				onNotify(failureText(lang, result));
+				return;
+			}
+			setItems((current) => {
+				const next = new Map(current);
+				for (const [index, item] of result.items.entries())
+					next.set(offset + index, item);
+				return next;
+			});
+			setTotal(result.total);
+		},
+		[lang, onNotify, root],
+	);
+
+	/** Fetches the pages the visible window needs. */
+	const ensureRange = useCallback(
+		(start: number, end: number) => {
+			const first = Math.floor(Math.max(0, start) / PAGE);
+			const last = Math.floor(Math.max(0, end - 1) / PAGE);
+			for (let page = first; page <= last; page += 1) {
+				if (requested.current.has(page)) continue;
+				requested.current.add(page);
+				void loadPage(page * PAGE);
+			}
+		},
+		[loadPage],
+	);
+
+	/** Reads the counts, the settings and the jobs; the list loads page by page. */
 	const load = useCallback(async () => {
 		const state = await window.studio.notesState(root);
 		if (!state.ok) {
 			onNotify(failureText(lang, state));
 			return;
 		}
-		setRows(state.files);
-		setMissing(state.missing);
+		setTotalMissing(state.missing);
 		setLimit(state.settings.limit);
 		setModelInput(state.settings.model);
 		setKeySet(state.keySet);
 		setJobs(state.jobs);
-	}, [lang, onNotify, root]);
+		// The list's order changes only when a note lands or a file is corrected.
+		setItems(new Map());
+		setTotal(0);
+		requested.current = new Set();
+		void loadPage(0);
+	}, [lang, loadPage, onNotify, root]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
 	useEffect(() => {
 		void load();
-	}, [load]);
+	}, [load, reloadKey]);
 
 	// The cost is worked out after a short pause, so ticking several boxes sends one ask.
 	useEffect(() => {
@@ -132,13 +150,12 @@ export function Notes({
 	};
 
 	/** A whole block: every file in it, or none of them. */
-	const toggleGroup = (group: Group) => {
-		const all = group.rows.every((row) => selected.has(row.id));
+	const toggleGroup = (ids: string[], all: boolean) => {
 		setSelected((now) => {
 			const next = new Set(now);
-			for (const row of group.rows) {
-				if (all) next.delete(row.id);
-				else next.add(row.id);
+			for (const id of ids) {
+				if (all) next.delete(id);
+				else next.add(id);
 			}
 			return next;
 		});
@@ -265,8 +282,56 @@ export function Notes({
 		await load();
 	};
 
-	const groups = useMemo(() => noteGroups(missing), [missing]);
-	const chosenRows = rows.filter((row) => selected.has(row.id));
+	const renderRow = (index: number) => {
+		const item = items.get(index);
+		if (item === undefined)
+			return (
+				<div className="row row-pending" aria-hidden="true">
+					<span className="muted">…</span>
+				</div>
+			);
+		if (item.kind === "group") {
+			const all = item.ids.every((id) => selected.has(id));
+			return (
+				<div className="row row-head">
+					<label className="check">
+						<input
+							type="checkbox"
+							checked={all}
+							onChange={() => toggleGroup(item.ids, all)}
+						/>
+						<span dir="auto">{groupTitle(item, lang, say)}</span>
+					</label>
+				</div>
+			);
+		}
+		const row = item.row;
+		const checked = selected.has(row.id);
+		return (
+			<div className="row">
+				<label className="check">
+					<input
+						type="checkbox"
+						checked={checked}
+						onChange={() => toggle(row.id)}
+					/>
+					<button
+						type="button"
+						className="link-button"
+						onClick={() => onPick(row.path)}
+					>
+						{fileName(row.path)}
+					</button>
+				</label>
+				<span className="muted">
+					{" "}
+					{say("notes.pages", {
+						n: row.pages ?? 0,
+					})}
+				</span>
+			</div>
+		);
+	};
 
 	return (
 		<div className="notes">
@@ -362,56 +427,24 @@ export function Notes({
 
 			<section>
 				<h3>{say("notes.without")}</h3>
-				{missing.length === 0 ? (
+				{totalMissing === 0 ? (
 					<p className="muted">{say("notes.none")}</p>
 				) : (
 					<>
 						<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
-						{groups.map((group) => {
-							const all = group.rows.every((row) => selected.has(row.id));
-							return (
-								<div key={group.key} className="notes-group">
-									<label className="check">
-										<input
-											type="checkbox"
-											checked={all}
-											onChange={() => toggleGroup(group)}
-										/>
-										<span>{groupTitle(group, lang, say)}</span>
-									</label>
-									<ul className="new-list">
-										{group.rows.map((row) => (
-											<li key={row.id}>
-												<label className="check">
-													<input
-														type="checkbox"
-														checked={selected.has(row.id)}
-														onChange={() => toggle(row.id)}
-													/>
-													<button
-														type="button"
-														className="link-button"
-														onClick={() => onPick(row.path)}
-													>
-														{fileName(row.path)}
-													</button>
-												</label>
-												<span className="muted">
-													{" "}
-													{say("notes.pages", {
-														n: row.pages ?? 0,
-													})}
-												</span>
-											</li>
-										))}
-									</ul>
-								</div>
-							);
-						})}
+						<WindowedList
+							count={total}
+							rowHeight={ROW}
+							className="notes-list"
+							itemClassName="notes-item"
+							onRangeChange={ensureRange}
+						>
+							{renderRow}
+						</WindowedList>
 					</>
 				)}
 
-				{chosenRows.length > 0 && (
+				{selected.size > 0 && (
 					<div className="notes-actions">
 						<p className="muted">
 							{plan === null
@@ -565,8 +598,16 @@ export function Notes({
 	);
 }
 
-/** "Grade 3 · math · Block 1", or the parts the register doesn't know. */
-function groupTitle(group: Group, lang: Lang, say: Say): string {
+/** The group's title: "Grade 3 · math · Block 1", or the parts the register doesn't know. */
+function groupTitle(
+	group: {
+		grade: number | null;
+		subject: string;
+		block: string;
+	},
+	lang: Lang,
+	say: Say,
+): string {
 	return [
 		group.grade === null ? say("new.noGrade") : gradeLabel(lang, group.grade),
 		group.subject === "unknown" || group.subject === ""
@@ -576,6 +617,11 @@ function groupTitle(group: Group, lang: Lang, say: Say): string {
 			? say("new.noBlock")
 			: say("new.block", { block: group.block }),
 	].join(" · ");
+}
+
+/** A file's own name, as the list shows it. */
+function fileName(path: string): string {
+	return path.split("/").pop() ?? path;
 }
 
 /** Why one note in a job's out/ folder was refused, in the window's words. */

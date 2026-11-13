@@ -5,17 +5,17 @@
 
 import type { JobSummary, JobTool } from "./job.ts";
 import type {
-	FileRow,
-	ModelCourse,
-	ModelCurriculum,
-	ModelSummary,
-} from "./model.ts";
-import type {
 	ItemsPage,
 	NotesListItem,
 	ReportListItem,
 	ReportMeta,
 } from "./lists.ts";
+import type {
+	FileRow,
+	ModelCourse,
+	ModelCurriculum,
+	ModelSummary,
+} from "./model.ts";
 import type { Project } from "./project.ts";
 
 /** One row of the tree: a folder of the project, or a file in it. */
@@ -121,7 +121,7 @@ export type ScanState =
 			total: number;
 			/** The header of the last scan's report, or null when there is none. */
 			meta: ReportMeta | null;
-		}
+	  }
 	| Failure;
 
 /** What a scan found: the report's header, the register's size, and whether the author stopped it. */
@@ -133,7 +133,7 @@ export type Scanned =
 			total: number;
 			/** The header of the report the scan just wrote, or null when it found nothing new. */
 			meta: ReportMeta | null;
-		}
+	  }
 	| Failure;
 
 /** One course of the model, as the curriculum's nav lists it (no units; task 168). */
@@ -324,11 +324,17 @@ export type StudioApi = {
 		root: string,
 		path: string,
 	): Promise<{ ok: true; row: FileRow | null } | Failure>;
-	/** The paths of the register rows these ids name, for the fact chips (task 168). */
+	/** The register rows these ids name, as path and size, for the fact chips (task 168). */
 	filePaths(
 		root: string,
 		ids: string[],
-	): Promise<{ ok: true; paths: Record<string, string> } | Failure>;
+	): Promise<
+		| {
+				ok: true;
+				paths: Record<string, { path: string; size: number }>;
+		  }
+		| Failure
+	>;
 	/** Every folder of the project's tree, as relative paths, for the Inbox's picker (task 168). */
 	folders(root: string): Promise<{ ok: true; folders: string[] } | Failure>;
 	/** A page of a file's text kept in the project. */
@@ -387,7 +393,7 @@ export type StudioApi = {
 		root: string,
 		offset: number,
 		limit: number,
-	): Promise<ItemsPage<ReportListItem> | Failure>;
+	): Promise<({ ok: true } & ItemsPage<ReportListItem>) | Failure>;
 	/** Keeps the author's corrections on one row; a later scan keeps them too. */
 	setFileFields(root: string, id: string, fields: FileFields): Promise<Done>;
 	/** Tells the page how far the scan has got. */
@@ -411,7 +417,7 @@ export type StudioApi = {
 		root: string,
 		offset: number,
 		limit: number,
-	): Promise<ItemsPage<NotesListItem> | Failure>;
+	): Promise<({ ok: true } & ItemsPage<NotesListItem>) | Failure>;
 	/** One file's note, as plain text. */
 	noteText(root: string, id: string): Promise<NoteText>;
 	/** What a run would do, its cost and its limit; nothing is sent. */

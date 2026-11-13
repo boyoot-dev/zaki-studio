@@ -3,19 +3,20 @@
 // dropped from Explorer, dragged between folders, or pasted; the tree refreshes itself when
 // Explorer changes the folder, because the main process watches it. "Look for new material"
 // scans the project for files copied in there, and the New material tab says what it found.
+// The tree, the Inbox and every other long list draw only what is on screen (task 168).
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { FileFields, ScanProgress, TreeNode } from "../shared/api";
+import type { FileFields, ScanProgress, TreeNode } from "../shared/api.ts";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
-import type { FileRow } from "../shared/model";
+import type { ReportMeta } from "../shared/lists.ts";
+import type { FileRow } from "../shared/model.ts";
 import {
 	type Project,
 	type ProjectGrade,
 	type ProjectSubject,
 	SECTION_FOLDERS,
-} from "../shared/project";
-import type { NewMaterial } from "../shared/register";
+} from "../shared/project.ts";
 import { failureText } from "./App";
 import { Changes } from "./Changes";
 import { LanguageSwitch } from "./Chrome";
@@ -28,34 +29,44 @@ import { NewMaterialPanel } from "./NewMaterial";
 import { Notes } from "./Notes";
 import { Divider, usePanes } from "./Panes";
 import { Prompt, type PromptSpec } from "./Prompt";
-import { type Selection, Tree } from "./Tree";
+import { Tree } from "./Tree";
 import { Viewer } from "./Viewer";
+import { WindowedList } from "./WindowedList";
 
 /** The folder that holds the numbered units, whose count a new unit changes. */
 const UNITS = SECTION_FOLDERS[0];
 
-/** Finds a node of the tree by its path, or null when it is gone. */
-function findNode(nodes: TreeNode[], rel: string): TreeNode | null {
-	for (const node of nodes) {
-		if (node.rel === rel) return node;
-		const found = findNode(node.children, rel);
-		if (found !== null) return found;
-	}
-	return null;
-}
-
 /** The folder a drop or a paste goes into when `selection` is chosen. */
-function targetFolder(selection: Selection): string {
+function targetFolder(
+	selection: {
+		rel: string;
+		kind: "folder" | "file";
+	} | null,
+): string {
 	if (selection === null) return "Inbox";
 	if (selection.kind === "folder") return selection.rel;
 	const cut = selection.rel.lastIndexOf("/");
 	return cut === -1 ? "" : selection.rel.slice(0, cut);
 }
 
+/** The path's own file name. */
+function fileName(path: string): string {
+	const name = path.split("/").pop() ?? path;
+	const cut = name.lastIndexOf(".");
+	return cut <= 0 ? name : name.slice(0, cut);
+}
+
+/** The extension of a file's path, lowercase and without the dot. */
+function extensionOf(path: string): string {
+	const name = path.split("/").pop() ?? path;
+	const cut = name.lastIndexOf(".");
+	return cut < 0 ? "" : name.slice(cut + 1).toLowerCase();
+}
+
 export function ProjectView({
 	root,
 	project,
-	tree: firstTree,
+	tree: firstTop,
 	lang,
 	onLanguage,
 	onNotify,
@@ -63,6 +74,7 @@ export function ProjectView({
 }: {
 	root: string;
 	project: Project;
+	/** The top level of the tree from opening the project; deeper levels load on expand. */
 	tree: TreeNode[];
 	lang: Lang;
 	onLanguage: (lang: Lang) => void;
@@ -70,44 +82,58 @@ export function ProjectView({
 	onStart: () => void;
 }) {
 	const say = useSay();
-	const [tree, setTree] = useState<TreeNode[]>(firstTree);
-	const [selected, setSelected] = useState<Selection>(null);
+	const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 	const [prompt, setPrompt] = useState<PromptSpec | null>(null);
 	const [tab, setTab] = useState<
 		"files" | "curriculum" | "new" | "notes" | "changes"
 	>("files");
 	const [exportSpec, setExportSpec] = useState<ExportSpec | null>(null);
-	// The register and the last scan's report, which the New material tab shows.
-	const [files, setFiles] = useState<FileRow[]>([]);
-	const [report, setReport] = useState<NewMaterial | null>(null);
+	// The register's row for the chosen file, and the last scan's report header.
+	const [row, setRow] = useState<FileRow | null>(null);
+	const [reportMeta, setReportMeta] = useState<ReportMeta | null>(null);
 	const [scanning, setScanning] = useState(false);
 	const [progress, setProgress] = useState<ScanProgress | null>(null);
+	// Bumped when the folder changed on disk; the tree, the panels and the row re-read.
+	const [reloadKey, setReloadKey] = useState(0);
 	// The tree and the file beside it move apart and together (task 154).
 	const panes = usePanes("files");
 
-	const reload = useCallback(async () => {
-		const result = await window.studio.listTree(root);
-		if (result.ok) setTree(result.tree);
-	}, [root]);
+	const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
-	/** Reads the register and the last scan's report; nothing is scanned. */
-	const loadRegister = useCallback(async () => {
-		const state = await window.studio.scanState(root);
-		if (state.ok) {
-			setFiles(state.files);
-			setReport(state.report);
-		}
-	}, [root]);
-
+	// The file's register row, fetched once per selection (and after a change on disk).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — refetch when the folder changed on disk.
 	useEffect(() => {
-		void loadRegister();
-	}, [loadRegister]);
+		let alive = true;
+		if (selectedNode === null || selectedNode.kind !== "file") {
+			setRow(null);
+			return;
+		}
+		void (async () => {
+			const result = await window.studio.fileRow(root, selectedNode.rel);
+			if (alive && result.ok) setRow(result.row);
+		})();
+		return () => {
+			alive = false;
+		};
+	}, [root, selectedNode, reloadKey]);
 
-	// The watch stays for as long as the project is open; every change on disk re-reads the
-	// tree, and the selected row stays selected when it is still there.
+	// The last scan's report header, for the New material tab.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — refetch when the folder changed on disk.
+	useEffect(() => {
+		let alive = true;
+		void (async () => {
+			const state = await window.studio.scanState(root);
+			if (alive && state.ok) setReportMeta(state.meta);
+		})();
+		return () => {
+			alive = false;
+		};
+	}, [root, reloadKey]);
+
+	// The watch stays for as long as the project is open; every change on disk refreshes.
 	useEffect(() => {
 		void window.studio.watchProject(root);
-		const stop = window.studio.onProjectChanged(() => void reload());
+		const stop = window.studio.onProjectChanged(() => reload());
 		return stop;
 	}, [root, reload]);
 
@@ -125,13 +151,12 @@ export function ProjectView({
 						? say("toast.stopped")
 						: failureText(lang, result),
 				);
-				await reload();
+				reload();
 				return;
 			}
-			setReport(result.report);
-			setFiles(result.files);
+			setReportMeta(result.meta);
 			onNotify(result.stopped ? say("toast.stopped") : say("toast.scanned"));
-			await reload();
+			reload();
 		} finally {
 			stop();
 			setScanning(false);
@@ -153,9 +178,9 @@ export function ProjectView({
 				return;
 			}
 			onNotify(say("toast.saved"));
-			await loadRegister();
+			reload();
 		},
-		[lang, loadRegister, onNotify, root, say],
+		[lang, onNotify, reload, root, say],
 	);
 
 	/** Reads what an export would carry, then opens the dialog that saves it. */
@@ -196,7 +221,7 @@ export function ProjectView({
 						})
 					: say("toast.added", { n: result.added }),
 			);
-			await reload();
+			reload();
 		},
 		[lang, onNotify, reload, root, say],
 	);
@@ -210,14 +235,14 @@ export function ProjectView({
 				return;
 			}
 			onNotify(say("toast.moved"));
-			if (selected !== null && selected.rel === fromRel)
-				setSelected({
+			if (selectedNode !== null && selectedNode.rel === fromRel)
+				setSelectedNode({
+					...selectedNode,
 					rel: `${toRel}/${fromRel.split("/").pop() ?? ""}`,
-					kind: selected.kind,
 				});
-			await reload();
+			reload();
 		},
-		[lang, onNotify, reload, root, say, selected],
+		[lang, onNotify, reload, root, say, selectedNode],
 	);
 
 	// Ctrl+V: a picture becomes a PNG with the date in its name; copied files are copied in.
@@ -233,7 +258,7 @@ export function ProjectView({
 				return;
 			const data = event.clipboardData;
 			if (data === null) return;
-			const target = targetFolder(selected);
+			const target = targetFolder(selectedNode);
 			if (target === "") return;
 			const files = Array.from(data.files);
 			if (files.length > 0) {
@@ -261,25 +286,29 @@ export function ProjectView({
 				return;
 			}
 			onNotify(say("toast.pasted"));
-			await reload();
+			reload();
 		};
 		const handler = (event: Event) => {
 			if (event instanceof ClipboardEvent) void paste(event);
 		};
 		document.addEventListener("paste", handler);
 		return () => document.removeEventListener("paste", handler);
-	}, [dropFiles, lang, onNotify, reload, root, say, selected]);
+	}, [dropFiles, lang, onNotify, reload, root, say, selectedNode]);
 
-	const node = selected === null ? null : findNode(tree, selected.rel);
-	const row =
-		node === null || node.kind !== "file"
-			? undefined
-			: files.find((entry) => entry.path === node.rel);
+	const node = selectedNode;
 
 	/** Opens a file the New material panel names, in the pane the author reads files in. */
 	const pickFile = (rel: string) => {
 		setTab("files");
-		setSelected({ rel, kind: "file" });
+		setSelectedNode({
+			name: fileName(rel),
+			rel,
+			kind: "file",
+			size: 0,
+			ext: extensionOf(rel),
+			children: [],
+			files: 0,
+		});
 	};
 
 	const rename = () => {
@@ -295,8 +324,8 @@ export function ProjectView({
 						return;
 					}
 					onNotify(say("toast.renamed"));
-					setSelected({ rel: result.rel, kind: node.kind });
-					await reload();
+					setSelectedNode({ ...node, name: value, rel: result.rel });
+					reload();
 				})();
 			},
 		});
@@ -311,8 +340,8 @@ export function ProjectView({
 				return;
 			}
 			onNotify(say("toast.deleted"));
-			setSelected(null);
-			await reload();
+			setSelectedNode(null);
+			reload();
 		})();
 	};
 
@@ -330,8 +359,12 @@ export function ProjectView({
 						return;
 					}
 					onNotify(say("toast.unitMade"));
-					setSelected({ rel: result.rel, kind: "folder" });
-					await reload();
+					setSelectedNode({
+						...node,
+						rel: result.rel,
+						name: result.rel.split("/").pop() ?? value,
+					});
+					reload();
 				})();
 			},
 		});
@@ -422,23 +455,27 @@ export function ProjectView({
 					root={root}
 					onPick={pickFile}
 					onNotify={onNotify}
-					onChanged={() => void loadRegister()}
+					onChanged={reload}
+					reloadKey={reloadKey}
 				/>
 			) : tab === "changes" ? (
 				<Changes
 					root={root}
 					project={project}
 					onNotify={onNotify}
-					onChanged={() => void loadRegister()}
+					onChanged={reload}
 				/>
 			) : tab === "new" ? (
 				<NewMaterialPanel
-					report={report}
+					root={root}
+					meta={reportMeta}
 					scanning={scanning}
 					progress={progress}
 					onScan={() => void scan()}
 					onStop={stopScan}
 					onPick={pickFile}
+					onNotify={onNotify}
+					reloadKey={reloadKey}
 				/>
 			) : (
 				<div className="project-body" ref={panes.row} style={panes.style}>
@@ -486,18 +523,21 @@ export function ProjectView({
 							</button>
 						</div>
 						<Tree
-							nodes={tree}
-							selected={selected}
-							onSelect={setSelected}
+							root={root}
+							firstTop={firstTop}
+							selectedRel={node?.rel ?? null}
+							onSelect={setSelectedNode}
 							onDropFiles={dropFiles}
 							onMove={move}
+							onNotify={onNotify}
+							reloadKey={reloadKey}
 						/>
 					</aside>
 
 					<Divider spec={panes.divider(0)} />
 
 					<main className="pane">
-						{node !== null && node.kind === "file" && row !== undefined && (
+						{node !== null && node.kind === "file" && row !== null && (
 							<FileDetails
 								key={`${row.id}-${row.grade}-${row.block}`}
 								file={row}
@@ -514,7 +554,7 @@ export function ProjectView({
 								onNotify={onNotify}
 							/>
 						)}
-						{row !== undefined && (
+						{row !== null && node !== null && node.kind === "file" && (
 							<FileNote
 								key={`note-${row.id}`}
 								root={root}
@@ -527,18 +567,24 @@ export function ProjectView({
 							node.kind === "folder" &&
 							node.rel === "Inbox" && (
 								<Inbox
+									root={root}
 									project={project}
-									tree={tree}
-									files={node.children.filter((child) => child.kind === "file")}
 									onMove={async (fromRel, toRel) => {
 										await move(fromRel, toRel);
 									}}
+									reloadKey={reloadKey}
 								/>
 							)}
 						{node !== null &&
 							node.kind === "folder" &&
 							node.rel !== "Inbox" && (
-								<FolderPanel node={node} project={project} lang={lang} />
+								<FolderPanel
+									node={node}
+									root={root}
+									project={project}
+									lang={lang}
+									reloadKey={reloadKey}
+								/>
 							)}
 						{node === null && (
 							<div className="empty-pane">
@@ -651,33 +697,59 @@ function FileNote({
 /** A folder that isn't the Inbox: what is in it, and the big drop target to add more. */
 function FolderPanel({
 	node,
+	root,
 	project,
 	lang,
+	reloadKey,
 }: {
 	node: TreeNode;
+	root: string;
 	project: Project;
 	lang: Lang;
+	reloadKey: number;
 }) {
 	const say = useSay();
+	const [items, setItems] = useState<TreeNode[]>([]);
 	const where = describeFolder(node.rel, project, lang, (key) => say(key));
-	const files = node.children.filter((child) => child.kind === "file");
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — refetch when the folder changed on disk.
+	useEffect(() => {
+		let alive = true;
+		void (async () => {
+			const result = await window.studio.listTree(root, node.rel);
+			if (alive && result.ok) setItems(result.nodes);
+		})();
+		return () => {
+			alive = false;
+		};
+	}, [root, node.rel, reloadKey]);
+
+	const files = items.filter((child) => child.kind === "file").length;
 	return (
 		<div className="folder-panel">
 			<h2 dir="auto">{node.name}</h2>
 			{where !== null && <p className="muted">{where}</p>}
 			<p className="drop-big">{say("project.dropHere")}</p>
-			<ul className="folder-children">
-				{node.children.length === 0 && (
-					<li className="muted">{say("project.empty")}</li>
-				)}
-				{node.children.map((child) => (
-					<li key={child.rel} dir="auto">
-						{child.kind === "folder" ? "📁" : "📄"} {child.name}
-					</li>
-				))}
-			</ul>
-			{files.length > 0 && (
-				<p className="muted">{say("project.files", { n: files.length })}</p>
+			<WindowedList
+				count={items.length}
+				rowHeight={28}
+				className="folder-list"
+				itemClassName="folder-item"
+				ariaLabel={node.name}
+			>
+				{(index) => {
+					const child = items[index];
+					if (child === undefined) return null;
+					return (
+						<div className="folder-child" dir="auto">
+							{child.kind === "folder" ? "📁" : "📄"} {child.name}
+						</div>
+					);
+				}}
+			</WindowedList>
+			{items.length === 0 && <p className="muted">{say("project.empty")}</p>}
+			{files > 0 && (
+				<p className="muted">{say("project.files", { n: files })}</p>
 			)}
 		</div>
 	);

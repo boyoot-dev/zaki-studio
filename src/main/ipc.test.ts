@@ -208,8 +208,14 @@ describe("the key on the IPC surface", () => {
 			"studio:notesState",
 			"studio:noteText",
 			"studio:notesPlan",
+			"studio:notesRows",
 			"studio:scanState",
+			"studio:reportRows",
 			"studio:model",
+			"studio:course",
+			"studio:fileRow",
+			"studio:filePaths",
+			"studio:folders",
 			"studio:listTree",
 			"studio:exportSummary",
 			"studio:recentProjects",
@@ -237,6 +243,17 @@ describe("the key on the IPC surface", () => {
 					? [project, ["abcdef012345"]]
 					: channel === "studio:noteText"
 						? [project, "abcdef012345"]
+						: channel === "studio:notesRows" ||
+								channel === "studio:reportRows"
+							? [project, 0, 200]
+							: channel === "studio:course"
+								? [project, 3, "math"]
+								: channel === "studio:fileRow"
+									? [project, "Grade 3/Math/sheet.pdf"]
+									: channel === "studio:filePaths"
+										? [project, ["abcdef012345"]]
+										: channel === "studio:folders"
+											? [project]
 						: channel === "studio:collectJob"
 							? [project, "../../Windows"]
 							: channel === "studio:deleteJob"
@@ -309,5 +326,70 @@ describe("the key on the IPC surface", () => {
 			code: "invalidName",
 		});
 		expect(await ask("studio:testKey")).toEqual({ ok: false, code: "noKey" });
+	});
+});
+
+describe("the list channels (task 168)", () => {
+	it("pages the notes list, and no reply carries the whole register", async () => {
+		const listed = await ask("studio:notesRows", project, 0, 500);
+		expect(listed).toMatchObject({ ok: true, total: expect.any(Number) });
+		expect(
+			Array.isArray((listed as { items: unknown[] }).items)
+				? (listed as { items: unknown[] }).items.length
+				: 10_000,
+		).toBeLessThanOrEqual(400);
+
+		const state = await ask("studio:notesState", project);
+		expect(state).toMatchObject({
+			ok: true,
+			total: expect.any(Number),
+			missing: expect.any(Number),
+		});
+		expect(state).not.toHaveProperty("files");
+
+		const scan = await ask("studio:scanState", project);
+		expect(scan).toMatchObject({ ok: true, total: expect.any(Number) });
+		expect(scan).not.toHaveProperty("files");
+		expect(scan).not.toHaveProperty("report");
+
+		const rows = await ask("studio:reportRows", project, 0, 500);
+		expect(
+			Array.isArray((rows as { items: unknown[] }).items)
+				? (rows as { items: unknown[] }).items.length
+				: 10_000,
+		).toBeLessThanOrEqual(400);
+	});
+
+	it("lists one level of the tree, with every row's folder count", async () => {
+		mkdirSync(join(project, "Inbox"), { recursive: true });
+		const listed = await ask("studio:listTree", project, "");
+		expect(listed).toMatchObject({ ok: true });
+		const nodes = (
+			listed as { nodes: { kind: string; children: unknown[]; files: number }[] }
+		).nodes;
+		expect(Array.isArray(nodes)).toBe(true);
+		for (const node of nodes) {
+			expect(node.children).toHaveLength(0);
+			expect(typeof node.files).toBe("number");
+		}
+
+		const one = await ask("studio:listTree", project, "Inbox");
+		expect(one).toMatchObject({ ok: true });
+	});
+
+	it("answers the file's row, or null when the register has no such file", async () => {
+		const found = await ask("studio:fileRow", project, "Grade 3/Math/sheet.pdf");
+		expect(found).toMatchObject({ ok: true });
+		expect((found as { row: { id: string } }).row.id).toBe("abcdef012345");
+
+		const missing = await ask("studio:fileRow", project, "Grade 9/Nowhere/none.pdf");
+		expect(missing).toEqual({ ok: true, row: null });
+	});
+
+	it("refuses a path outside the project for the tree level", async () => {
+		expect(await ask("studio:listTree", project, "../../Windows")).toEqual({
+			ok: false,
+			code: "outside",
+		});
 	});
 });

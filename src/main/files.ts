@@ -179,14 +179,14 @@ export function readTree(root: string): TreeNode[] {
 					files: 0,
 				});
 		}
-			// The Inbox is always the first row: it is where the author starts.
-			return nodes.sort((a, b) =>
-				a.name === INBOX_DIR && rel === ""
-					? -1
-					: b.name === INBOX_DIR && rel === ""
-						? 1
-						: compareEntries(a, b),
-			);
+		// The Inbox is always the first row: it is where the author starts.
+		return nodes.sort((a, b) =>
+			a.name === INBOX_DIR && rel === ""
+				? -1
+				: b.name === INBOX_DIR && rel === ""
+					? 1
+					: compareEntries(a, b),
+		);
 	};
 	return walk(root, "", 0);
 }
@@ -197,10 +197,7 @@ export function readTree(root: string): TreeNode[] {
  * inside it — so a row can say "N files" without loading deeper levels. The folder itself is
  * not included; the reply for one folder is one readdir plus one per folder inside it.
  */
-export function readLevel(
-	root: string,
-	rel: string,
-): TreeNode[] | Failure {
+export function readLevel(root: string, rel: string): TreeNode[] | Failure {
 	const folder = safePath(root, rel, true);
 	if (folder === null) return failure("outside");
 	const nodes: TreeNode[] = [];
@@ -211,8 +208,7 @@ export function readLevel(
 		return nodes;
 	}
 	for (const name of entries) {
-		if (rel === "" && (name === STUDIO_DIR || name.startsWith(".")))
-			continue;
+		if (rel === "" && (name === STUDIO_DIR || name.startsWith("."))) continue;
 		const childRel = rel === "" ? name : `${rel}/${name}`;
 		const absolute = join(folder, name);
 		let info: ReturnType<typeof lstatSync>;

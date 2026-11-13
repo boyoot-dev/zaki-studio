@@ -155,6 +155,44 @@ describe("the model's files", () => {
 		if (parsed.ok) expect(parsed.model).toEqual(current);
 	});
 
+	it("reads back a model the Studio wrote with empty lists", () => {
+		// The writer leaves an empty list out of the file entirely, so a course with no
+		// skills, a lesson with none of either, and a curriculum with no periods must all
+		// read back as empty, the way the Studio wrote them.
+		const current = model();
+		for (const courseEntry of current.courses) {
+			for (const unit of courseEntry.units) {
+				unit.keywords = [];
+				unit.lessons = [
+					{
+						number: 1,
+						title: "An empty lesson",
+						skills: [],
+						facts: [],
+						activity: null,
+					},
+				];
+			}
+		}
+		current.curriculum.periods = [];
+		const header = modelFileText(current.curriculum);
+		const courses = current.courses.map((entry) => ({
+			name: courseFile(entry.grade, entry.subject),
+			text: modelFileText(entry),
+		}));
+		const parsed = parseModelText(header, courses);
+		expect(parsed.ok).toBe(true);
+		if (parsed.ok) {
+			expect(parsed.model.curriculum.periods).toEqual([]);
+			expect(
+				parsed.model.courses[0]?.units[0]?.lessons[0]?.skills,
+			).toEqual([]);
+			expect(
+				parsed.model.courses[0]?.units[0]?.lessons[0]?.facts,
+			).toEqual([]);
+		}
+	});
+
 	it("keeps an exam whose optional fields are null, without writing a null", () => {
 		const withExam = course();
 		withExam.exams = [

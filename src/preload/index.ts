@@ -22,7 +22,8 @@ const api: StudioApi = {
 	createProject: (root, project) =>
 		ipcRenderer.invoke("studio:createProject", root, project),
 	recentProjects: () => ipcRenderer.invoke("studio:recentProjects"),
-	listTree: (root, rel) => ipcRenderer.invoke("studio:listTree", root, rel ?? ""),
+	listTree: (root, rel) =>
+		ipcRenderer.invoke("studio:listTree", root, rel ?? ""),
 	course: (root, grade, subject) =>
 		ipcRenderer.invoke("studio:course", root, grade, subject),
 	fileRow: (root, path) => ipcRenderer.invoke("studio:fileRow", root, path),

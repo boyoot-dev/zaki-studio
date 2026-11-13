@@ -2,28 +2,35 @@
 // with each lesson's skills and then its facts in order. Every fact shows the files and pages
 // it came from; a click opens that file at that page beside the facts, a PDF on its own page
 // and anything else with the page's text under it. Read only in this task: the author edits
-// in the app, never here (docs/STUDIO.md).
+// in the app, never here (docs/STUDIO.md). The nav loads the courses' heads, and one course
+// in full when the author picks it (task 168) — never the whole school in one go.
 
 import studioSubjects from "virtual:subjects";
 import { useEffect, useState } from "react";
-import type { BundlePeriod } from "../shared/format/bundle";
+import type { CourseHead, CourseOpen, ModelOverview } from "../shared/api.ts";
+import type { BundlePeriod } from "../shared/format/bundle.ts";
 import { gradeLabel, type Lang } from "../shared/i18n";
-import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model";
-import { fileLabel, parseSource } from "../shared/model";
+import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
+import { fileLabel, parseSource } from "../shared/model.ts";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
 import { Divider, usePanes } from "./Panes";
 import { Viewer } from "./Viewer";
 
-/** The model and the register, or why they couldn't be read. */
+/** The model's header and its courses' heads, or why they couldn't be read. */
 type Loaded =
 	| { kind: "loading" }
-	| { kind: "ready"; model: CurriculumModel; files: FileRow[] }
+	| {
+			kind: "ready";
+			curriculum: ModelCurriculum;
+			courses: CourseHead[];
+	  }
 	| { kind: "failed"; text: string };
 
 /** One fact's page, open beside the facts. */
 type Source = {
-	row: FileRow;
+	/** The file's path and size, from the register (the page knows no other name for it). */
+	path: string;
 	page: number | null;
 	last: number | null;
 	/** The page's text, kept for files that are not a PDF. */
@@ -59,13 +66,15 @@ function pageLabel(page: number | null, last: number | null): string {
 	return `p.${page}`;
 }
 
-/** The chip a source shows: the register's file name and the page, or the source itself. */
-function sourceLabel(source: string, files: readonly FileRow[]): string {
+/** The chip a source shows: the file's name and the page, or the source itself. */
+function sourceLabel(
+	source: string,
+	paths: Record<string, { path: string; size: number }>,
+): string {
 	const parsed = parseSource(source);
-	const row =
-		parsed === null ? undefined : files.find((entry) => entry.id === parsed.id);
-	if (row === undefined || parsed === null) return source;
-	return [fileLabel(row.path), pageLabel(parsed.from, parsed.to)]
+	const known = parsed === null ? undefined : paths[parsed.id];
+	if (parsed === null || known === undefined) return source;
+	return [fileLabel(known.path), pageLabel(parsed.from, parsed.to)]
 		.filter((part) => part !== "")
 		.join(" · ");
 }
@@ -75,6 +84,27 @@ function extensionOf(path: string): string {
 	const name = path.split("/").pop() ?? path;
 	const cut = name.lastIndexOf(".");
 	return cut < 0 ? "" : name.slice(cut + 1).toLowerCase();
+}
+
+/** The ids of the files this course's facts name, for the chips' paths. */
+function sourceIds(course: ModelCourse): string[] {
+	const ids = new Set<string>();
+	for (const unit of course.units) {
+		for (const lesson of unit.lessons) {
+			for (const fact of lesson.facts) {
+				for (const source of fact.sources) {
+					const parsed = parseSource(source);
+					if (parsed !== null) ids.add(parsed.id);
+				}
+			}
+		}
+	}
+	return [...ids].slice(0, 1500);
+}
+
+/** The key a course is chosen by: its grade and subject. */
+function courseKey(course: { grade: number; subject: string }): string {
+	return `${course.grade}|${course.subject}`;
 }
 
 export function Curriculum({
@@ -90,17 +120,26 @@ export function Curriculum({
 	const lang = useLang();
 	const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
 	const [chosen, setChosen] = useState<string | null>(null);
+	const [course, setCourse] = useState<ModelCourse | null>(null);
+	const [courseFailed, setCourseFailed] = useState("");
 	const [source, setSource] = useState<Source | null>(null);
+	const [paths, setPaths] = useState<
+		Record<string, { path: string; size: number }>
+	>({});
 	const panes = usePanes("curriculum");
 
 	useEffect(() => {
 		let alive = true;
 		setLoaded({ kind: "loading" });
-		void window.studio.readModel(root).then((result) => {
+		void window.studio.readModel(root).then((result: ModelOverview) => {
 			if (!alive) return;
 			setLoaded(
 				result.ok
-					? { kind: "ready", model: result.model, files: result.files }
+					? {
+							kind: "ready",
+							curriculum: result.curriculum,
+							courses: result.courses,
+						}
 					: { kind: "failed", text: failureText(lang, result) },
 			);
 		});
@@ -109,16 +148,50 @@ export function Curriculum({
 		};
 	}, [root, lang]);
 
+	const courses = loaded.kind === "ready" ? loaded.courses : [];
+	const chosenCourse =
+		courses.find((entry) => courseKey(entry) === chosen) ?? courses[0] ?? null;
+
+	// The chosen course in full, read when it changes; kept per course for this session.
+	useEffect(() => {
+		if (loaded.kind !== "ready") return;
+		const head =
+			loaded.courses.find((entry) => courseKey(entry) === chosen) ??
+			loaded.courses[0];
+		if (head === undefined) return;
+		let alive = true;
+		setCourse(null);
+		setCourseFailed("");
+		void (async () => {
+			const result: CourseOpen = await window.studio.course(
+				root,
+				head.grade,
+				head.subject,
+			);
+			if (!alive) return;
+			if (!result.ok) {
+				setCourseFailed(failureText(lang, result));
+				return;
+			}
+			setCourse(result.course);
+			// The paths of the files its facts name, for the chips.
+			const ids = sourceIds(result.course);
+			if (ids.length > 0) {
+				const found = await window.studio.filePaths(root, ids);
+				if (alive && found.ok)
+					setPaths((current) => ({ ...current, ...found.paths }));
+			}
+		})();
+		return () => {
+			alive = false;
+		};
+	}, [root, lang, loaded, chosen]);
+
 	if (loaded.kind === "loading")
 		return <p className="muted curriculum-note">{say("curriculum.loading")}</p>;
 	if (loaded.kind === "failed") return <p className="issues">{loaded.text}</p>;
-	const { model, files } = loaded;
-	if (model.courses.length === 0)
+	if (courses.length === 0 || chosenCourse === null)
 		return <p className="muted curriculum-note">{say("curriculum.empty")}</p>;
-
-	const course =
-		model.courses.find((entry) => intent(entry) === chosen) ?? model.courses[0];
-	if (course === undefined) return null;
 
 	/** Opens the file a source names, at its page. */
 	const openSource = async (target: string) => {
@@ -127,8 +200,8 @@ export function Curriculum({
 			onNotify(say("curriculum.fileMissing"));
 			return;
 		}
-		const row = files.find((entry) => entry.id === parsed.id);
-		if (row === undefined) {
+		const known = paths[parsed.id];
+		if (known === undefined) {
 			onNotify(say("curriculum.fileMissing"));
 			return;
 		}
@@ -140,18 +213,18 @@ export function Curriculum({
 		// A page opened while the source viewer is away brings it back.
 		if (panes.collapsed) panes.toggleSource();
 		setSource({
-			row,
+			path: known.path,
 			page,
 			last: parsed.to,
 			text: read.ok ? read.text : "",
-			label: [fileLabel(row.path), pageLabel(page, parsed.to)]
+			label: [fileLabel(known.path), pageLabel(page, parsed.to)]
 				.filter((part) => part !== "")
 				.join(" · "),
 		});
 	};
 
-	const grades = new Map<number, ModelCourse[]>();
-	for (const entry of model.courses) {
+	const grades = new Map<number, CourseHead[]>();
+	for (const entry of courses) {
 		const list = grades.get(entry.grade) ?? [];
 		list.push(entry);
 		grades.set(entry.grade, list);
@@ -165,21 +238,21 @@ export function Curriculum({
 			>
 				{[...grades.entries()]
 					.sort(([a], [b]) => a - b)
-					.map(([grade, courses]) => (
+					.map(([grade, coursesHere]) => (
 						<section key={grade}>
 							<h2>{gradeLabel(lang, grade)}</h2>
 							<ul>
-								{courses.map((entry) => (
-									<li key={intent(entry)}>
+								{coursesHere.map((entry) => (
+									<li key={courseKey(entry)}>
 										<button
 											type="button"
 											className={
-												intent(entry) === intent(course)
+												courseKey(entry) === courseKey(chosenCourse)
 													? "chip chip-on curriculum-subject"
 													: "chip curriculum-subject"
 											}
 											onClick={() => {
-												setChosen(intent(entry));
+												setChosen(courseKey(entry));
 												setSource(null);
 											}}
 										>
@@ -196,7 +269,7 @@ export function Curriculum({
 
 			<article className="course">
 				<div className="course-head">
-					<h2>{subjectName(course.subject, lang)}</h2>
+					<h2>{subjectName(chosenCourse.subject, lang)}</h2>
 					<button
 						type="button"
 						className="btn btn-quiet"
@@ -209,110 +282,127 @@ export function Curriculum({
 					</button>
 				</div>
 				<p className="muted">
-					{gradeLabel(lang, course.grade)} ·{" "}
+					{gradeLabel(lang, chosenCourse.grade)} ·{" "}
 					{say("curriculum.lessonCount", {
-						n: course.units.reduce(
-							(total, unit) => total + unit.lessons.length,
-							0,
-						),
+						n: course
+							? course.units.reduce(
+									(total, unit) => total + unit.lessons.length,
+									0,
+								)
+							: 0,
 					})}
 				</p>
 
-				{course.examStyle !== null && (
-					<section className="course-exams">
-						<h3>{say("curriculum.examStyle")}</h3>
-						<p className="prose" dir="auto">
-							{course.examStyle}
-						</p>
-					</section>
+				{course === null && courseFailed === "" && (
+					<p className="muted curriculum-note">{say("curriculum.loading")}</p>
 				)}
-				{course.exams.length > 0 && (
-					<section className="course-exams">
-						<h3>{say("curriculum.exams")}</h3>
-						<ul>
-							{course.exams.map((exam) => (
-								<li key={`${exam.period ?? "year"}-${exam.name}`} dir="auto">
-									{exam.name}
-									<span className="muted">
-										{" — "}
-										{exam.papers.map((paper) => paper.name).join("، ")}
-									</span>
+				{courseFailed !== "" && <p className="issues">{courseFailed}</p>}
+
+				{course !== null && (
+					<>
+						{course.examStyle !== null && (
+							<section className="course-exams">
+								<h3>{say("curriculum.examStyle")}</h3>
+								<p className="prose" dir="auto">
+									{course.examStyle}
+								</p>
+							</section>
+						)}
+						{course.exams.length > 0 && (
+							<section className="course-exams">
+								<h3>{say("curriculum.exams")}</h3>
+								<ul>
+									{course.exams.map((exam) => (
+										<li
+											key={`${exam.period ?? "year"}-${exam.name}`}
+											dir="auto"
+										>
+											{exam.name}
+											<span className="muted">
+												{" — "}
+												{exam.papers.map((paper) => paper.name).join("، ")}
+											</span>
+										</li>
+									))}
+								</ul>
+							</section>
+						)}
+
+						<h3 className="units-head">{say("curriculum.units")}</h3>
+						<ol className="units">
+							{course.units.map((unit) => (
+								<li key={unit.number} className="unit">
+									<h3 dir="auto">
+										{unit.number}. {unit.title}
+									</h3>
+									<p className="muted">
+										{say("curriculum.period")}:{" "}
+										{periodName(project.periods, unit.period, lang) ||
+											unit.period}
+									</p>
+									<ol className="lessons">
+										{unit.lessons.map((lesson) => (
+											<li key={lesson.number} className="lesson">
+												<h4 dir="auto">
+													{lesson.number}. {lesson.title}
+												</h4>
+												<div className="lesson-part">
+													<h5>{say("curriculum.skills")}</h5>
+													<ul className="skills">
+														{lesson.skills.map((skill) => (
+															<li
+																key={`${skill.code ?? "skill"}-${skill.text}`}
+																dir="auto"
+															>
+																{skill.code !== null && (
+																	<span className="code">{skill.code}</span>
+																)}
+																{skill.text}
+															</li>
+														))}
+													</ul>
+												</div>
+												<div className="lesson-part">
+													<h5>{say("curriculum.facts")}</h5>
+													{lesson.facts.length === 0 ? (
+														<p className="muted">{say("curriculum.noFacts")}</p>
+													) : (
+														<ol className="facts">
+															{lesson.facts.map((fact) => (
+																<li key={fact.text}>
+																	<p className="fact" dir="auto">
+																		{fact.text}
+																	</p>
+																	{fact.sources.length > 0 && (
+																		<div className="chips">
+																			{fact.sources.map((sourceId) => (
+																				<button
+																					key={sourceId}
+																					type="button"
+																					className="chip source-chip"
+																					title={say("curriculum.source")}
+																					onClick={() =>
+																						void openSource(sourceId)
+																					}
+																				>
+																					{sourceLabel(sourceId, paths)}
+																				</button>
+																			))}
+																		</div>
+																	)}
+																</li>
+															))}
+														</ol>
+													)}
+												</div>
+											</li>
+										))}
+									</ol>
 								</li>
 							))}
-						</ul>
-					</section>
+						</ol>
+					</>
 				)}
-
-				<h3 className="units-head">{say("curriculum.units")}</h3>
-				<ol className="units">
-					{course.units.map((unit) => (
-						<li key={unit.number} className="unit">
-							<h3 dir="auto">
-								{unit.number}. {unit.title}
-							</h3>
-							<p className="muted">
-								{say("curriculum.period")}:{" "}
-								{periodName(project.periods, unit.period, lang) || unit.period}
-							</p>
-							<ol className="lessons">
-								{unit.lessons.map((lesson) => (
-									<li key={lesson.number} className="lesson">
-										<h4 dir="auto">
-											{lesson.number}. {lesson.title}
-										</h4>
-										<div className="lesson-part">
-											<h5>{say("curriculum.skills")}</h5>
-											<ul className="skills">
-												{lesson.skills.map((skill) => (
-													<li
-														key={`${skill.code ?? "skill"}-${skill.text}`}
-														dir="auto"
-													>
-														{skill.code !== null && (
-															<span className="code">{skill.code}</span>
-														)}
-														{skill.text}
-													</li>
-												))}
-											</ul>
-										</div>
-										<div className="lesson-part">
-											<h5>{say("curriculum.facts")}</h5>
-											{lesson.facts.length === 0 ? (
-												<p className="muted">{say("curriculum.noFacts")}</p>
-											) : (
-												<ol className="facts">
-													{lesson.facts.map((fact) => (
-														<li key={fact.text}>
-															<p className="fact" dir="auto">
-																{fact.text}
-															</p>
-															{fact.sources.length > 0 && (
-																<div className="chips">
-																	{fact.sources.map((sourceId) => (
-																		<button
-																			key={sourceId}
-																			type="button"
-																			className="chip source-chip"
-																			title={say("curriculum.source")}
-																			onClick={() => void openSource(sourceId)}
-																		>
-																			{sourceLabel(sourceId, files)}
-																		</button>
-																	))}
-																</div>
-															)}
-														</li>
-													))}
-												</ol>
-											)}
-										</div>
-									</li>
-								))}
-							</ol>
-						</li>
-					))}
-				</ol>
 			</article>
 
 			{!panes.collapsed && (
@@ -342,21 +432,22 @@ export function Curriculum({
 							<p className="muted">{say("curriculum.pickFact")}</p>
 						) : (
 							<Viewer
-								key={`${source.row.id}-${source.page ?? 0}`}
+								key={`${source.path}-${source.page ?? 0}`}
 								root={root}
 								node={{
-									name: fileLabel(source.row.path),
-									rel: source.row.path,
+									name: fileLabel(source.path),
+									rel: source.path,
 									kind: "file",
 									size: 0,
-									ext: extensionOf(source.row.path),
+									ext: extensionOf(source.path),
 									children: [],
+									files: 0,
 								}}
 								onNotify={onNotify}
 								startPage={source.page ?? 1}
 								subtitle={source.label}
 								pageText={
-									extensionOf(source.row.path) === "pdf" || source.page === null
+									extensionOf(source.path) === "pdf" || source.page === null
 										? undefined
 										: source.text
 								}
@@ -367,9 +458,4 @@ export function Curriculum({
 			)}
 		</div>
 	);
-}
-
-/** The key a course is chosen by: its grade and subject. */
-function intent(course: ModelCourse): string {
-	return `${course.grade}|${course.subject}`;
 }
