@@ -22,7 +22,12 @@ const api: StudioApi = {
 	createProject: (root, project) =>
 		ipcRenderer.invoke("studio:createProject", root, project),
 	recentProjects: () => ipcRenderer.invoke("studio:recentProjects"),
-	listTree: (root) => ipcRenderer.invoke("studio:listTree", root),
+	listTree: (root, rel) => ipcRenderer.invoke("studio:listTree", root, rel ?? ""),
+	course: (root, grade, subject) =>
+		ipcRenderer.invoke("studio:course", root, grade, subject),
+	fileRow: (root, path) => ipcRenderer.invoke("studio:fileRow", root, path),
+	filePaths: (root, ids) => ipcRenderer.invoke("studio:filePaths", root, ids),
+	folders: (root) => ipcRenderer.invoke("studio:folders", root),
 	importPaths: (root, targetRel, paths) =>
 		ipcRenderer.invoke("studio:importPaths", root, targetRel, paths),
 	savePastedImage: (root, targetRel, bytes, ext) =>
@@ -39,6 +44,8 @@ const api: StudioApi = {
 	scanMaterial: (root) => ipcRenderer.invoke("studio:scan", root),
 	cancelScan: () => ipcRenderer.invoke("studio:scanCancel"),
 	scanState: (root) => ipcRenderer.invoke("studio:scanState", root),
+	reportRows: (root, offset, limit) =>
+		ipcRenderer.invoke("studio:reportRows", root, offset, limit),
 	setFileFields: (root, id, fields) =>
 		ipcRenderer.invoke("studio:setFileFields", root, id, fields),
 	onScanProgress: (callback) => {
@@ -70,6 +77,8 @@ const api: StudioApi = {
 	},
 	copyText: (value) => ipcRenderer.invoke("studio:copyText", value),
 	notesState: (root) => ipcRenderer.invoke("studio:notesState", root),
+	notesRows: (root, offset, limit) =>
+		ipcRenderer.invoke("studio:notesRows", root, offset, limit),
 	noteText: (root, id) => ipcRenderer.invoke("studio:noteText", root, id),
 	notesPlan: (root, ids, redo) =>
 		ipcRenderer.invoke("studio:notesPlan", root, ids, redo),

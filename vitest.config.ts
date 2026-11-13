@@ -7,7 +7,7 @@ import { subjectsPlugin } from "./scripts/subjects.ts";
 export default defineConfig({
 	plugins: [subjectsPlugin()],
 	test: {
-		include: ["src/**/*.test.ts"],
+		include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
 		environment: "node",
 	},
 });

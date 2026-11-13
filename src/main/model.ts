@@ -2,7 +2,10 @@
 // holds, one JSON file per course), `.studio/files.json` (the register rows adoption copied)
 // and `.studio/text/<id>.md` (each file's text, page by page, copied from the work folder).
 // Every path is built from the project root here, never from the page, and nothing in the
-// work or curriculum folders is ever written.
+// work or curriculum folders is ever written. The register, the model, the report and the
+// stopped-scan's pending pages are read once and kept in memory (task 168): every read
+// stats the file first, so a file changed on disk is picked up on the next call, and every
+// write goes through this module, which updates the cache in the same breath.
 
 import {
 	copyFileSync,
@@ -11,9 +14,11 @@ import {
 	readdirSync,
 	readFileSync,
 	rmSync,
+	statSync,
 	writeFileSync,
+	realpathSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import type { Failure, FileFields } from "../shared/api.ts";
 import {
@@ -36,11 +41,111 @@ import {
 } from "../shared/model.ts";
 import { AUTHORITIES, KINDS, type NewMaterial } from "../shared/register.ts";
 
-const failure = (code: Failure["code"], detail?: string): Failure => ({
+/**
+ * What the project keeps, read once and kept in memory until a write or a watcher poke says
+ * otherwise (task 168). Every read stats the file first — one or two cheap calls, never a
+ * parse — so a file changed on disk behind the Studio's back is picked up on the next read,
+ * and a file written through the module below updates the cache in the same breath. The
+ * watcher (watch.ts) calls invalidateProject when Explorer touches the folder. A cache entry
+ * is keyed by the real path of the project, so no project ever sees another's copy.
+ */
+type Stat = { mtimeNs: string; size: number } | null;
+
+type Cached<T> = { stat: Stat; value: T };
+
+type ModelEntry = {
+	/** One entry per model file, by its own name, or null while the model is absent. */
+	snapshot: string | null;
+	value: { ok: true; model: CurriculumModel } | Failure;
+};
+
+type ProjectCache = {
+	files?: Cached<{ ok: true; files: FileRow[] } | Failure>;
+	report?: Cached<NewMaterial | null>;
+	pending?: Cached<PendingFile[]>;
+	model?: ModelEntry;
+};
+
+/** The projects the cache keeps; old ones are let go, so a long session never grows it. */
+const cache = new Map<string, ProjectCache>();
+const CACHE_KEEP = 4;
+
+/** Realpath of the root, following links, for the cache's key; null when it is not there. */
+function cacheKey(root: string): string {
+	try {
+		return realpathSync.native(resolve(root));
+	} catch {
+		return resolve(root);
+	}
+}
+
+/** The one project the cache holds, or an empty slot for a project never seen. */
+function slot(root: string): ProjectCache {
+	const key = cacheKey(root);
+	let entry = cache.get(key);
+	if (entry !== undefined) {
+		// Re-insert, so the projects still in use stay in the cache.
+		cache.delete(key);
+		cache.set(key, entry);
+		return entry;
+	}
+	if (cache.size >= CACHE_KEEP) {
+		const oldest = cache.keys().next().value;
+		if (oldest !== undefined) cache.delete(oldest);
+	}
+	entry = {};
+	cache.set(key, entry);
+	return entry;
+}
+
+const failure = (
+	code: Failure["code"],
+	detail?: string,
+): Failure => ({
 	ok: false,
 	code,
 	...(detail === undefined ? {} : { detail }),
 });
+
+/** The file's stat, or null when it is not there. */
+function statOf(file: string): Stat {
+	try {
+		const info = statSync(file, { bigint: true });
+		return { mtimeNs: info.mtimeNs.toString(), size: Number(info.size) };
+	} catch {
+		return null;
+	}
+}
+
+/** The model's own files as one comparable string, or null when the model is absent. */
+function modelSnapshot(root: string): string | null {
+	const dir = join(root, MODEL_DIR);
+	const parts: string[] = [];
+	try {
+		for (const name of readdirSync(dir)) {
+			if (!name.endsWith(".json")) continue;
+			const stat = statOf(join(dir, name));
+			if (stat === null) continue;
+			parts.push(`${name}|${stat.mtimeNs}|${stat.size}`);
+		}
+	} catch {
+		return null;
+	}
+	return parts.sort().join(";");
+}
+
+/** Throws away one project's cache; the watcher calls this when the folder changed. */
+export function invalidateProject(root: string): void {
+	cache.delete(cacheKey(root));
+}
+
+/** True when `stat` still names the file as it was when the entry was made. */
+function sameStat(a: Stat, b: Stat): boolean {
+	if (a === null || b === null) return a === b;
+	return a.mtimeNs === b.mtimeNs && a.size === b.size;
+}
+
+
 
 /** Writes the model: the header, then one file per course, replacing any earlier model. */
 export function writeModel(
@@ -67,20 +172,37 @@ export function writeModel(
 				"utf8",
 			);
 		}
+		slot(root).model = {
+			snapshot: modelSnapshot(root),
+			value: { ok: true, model },
+		};
 		return { ok: true };
 	} catch {
+		// A half-written model must not be served from memory: re-read it next time.
+		slot(root).model = undefined;
 		return failure("unreadable");
 	}
 }
 
-/** Reads the model back; a project the wizard made has none. */
+/** Reads the model back; a project the wizard made has none. The files are statted first,
+ * so an untouched model is served from memory; anything that changed re-reads in full. */
 export function readModel(
 	root: string,
 ): { ok: true; model: CurriculumModel } | Failure {
+	const holder = slot(root);
+	const snapshot = modelSnapshot(root);
+	if (holder.model !== undefined && holder.model.snapshot === snapshot)
+		return holder.model.value;
 	const dir = join(root, MODEL_DIR);
 	const headerFile = join(dir, MODEL_FILE);
-	if (!existsSync(headerFile))
-		return failure("missing", "this project has no curriculum model yet");
+	if (snapshot === null || !existsSync(headerFile)) {
+		const missing = failure(
+			"missing",
+			"this project has no curriculum model yet",
+		);
+		holder.model = { snapshot, value: missing };
+		return missing;
+	}
 	let headerText: string;
 	const courses: { name: string; text: string }[] = [];
 	try {
@@ -90,15 +212,21 @@ export function readModel(
 			courses.push({ name, text: readFileSync(join(dir, name), "utf8") });
 		}
 	} catch {
-		return failure("unreadable");
+		const unreadable = failure("unreadable");
+		holder.model = { snapshot, value: unreadable };
+		return unreadable;
 	}
 	const parsed = parseModelText(headerText, courses);
-	if (!parsed.ok)
-		return failure(
+	if (!parsed.ok) {
+		const invalid = failure(
 			"invalidProject",
 			`${parsed.issues[0]?.path ?? "model"}: ${parsed.issues[0]?.message ?? "invalid"}`,
 		);
-	return { ok: true, model: parsed.model };
+		holder.model = { snapshot, value: invalid };
+		return invalid;
+	}
+	holder.model = { snapshot, value: { ok: true, model: parsed.model } };
+	return holder.model.value;
 }
 
 /** Writes the register rows adoption keeps, so a fact can name the file it came from. */
@@ -109,31 +237,57 @@ export function writeFiles(
 	try {
 		mkdirSync(join(root, ".studio"), { recursive: true });
 		writeFileSync(join(root, FILES_FILE), modelFileText(files), "utf8");
+		slot(root).files = {
+			stat: statOf(join(root, FILES_FILE)),
+			value: { ok: true, files: [...files] },
+		};
 		return { ok: true };
 	} catch {
+		slot(root).files = undefined;
 		return failure("unreadable");
 	}
 }
 
-/** The register rows, or an empty list when the project has none. */
+/** The register rows, or an empty list when the project has none. The file is statted first,
+ * so an untouched register is served from memory; a changed one re-reads in full. */
 export function readFiles(
 	root: string,
 ): { ok: true; files: FileRow[] } | Failure {
+	const holder = slot(root);
 	const file = join(root, FILES_FILE);
-	if (!existsSync(file)) return { ok: true, files: [] };
+	const stat = statOf(file);
+	if (holder.files !== undefined && sameStat(holder.files.stat, stat))
+		return holder.files.value;
+	if (stat === null) {
+		holder.files = { stat, value: { ok: true, files: [] } };
+		return holder.files.value;
+	}
 	let value: unknown;
 	try {
 		value = JSON.parse(readFileSync(file, "utf8"));
 	} catch {
-		return failure("unreadable");
+		const unreadable = failure("unreadable");
+		holder.files = { stat, value: unreadable };
+		return unreadable;
 	}
-	if (!Array.isArray(value)) return failure("unreadable");
+	if (!Array.isArray(value)) {
+		const unreadable = failure("unreadable");
+		holder.files = { stat, value: unreadable };
+		return unreadable;
+	}
 	const files: FileRow[] = [];
 	for (const item of value) {
-		if (typeof item !== "object" || item === null) return failure("unreadable");
+		if (typeof item !== "object" || item === null) {
+			const unreadable = failure("unreadable");
+			holder.files = { stat, value: unreadable };
+			return unreadable;
+		}
 		const row = item as Record<string, unknown>;
-		if (typeof row.id !== "string" || typeof row.path !== "string")
-			return failure("unreadable");
+		if (typeof row.id !== "string" || typeof row.path !== "string") {
+			const unreadable = failure("unreadable");
+			holder.files = { stat, value: unreadable };
+			return unreadable;
+		}
 		files.push({
 			id: row.id,
 			path: row.path,
@@ -165,7 +319,8 @@ export function readFiles(
 				: [],
 		});
 	}
-	return { ok: true, files };
+	holder.files = { stat, value: { ok: true, files } };
+	return holder.files.value;
 }
 
 /** The page count of one file's text, or 0 when the project has none. */
@@ -269,20 +424,32 @@ export function writeTextFile(
 	}
 }
 
-/** The last scan's report, or null when the project has never been scanned. */
+/** The last scan's report, or null when the project has never been scanned. Statted first,
+ * so an untouched report is served from memory; a changed one re-reads in full. */
 export function readReport(root: string): NewMaterial | null {
-	try {
-		const value: unknown = JSON.parse(
-			readFileSync(join(root, REPORT_FILE), "utf8"),
-		);
-		if (typeof value !== "object" || value === null) return null;
-		const report = value as NewMaterial;
-		if (typeof report.at !== "string" || !Array.isArray(report.groups))
-			return null;
-		return report;
-	} catch {
-		return null;
+	const holder = slot(root);
+	const file = join(root, REPORT_FILE);
+	const stat = statOf(file);
+	if (holder.report !== undefined && sameStat(holder.report.stat, stat))
+		return holder.report.value;
+	let report: NewMaterial | null = null;
+	if (stat !== null) {
+		try {
+			const value: unknown = JSON.parse(readFileSync(file, "utf8"));
+			if (typeof value === "object" && value !== null) {
+				const candidate = value as NewMaterial;
+				if (
+					typeof candidate.at === "string" &&
+					Array.isArray(candidate.groups)
+				)
+					report = candidate;
+			}
+		} catch {
+			report = null;
+		}
 	}
+	holder.report = { stat, value: report };
+	return report;
 }
 
 /** Keeps the last scan's report, which the "New material" panel shows until the next scan. */
@@ -293,8 +460,13 @@ export function writeReport(
 	try {
 		mkdirSync(join(root, ".studio"), { recursive: true });
 		writeFileSync(join(root, REPORT_FILE), modelFileText(report), "utf8");
+		slot(root).report = {
+			stat: statOf(join(root, REPORT_FILE)),
+			value: report,
+		};
 		return { ok: true };
 	} catch {
+		slot(root).report = undefined;
 		return failure("unreadable");
 	}
 }
@@ -304,25 +476,34 @@ export type PendingFile = { id: string; pages: number[] };
 
 /** The pages a stopped scan still owes, or an empty list when the last scan finished. */
 export function readPending(root: string): PendingFile[] {
-	try {
-		const value: unknown = JSON.parse(
-			readFileSync(join(root, PENDING_FILE), "utf8"),
-		);
-		if (!Array.isArray(value)) return [];
-		return value.flatMap((item) => {
-			if (typeof item !== "object" || item === null) return [];
-			const entry = item as Record<string, unknown>;
-			if (typeof entry.id !== "string" || !Array.isArray(entry.pages))
-				return [];
-			const pages = entry.pages.filter(
-				(page): page is number =>
-					typeof page === "number" && Number.isInteger(page),
-			);
-			return pages.length === 0 ? [] : [{ id: entry.id, pages }];
-		});
-	} catch {
-		return [];
+	const holder = slot(root);
+	const file = join(root, PENDING_FILE);
+	const stat = statOf(file);
+	if (holder.pending !== undefined && sameStat(holder.pending.stat, stat))
+		return holder.pending.value;
+	let pending: PendingFile[] = [];
+	if (stat !== null) {
+		try {
+			const value: unknown = JSON.parse(readFileSync(file, "utf8"));
+			if (Array.isArray(value)) {
+				pending = value.flatMap((item) => {
+					if (typeof item !== "object" || item === null) return [];
+					const entry = item as Record<string, unknown>;
+					if (typeof entry.id !== "string" || !Array.isArray(entry.pages))
+						return [];
+					const pages = entry.pages.filter(
+						(page): page is number =>
+							typeof page === "number" && Number.isInteger(page),
+					);
+					return pages.length === 0 ? [] : [{ id: entry.id, pages }];
+				});
+			}
+		} catch {
+			pending = [];
+		}
 	}
+	holder.pending = { stat, value: pending };
+	return pending;
 }
 
 /** Remembers the pages a stopped scan still owes, so the next scan continues there. */
@@ -333,8 +514,13 @@ export function writePending(
 	try {
 		mkdirSync(join(root, ".studio"), { recursive: true });
 		writeFileSync(join(root, PENDING_FILE), modelFileText(pending), "utf8");
+		slot(root).pending = {
+			stat: statOf(join(root, PENDING_FILE)),
+			value: [...pending],
+		};
 		return { ok: true };
 	} catch {
+		slot(root).pending = undefined;
 		return failure("unreadable");
 	}
 }
@@ -350,8 +536,9 @@ export function setFileFields(
 ): Failure | { ok: true } {
 	const files = readFiles(root);
 	if (!files.ok) return files;
-	const row = files.files.find((entry) => entry.id === id);
-	if (row === undefined) return failure("missing");
+	const index = files.files.findIndex((entry) => entry.id === id);
+	const found = index === -1 ? undefined : files.files[index];
+	if (found === undefined) return failure("missing");
 	if (
 		fields.grade !== null &&
 		(!Number.isInteger(fields.grade) || fields.grade < 0 || fields.grade > 12)
@@ -373,11 +560,18 @@ export function setFileFields(
 		!(AUTHORITIES as readonly number[]).includes(fields.authority)
 	)
 		return failure("invalidName");
-	row.grade = fields.grade;
-	row.subject = fields.subject.trim();
-	row.block = fields.block.trim();
-	row.kind = fields.kind;
-	row.authority = fields.authority;
-	row.fixed = [...new Set([...row.fixed, ...FILE_FIELDS])];
-	return writeFiles(root, files.files);
+	// A copy of the row, so the cached register is only replaced by writeFiles, never
+	// mutated in place behind it.
+	const row: FileRow = {
+		...found,
+		grade: fields.grade,
+		subject: fields.subject.trim(),
+		block: fields.block.trim(),
+		kind: fields.kind,
+		authority: fields.authority,
+		fixed: [...new Set([...found.fixed, ...FILE_FIELDS])],
+	};
+	const next = [...files.files];
+	next[index] = row;
+	return writeFiles(root, next);
 }

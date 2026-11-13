@@ -155,17 +155,20 @@ export function readTree(root: string): TreeNode[] {
 					size: 0,
 					ext: extname(name).slice(1).toLowerCase(),
 					children: [],
+					files: 0,
 				});
-			else if (info.isDirectory())
+			else if (info.isDirectory()) {
+				const children = walk(childAbsolute, childRel, depth + 1);
 				nodes.push({
 					name,
 					rel: childRel,
 					kind: "folder",
 					size: 0,
 					ext: "",
-					children: walk(childAbsolute, childRel, depth + 1),
+					children,
+					files: children.filter((child) => child.kind === "file").length,
 				});
-			else
+			} else
 				nodes.push({
 					name,
 					rel: childRel,
@@ -173,18 +176,105 @@ export function readTree(root: string): TreeNode[] {
 					size: info.size,
 					ext: extname(name).slice(1).toLowerCase(),
 					children: [],
+					files: 0,
 				});
 		}
-		// The Inbox is always the first row: it is where the author starts.
-		return nodes.sort((a, b) =>
-			a.name === INBOX_DIR && rel === ""
-				? -1
-				: b.name === INBOX_DIR && rel === ""
-					? 1
-					: compareEntries(a, b),
-		);
+			// The Inbox is always the first row: it is where the author starts.
+			return nodes.sort((a, b) =>
+				a.name === INBOX_DIR && rel === ""
+					? -1
+					: b.name === INBOX_DIR && rel === ""
+						? 1
+						: compareEntries(a, b),
+			);
 	};
 	return walk(root, "", 0);
+}
+
+/**
+ * One level of the project's tree (task 168): the children of the folder at `rel` ("" is the
+ * top), links shown but never followed, and each folder carrying the count of files directly
+ * inside it — so a row can say "N files" without loading deeper levels. The folder itself is
+ * not included; the reply for one folder is one readdir plus one per folder inside it.
+ */
+export function readLevel(
+	root: string,
+	rel: string,
+): TreeNode[] | Failure {
+	const folder = safePath(root, rel, true);
+	if (folder === null) return failure("outside");
+	const nodes: TreeNode[] = [];
+	let entries: string[] = [];
+	try {
+		entries = readdirSync(folder);
+	} catch {
+		return nodes;
+	}
+	for (const name of entries) {
+		if (rel === "" && (name === STUDIO_DIR || name.startsWith(".")))
+			continue;
+		const childRel = rel === "" ? name : `${rel}/${name}`;
+		const absolute = join(folder, name);
+		let info: ReturnType<typeof lstatSync>;
+		try {
+			info = lstatSync(absolute);
+		} catch {
+			continue;
+		}
+		if (info.isSymbolicLink()) {
+			nodes.push({
+				name,
+				rel: childRel,
+				kind: "file",
+				size: 0,
+				ext: extname(name).slice(1).toLowerCase(),
+				children: [],
+				files: 0,
+			});
+			continue;
+		}
+		if (info.isDirectory()) {
+			let count = 0;
+			try {
+				for (const inside of readdirSync(absolute)) {
+					try {
+						if (lstatSync(join(absolute, inside)).isFile()) count += 1;
+					} catch {
+						// A file that vanished while we counted is simply not one.
+					}
+				}
+			} catch {
+				// A folder that cannot be read shows no count, like before.
+			}
+			nodes.push({
+				name,
+				rel: childRel,
+				kind: "folder",
+				size: 0,
+				ext: "",
+				children: [],
+				files: count,
+			});
+			continue;
+		}
+		nodes.push({
+			name,
+			rel: childRel,
+			kind: "file",
+			size: info.size,
+			ext: extname(name).slice(1).toLowerCase(),
+			children: [],
+			files: 0,
+		});
+	}
+	// The Inbox is always the first row: it is where the author starts.
+	return nodes.sort((a, b) =>
+		a.name === INBOX_DIR && rel === ""
+			? -1
+			: b.name === INBOX_DIR && rel === ""
+				? 1
+				: compareEntries(a, b),
+	);
 }
 
 /** The curriculum.json of a project folder, parsed, or why it can't be opened. */
