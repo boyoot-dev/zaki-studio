@@ -10,6 +10,7 @@ import {
 	lstatSync,
 	readdirSync,
 	readFileSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
@@ -176,28 +177,35 @@ function userData(): string {
 	return app.getPath("userData");
 }
 
-/** The note rules, read from the Studio's own resources; "" when they are not there. */
-function rulesText(): string {
+/** The rules texts, read once and kept: each use stats its file first, and a changed
+ * rules file is picked up on the next call (the installer replaces it, and so would a
+ * hand edit). Notes and units plans are made per selection, so the rules are read often. */
+const rulesMemo = new Map<string, { key: string; text: string }>();
+
+/** The rules file `name`, read from the Studio's own resources; "" when it is not there. */
+function rulesTextFrom(name: string): string {
+	const file = join(studioRoot(), "resources", "rules", name);
 	try {
-		return readFileSync(
-			join(studioRoot(), "resources", "rules", "note-rules.md"),
-			"utf8",
-		);
+		const info = statSync(file, { bigint: true });
+		const key = `${info.mtimeNs}|${Number(info.size)}`;
+		const hit = rulesMemo.get(file);
+		if (hit?.key === key) return hit.text;
+		const text = readFileSync(file, "utf8");
+		rulesMemo.set(file, { key, text });
+		return text;
 	} catch {
 		return "";
 	}
 }
 
-/** The change set's rules, read from the Studio's own resources; "" when they are not there. */
+/** The note rules, from the Studio's own resources; "" when they are not there. */
+function rulesText(): string {
+	return rulesTextFrom("note-rules.md");
+}
+
+/** The change set's rules, from the Studio's own resources; "" when they are not there. */
 function unitsRulesText(): string {
-	try {
-		return readFileSync(
-			join(studioRoot(), "resources", "rules", "unit-rules.md"),
-			"utf8",
-		);
-	} catch {
-		return "";
-	}
+	return rulesTextFrom("unit-rules.md");
 }
 
 /** The files a notes action covers: the ones the page chose, or every file without a note. */
