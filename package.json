@@ -1,6 +1,6 @@
 {
 	"name": "mr-zaki-studio",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"private": true,
 	"description": "Mr. Zaki Studio: turns your own material into a curriculum",
 	"author": "BoyOot",
@@ -94,7 +94,8 @@
 				{
 					"target": "dmg",
 					"arch": [
-						"universal"
+						"x64",
+						"arm64"
 					]
 				}
 			],

@@ -9,6 +9,7 @@
 
 import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { insideProject } from "../shared/inside.ts";
 import type { FileRow } from "../shared/model";
@@ -226,6 +227,10 @@ export async function collectRows(
 	let reads = 0;
 
 	for (const [index, file] of found.entries()) {
+		// Give the event loop a turn before every file. Without it, a project of known files
+		// never awaited anything, so the window froze and Stop could not arrive until the
+		// whole walk was done (1,699 files, found 2026-11-13).
+		await nextTurn();
 		if (input.cancelled?.() === true) return { ok: false, code: "cancelled" };
 		const absolute = join(root, ...file.rel.split("/"));
 		const prev = byPath.get(file.rel);
@@ -238,7 +243,7 @@ export async function collectRows(
 		) {
 			try {
 				if (file.size > MAX_FILE_BYTES) throw new Error("larger than 300 MB");
-				bytes = new Uint8Array(readFileSync(absolute));
+				bytes = new Uint8Array(await readFile(absolute));
 				hashed += 1;
 			} catch (failure) {
 				error = failure instanceof Error ? failure.message : String(failure);
@@ -258,7 +263,7 @@ export async function collectRows(
 			// A row from before the register kept pages has nothing to reuse: read it once.
 			if (bytes === null) {
 				try {
-					bytes = new Uint8Array(readFileSync(absolute));
+					bytes = new Uint8Array(await readFile(absolute));
 				} catch (failure) {
 					error = String(
 						failure instanceof Error ? failure.message : failure,
@@ -311,4 +316,9 @@ export async function collectRows(
 		ok: true,
 		collected: { rows, texts, found: found.length, hashed, read: reads },
 	};
+}
+
+/** Lets pending events (a Stop click, a progress message) run before the next file. */
+function nextTurn(): Promise<void> {
+	return new Promise((resolve) => setImmediate(resolve));
 }
