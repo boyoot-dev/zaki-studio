@@ -7,7 +7,7 @@
 // A block period ("block-3") takes the files whose register block names it; any other period
 // takes every readable file of the course, because the register has no other period.
 
-import type { ModelCourse, ModelUnit } from "./model";
+import type { ModelCourse, ModelUnit } from "./model.ts";
 import { estimateTokens, gradeText } from "./notes.ts";
 
 /** The course and period a change set is for. */

@@ -16,10 +16,10 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { Failure, ScanProgress } from "../shared/api";
-import { type FileRow, PAGES_DIR } from "../shared/model";
-import { pngProblem } from "../shared/png";
-import { STUDIO_DIR } from "../shared/project";
+import type { Failure, ScanProgress } from "../shared/api.ts";
+import { type FileRow, PAGES_DIR } from "../shared/model.ts";
+import { pngProblem } from "../shared/png.ts";
+import { STUDIO_DIR } from "../shared/project.ts";
 import {
 	compareRows,
 	type LangSubject,
@@ -29,10 +29,10 @@ import {
 	readIndex,
 	registerRows,
 	tessLangs,
-} from "../shared/register";
-import { pagePng, textFile, withOcr } from "../shared/text";
-import { collectRows } from "./collect";
-import { safePath } from "./files";
+} from "../shared/register.ts";
+import { pagePng, textFile, withOcr } from "../shared/text.ts";
+import { collectRows } from "./collect.ts";
+import { safePath } from "./files.ts";
 import {
 	readFiles,
 	readModel,
@@ -43,9 +43,9 @@ import {
 	writePending,
 	writeReport,
 	writeTextFile,
-} from "./model";
-import { copyNotes } from "./notes";
-import { missingLangs } from "./ocr";
+} from "./model.ts";
+import { copyNotes } from "./notes.ts";
+import { missingLangs } from "./ocr.ts";
 
 /** What a scan needs: the subject list, where Tesseract's files are, and how to stop. */
 export type ScanOptions = {

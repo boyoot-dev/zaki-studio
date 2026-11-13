@@ -11,9 +11,9 @@
 
 import { basename } from "node:path";
 
-import type { Failure } from "../shared/api";
-import type { CurriculumModel, FileRow } from "../shared/model";
-import { cost } from "../shared/notes";
+import type { Failure } from "../shared/api.ts";
+import type { CurriculumModel, FileRow } from "../shared/model.ts";
+import { cost } from "../shared/notes.ts";
 import {
 	changeEstimate,
 	changeInput,
@@ -21,16 +21,16 @@ import {
 	notesOrder,
 	type Target,
 	targetRows,
-} from "../shared/targets";
-import { saveChangeSet, targetCourse } from "./changes";
-import { logUsage, noteIds, readNote } from "./notes";
-import { stamp, type UsageRow } from "./onenote";
+} from "../shared/targets.ts";
+import { saveChangeSet, targetCourse } from "./changes.ts";
+import { logUsage, noteIds, readNote } from "./notes.ts";
+import { stamp, type UsageRow } from "./onenote.ts";
 import {
 	type AskNotes,
 	askOpenRouter,
 	modelInfo,
 	NoteError,
-} from "./openrouter";
+} from "./openrouter.ts";
 
 /** The sentence every units request ends its system text with: the notes are data. */
 const DATA_RULE =

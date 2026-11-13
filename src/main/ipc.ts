@@ -5,7 +5,14 @@
 // no channel that hands the page a file system, a process or a network call.
 
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	readdirSync,
+	readFileSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import subjects from "virtual:subjects";
 import {
@@ -23,6 +30,7 @@ import type {
 	ChangesState,
 	ChangesWritten,
 	ChangeTargetView,
+	CourseHead,
 	Done,
 	ExportCheck,
 	Exported,
@@ -34,7 +42,7 @@ import type {
 	JobCollected,
 	JobMade,
 	Made,
-	ModelOpen,
+	ModelOverview,
 	NoteSettings,
 	NotesPlanView,
 	NotesState,
@@ -45,22 +53,21 @@ import type {
 	Scanned,
 	ScanState,
 	UnitsPlanView,
-} from "../shared/api";
-import type { JobTool } from "../shared/job";
-import type { CurriculumModel, FileRow } from "../shared/model";
-import { notingOrder } from "../shared/notes";
-import { rememberRecent } from "../shared/recent";
-import { currentAcademicYear } from "../shared/register";
+} from "../shared/api.ts";
+import type { JobTool } from "../shared/job.ts";
+import { reportMeta } from "../shared/lists.ts";
+import type { CurriculumModel, FileRow } from "../shared/model.ts";
+import { notingOrder } from "../shared/notes.ts";
+import { rememberRecent } from "../shared/recent.ts";
+import { currentAcademicYear } from "../shared/register.ts";
 import {
 	type AcceptChoice,
 	changeName,
-	notedRows,
-	notesOrder,
 	periodUnits,
 	type Target,
 	targetRows,
-} from "../shared/targets";
-import { adoptMaterial } from "./adopt";
+} from "../shared/targets.ts";
+import { adoptMaterial } from "./adopt.ts";
 import {
 	acceptChange,
 	collectUnitsJob,
@@ -71,8 +78,8 @@ import {
 	readUnitsSettings,
 	rejectChange,
 	writeUnitsSettings,
-} from "./changes";
-import { exportProject, summaryFor } from "./export";
+} from "./changes.ts";
+import { exportProject, summaryFor } from "./export.ts";
 import {
 	createProject,
 	guessFolders,
@@ -82,23 +89,31 @@ import {
 	openable,
 	openablePath,
 	readBytes,
+	readLevel,
 	readProject,
 	readText,
-	readTree,
 	renameEntry,
 	safePath,
 	savePastedImage,
-} from "./files";
-import { canonicalRoot, grantedRoot, sameFolder } from "./grants";
-import { collectJob, deleteJob, listJobs, prepareJob } from "./job";
-import { clearKey, loadKey, readKeyState, type Secrets, saveKey } from "./key";
+} from "./files.ts";
+import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
+import { invalidateItems, notesItems, notesPage, reportPage } from "./items.ts";
+import { collectJob, deleteJob, listJobs, prepareJob } from "./job.ts";
 import {
+	clearKey,
+	loadKey,
+	readKeyState,
+	type Secrets,
+	saveKey,
+} from "./key.ts";
+import {
+	invalidateProject,
 	readFiles,
 	readModel,
 	readPageText,
 	readReport,
 	setFileFields,
-} from "./model";
+} from "./model.ts";
 import {
 	noteIds,
 	planNotes,
@@ -106,14 +121,14 @@ import {
 	readNoteSettings,
 	writeNoteSettings,
 	writeNotes,
-} from "./notes";
-import { ocrEngine } from "./ocr";
-import { modelInfo, testKey } from "./openrouter";
-import { openRenderer } from "./render";
+} from "./notes.ts";
+import { ocrEngine } from "./ocr.ts";
+import { modelInfo, testKey } from "./openrouter.ts";
+import { openRenderer } from "./render.ts";
 import { studioRootPath } from "./root.ts";
-import { scanProject } from "./scan";
-import { planChangeSet, writeChangeSet } from "./units";
-import { watchProject } from "./watch";
+import { scanProject } from "./scan.ts";
+import { planChangeSet, writeChangeSet } from "./units.ts";
+import { watchProject } from "./watch.ts";
 
 /** A string argument, cut to a sane length; anything else is "". */
 function text(value: unknown, max = 4000): string {
@@ -162,28 +177,35 @@ function userData(): string {
 	return app.getPath("userData");
 }
 
-/** The note rules, read from the Studio's own resources; "" when they are not there. */
-function rulesText(): string {
+/** The rules texts, read once and kept: each use stats its file first, and a changed
+ * rules file is picked up on the next call (the installer replaces it, and so would a
+ * hand edit). Notes and units plans are made per selection, so the rules are read often. */
+const rulesMemo = new Map<string, { key: string; text: string }>();
+
+/** The rules file `name`, read from the Studio's own resources; "" when it is not there. */
+function rulesTextFrom(name: string): string {
+	const file = join(studioRoot(), "resources", "rules", name);
 	try {
-		return readFileSync(
-			join(studioRoot(), "resources", "rules", "note-rules.md"),
-			"utf8",
-		);
+		const info = statSync(file, { bigint: true });
+		const key = `${info.mtimeNs}|${Number(info.size)}`;
+		const hit = rulesMemo.get(file);
+		if (hit?.key === key) return hit.text;
+		const text = readFileSync(file, "utf8");
+		rulesMemo.set(file, { key, text });
+		return text;
 	} catch {
 		return "";
 	}
 }
 
-/** The change set's rules, read from the Studio's own resources; "" when they are not there. */
+/** The note rules, from the Studio's own resources; "" when they are not there. */
+function rulesText(): string {
+	return rulesTextFrom("note-rules.md");
+}
+
+/** The change set's rules, from the Studio's own resources; "" when they are not there. */
 function unitsRulesText(): string {
-	try {
-		return readFileSync(
-			join(studioRoot(), "resources", "rules", "unit-rules.md"),
-			"utf8",
-		);
-	} catch {
-		return "";
-	}
+	return rulesTextFrom("unit-rules.md");
 }
 
 /** The files a notes action covers: the ones the page chose, or every file without a note. */
@@ -301,11 +323,13 @@ function openProject(root: string): ProjectOpen {
 		};
 	}
 	remember({ root, nameEn: read.project.nameEn, nameAr: read.project.nameAr });
+	// The folder could not be listed at all: open with an empty tree rather than fail the open.
+	const tree = readLevel(root, "");
 	return {
 		ok: true,
 		root,
 		project: read.project,
-		tree: readTree(root),
+		tree: Array.isArray(tree) ? tree : [],
 	};
 }
 
@@ -384,11 +408,12 @@ export function registerIpc(): void {
 				nameEn: existing.project.nameEn,
 				nameAr: existing.project.nameAr,
 			});
+			const tree = readLevel(materials, "");
 			return {
 				ok: true,
 				root: materials,
 				project: existing.project,
-				tree: readTree(materials),
+				tree: Array.isArray(tree) ? tree : [],
 			};
 		}
 		if (existing.code !== "missing") return existing;
@@ -416,11 +441,12 @@ export function registerIpc(): void {
 			nameEn: outcome.project.nameEn,
 			nameAr: outcome.project.nameAr,
 		});
+		const tree = readLevel(materials, "");
 		return {
 			ok: true,
 			root: materials,
 			project: outcome.project,
-			tree: readTree(materials),
+			tree: Array.isArray(tree) ? tree : [],
 		};
 	});
 
@@ -456,14 +482,105 @@ export function registerIpc(): void {
 
 	ipcMain.handle("studio:recentProjects", (): RecentProject[] => readRecents());
 
-	ipcMain.handle("studio:model", (event, root: unknown): ModelOpen => {
+	ipcMain.handle("studio:model", (event, root: unknown): ModelOverview => {
 		const where = text(root, 400);
 		if (!allowed(event, where)) return notOpen();
 		const model = readModel(where);
-		if (!model.ok) return model;
+		if (!model.ok)
+			return {
+				ok: false,
+				code: model.code,
+				...(model.detail === undefined ? {} : { detail: model.detail }),
+			};
+		const courses: CourseHead[] = model.model.courses.map((course) => ({
+			grade: course.grade,
+			subject: course.subject,
+		}));
+		courses.sort(
+			(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),
+		);
+		return { ok: true, curriculum: model.model.curriculum, courses };
+	});
+
+	ipcMain.handle(
+		"studio:course",
+		(event, root: unknown, grade: unknown, subject: unknown) => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const wantedGrade =
+				typeof grade === "number" && Number.isInteger(grade)
+					? grade
+					: Number.NaN;
+			const wantedSubject = text(subject, 60);
+			const course = model.model.courses.find(
+				(entry) =>
+					entry.grade === wantedGrade && entry.subject === wantedSubject,
+			);
+			if (course === undefined)
+				return { ok: false as const, code: "missing" as const };
+			return { ok: true as const, course };
+		},
+	);
+
+	ipcMain.handle("studio:fileRow", (event, root: unknown, path: unknown) => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		const wanted = text(path, 400);
 		const files = readFiles(where);
 		if (!files.ok) return files;
-		return { ok: true, model: model.model, files: files.files };
+		const row = files.files.find((entry) => entry.path === wanted) ?? null;
+		return { ok: true as const, row };
+	});
+
+	ipcMain.handle("studio:filePaths", (event, root: unknown, ids: unknown) => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		const wanted = texts(ids, 1500).filter((id) => /^[0-9a-f]{12}$/.test(id));
+		const files = readFiles(where);
+		if (!files.ok) return files;
+		const byId = new Map(files.files.map((row) => [row.id, row]));
+		const paths: Record<string, { path: string; size: number }> = {};
+		for (const id of new Set(wanted)) {
+			const row = byId.get(id);
+			if (row !== undefined) paths[id] = { path: row.path, size: row.size };
+		}
+		return { ok: true as const, paths };
+	});
+
+	ipcMain.handle("studio:folders", (event, root: unknown) => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		// Every folder's relative path, depth-first in tree order, without reading one file.
+		const folders: string[] = [];
+		const walk = (absolute: string, rel: string, depth: number): void => {
+			if (depth > 14) return;
+			let entries: string[];
+			try {
+				entries = readdirSync(absolute);
+			} catch {
+				return;
+			}
+			for (const name of entries) {
+				if (rel === "" && (name === ".studio" || name.startsWith(".")))
+					continue;
+				const childRel = rel === "" ? name : `${rel}/${name}`;
+				const childAbsolute = join(absolute, name);
+				let info: ReturnType<typeof lstatSync>;
+				try {
+					info = lstatSync(childAbsolute);
+				} catch {
+					continue;
+				}
+				if (info.isSymbolicLink()) continue;
+				if (!info.isDirectory()) continue;
+				folders.push(childRel);
+				walk(childAbsolute, childRel, depth + 1);
+			}
+		};
+		walk(where, "", 0);
+		return { ok: true as const, folders };
 	});
 
 	ipcMain.handle(
@@ -512,10 +629,15 @@ export function registerIpc(): void {
 		},
 	);
 
-	ipcMain.handle("studio:listTree", (event, root: unknown) => {
+	ipcMain.handle("studio:listTree", (event, root: unknown, rel: unknown) => {
 		const where = text(root, 400);
 		if (!allowed(event, where)) return notOpen();
-		return { ok: true as const, tree: readTree(where) };
+		// One level at a time: "" is the top, otherwise a folder inside the project.
+		const wanted = text(rel, 400);
+		if (wanted.includes("\0")) return failure("outside");
+		const nodes = readLevel(where, wanted);
+		if (Array.isArray(nodes)) return { ok: true as const, nodes };
+		return nodes;
 	});
 
 	ipcMain.handle(
@@ -678,7 +800,7 @@ export function registerIpc(): void {
 			const renderer = openRenderer();
 			const ocr = ocrEngine(studioRoot());
 			try {
-				return await scanProject(where, {
+				const outcome = await scanProject(where, {
 					subjects: subjects.map((subject) => ({
 						id: subject.id,
 						contentLanguage: subject.contentLanguage,
@@ -692,6 +814,15 @@ export function registerIpc(): void {
 							sender.send("studio:scanProgress", progress);
 					},
 				});
+				if (!outcome.ok) return outcome;
+				// The reply carries the report's header, never its rows (task 168): the page
+				// asks for the rows in pages through studio:reportRows.
+				return {
+					ok: true,
+					stopped: outcome.stopped,
+					total: outcome.files.length,
+					meta: reportMeta(outcome.report),
+				};
 			} finally {
 				renderer.close();
 				await ocr.close();
@@ -712,8 +843,43 @@ export function registerIpc(): void {
 		if (!allowed(event, where)) return notOpen();
 		const files = readFiles(where);
 		if (!files.ok) return files;
-		return { ok: true, files: files.files, report: readReport(where) };
+		const report = readReport(where);
+		return {
+			ok: true,
+			total: files.files.length,
+			meta: report === null ? null : reportMeta(report),
+		};
 	});
+
+	ipcMain.handle(
+		"studio:reportRows",
+		(event, root: unknown, offset: unknown, limit: unknown) => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const at =
+				typeof offset === "number" && Number.isFinite(offset) ? offset : 0;
+			const take =
+				typeof limit === "number" && Number.isFinite(limit)
+					? Math.min(400, Math.max(1, Math.floor(limit)))
+					: 200;
+			return { ok: true as const, ...reportPage(where, at, take) };
+		},
+	);
+
+	ipcMain.handle(
+		"studio:notesRows",
+		(event, root: unknown, offset: unknown, limit: unknown) => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const at =
+				typeof offset === "number" && Number.isFinite(offset) ? offset : 0;
+			const take =
+				typeof limit === "number" && Number.isFinite(limit)
+					? Math.min(400, Math.max(1, Math.floor(limit)))
+					: 200;
+			return { ok: true as const, ...notesPage(where, at, take) };
+		},
+	);
 
 	ipcMain.handle(
 		"studio:setFileFields",
@@ -743,6 +909,10 @@ export function registerIpc(): void {
 		const sender = event.sender;
 		watchers.get(sender.id)?.();
 		const stop = watchProject(where, () => {
+			// The folder changed on disk: throw away what the cache parsed, so the
+			// pages after a change never see a stale register, report or model.
+			invalidateProject(where);
+			invalidateItems(where);
 			if (!sender.isDestroyed()) sender.send("studio:changed");
 		});
 		watchers.set(sender.id, stop);
@@ -761,14 +931,13 @@ export function registerIpc(): void {
 		const files = readFiles(where);
 		if (!files.ok) return files;
 		const settings = readNoteSettings(userData());
+		const items = notesItems(where);
+		let missing = 0;
+		for (const item of items) if (item.kind === "row") missing += 1;
 		return {
 			ok: true,
-			files: files.files,
-			missing: notingOrder(
-				files.files,
-				noteIds(where),
-				currentAcademicYear(new Date()),
-			),
+			total: files.files.length,
+			missing,
 			settings,
 			keySet: readKeyState(userData(), secrets).set,
 			jobs: listJobs(where),
@@ -1004,8 +1173,19 @@ export function registerIpc(): void {
 			const sets = readChangeSets(where, model.model, files.files);
 			if (!sets.ok) return sets;
 			const noted = noteIds(where);
+			// The register indexed once by course, so a full school pays one pass instead of one
+			// per course and period (task 168).
+			const byCourse = new Map<string, FileRow[]>();
+			for (const row of files.files) {
+				const key = `${row.grade ?? "?"}|${row.subject}`;
+				const bucket = byCourse.get(key);
+				if (bucket === undefined) byCourse.set(key, [row]);
+				else bucket.push(row);
+			}
 			const targets: ChangeTargetView[] = [];
 			for (const course of model.model.courses) {
+				const courseRows =
+					byCourse.get(`${course.grade}|${course.subject}`) ?? [];
 				const periods = [
 					...new Set(course.units.map((unit) => unit.period)),
 				].sort();
@@ -1016,7 +1196,7 @@ export function registerIpc(): void {
 						period,
 					};
 					const units = periodUnits(course, period);
-					const rows = targetRows(files.files, target);
+					const rows = targetRows(courseRows, target);
 					const key = changeName(target);
 					targets.push({
 						...target,
@@ -1026,7 +1206,11 @@ export function registerIpc(): void {
 							0,
 						),
 						files: rows.length,
-						notes: notedRows(notesOrder(rows), noted).length,
+						// The count of files the period has a note for: order does not matter here.
+						notes: rows.reduce(
+							(total, row) => total + (noted.has(row.id) ? 1 : 0),
+							0,
+						),
 						pending:
 							key !== null &&
 							sets.sets.some(

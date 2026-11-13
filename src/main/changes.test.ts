@@ -15,11 +15,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { parseChangeSet } from "../shared/changes";
-import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model";
-import { checkBundle, toBundle } from "../shared/model";
-import type { Project } from "../shared/project";
-import { MAX_CHANGE_BYTES } from "../shared/targets";
+import { parseChangeSet } from "../shared/changes.ts";
+import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
+import { checkBundle, toBundle } from "../shared/model.ts";
+import type { Project } from "../shared/project.ts";
+import { MAX_CHANGE_BYTES } from "../shared/targets.ts";
 import {
 	acceptChange,
 	collectUnitsJob,
@@ -29,10 +29,10 @@ import {
 	readStored,
 	rejectChange,
 	targetCourse,
-} from "./changes";
-import { listJobs } from "./job";
-import { readModel, writeFiles, writeModel, writeTextFile } from "./model";
-import { saveNote } from "./notes";
+} from "./changes.ts";
+import { listJobs } from "./job.ts";
+import { readModel, writeFiles, writeModel, writeTextFile } from "./model.ts";
+import { saveNote } from "./notes.ts";
 
 const ID = "9a010f4b4816";
 const OTHER = "abcdef012345";

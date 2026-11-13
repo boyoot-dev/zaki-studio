@@ -2,7 +2,7 @@
 // same keys: a missing Arabic text is a type error. The Studio is English first and Arabic
 // second (docs/STUDIO.md), and the window turns right to left in Arabic.
 
-import { gradeName } from "./format/grades";
+import { gradeName } from "./format/grades.ts";
 
 export type Lang = "en" | "ar";
 
@@ -234,6 +234,7 @@ const en = {
 	"notes.stopped": "Wrote {n} notes, then stopped at your spending limit.",
 	"notes.failedLine": "{name} failed: {reason}",
 	"notes.failedTitle": "Files that were not written",
+	"notes.failedMore": "… and {n} more files that were not written.",
 	"notes.jobTitle": "Write with your own AI tool",
 	"notes.jobIntro":
 		"The Studio writes a folder with a fixed prompt. Paste the prompt into your tool; it writes the notes into the folder, and you collect them here. The Studio never runs another program.",
@@ -631,6 +632,7 @@ const ar: Record<TextKey, string> = {
 	"notes.stopped": "كُتبت {n} ملاحظة، ثم توقّف عند حدّ الإنفاق.",
 	"notes.failedLine": "فشل {name}: {reason}",
 	"notes.failedTitle": "ملفات لم تُكتب",
+	"notes.failedMore": "… و{n} ملفات أخرى لم تُكتب.",
 	"notes.jobTitle": "الكتابة بأداتك",
 	"notes.jobIntro":
 		"يكتب الاستوديو مجلدًا فيه طلب ثابت. ألصق الطلب في أداتك؛ تكتب الملاحظات في المجلد، ثم تجمعها هنا. ولا يشغّل الاستوديو برنامجًا آخر.",

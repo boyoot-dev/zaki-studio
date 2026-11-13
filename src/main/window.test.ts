@@ -8,7 +8,7 @@ import {
 	contentSecurityPolicy,
 	WEB_PREFERENCES,
 	windowOptions,
-} from "./window";
+} from "./window.ts";
 
 describe("the window", () => {
 	it("isolates the page, sandboxes it, and gives it no Node", () => {

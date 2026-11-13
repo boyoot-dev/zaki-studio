@@ -12,7 +12,7 @@ import {
 	zipEntries,
 	zipRead,
 	zipText,
-} from "./zip";
+} from "./zip.ts";
 
 /** One entry of a made-up archive: its name, its bytes, and whether to compress them. */
 type Entry = { name: string; body: Uint8Array; deflate: boolean };

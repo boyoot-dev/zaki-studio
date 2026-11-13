@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { canonicalRoot, grantedRoot, sameFolder } from "./grants";
+import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
 
 let base = "";
 let project = "";

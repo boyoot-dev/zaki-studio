@@ -14,7 +14,7 @@ import {
 	noteHeaders,
 	systemText,
 	testKey,
-} from "./openrouter";
+} from "./openrouter.ts";
 
 const KEY = "sk-or-v1-test-key-not-real-000000";
 const RULES = "You write study notes.\n\n## Note template";

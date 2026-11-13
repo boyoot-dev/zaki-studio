@@ -7,8 +7,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
-import { subjectsJson } from "../../scripts/subjects";
-import { parseBundle } from "./format/bundle";
+import { subjectsJson } from "../../scripts/subjects.ts";
+import { parseBundle } from "./format/bundle.ts";
 
 /** The standard folder beside src/. */
 const STANDARD = fileURLToPath(new URL("../../standard", import.meta.url));

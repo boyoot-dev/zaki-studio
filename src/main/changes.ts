@@ -23,7 +23,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import type { Failure } from "../shared/api";
+import type { Failure } from "../shared/api.ts";
 import {
 	CHANGES_DIR,
 	type ChangeRefusalCode,
@@ -31,10 +31,10 @@ import {
 	mergeCourse,
 	parseChangeSet,
 	reviewUnits,
-} from "../shared/changes";
-import { type JobTool, jobModel, validJobName } from "../shared/job";
-import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model";
-import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes";
+} from "../shared/changes.ts";
+import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
+import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
+import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes.ts";
 import {
 	type AcceptChoice,
 	acceptKey,
@@ -46,10 +46,10 @@ import {
 	type Target,
 	targetOf,
 	targetRows,
-} from "../shared/targets";
-import { safePath } from "./files";
-import { freeJobName, JOBS_DIR, jobRecord, realFolder } from "./job";
-import { readPageCount, readPageText, writeModel } from "./model";
+} from "../shared/targets.ts";
+import { safePath } from "./files.ts";
+import { freeJobName, JOBS_DIR, jobRecord, realFolder } from "./job.ts";
+import { readPageCount, readPageText, writeModel } from "./model.ts";
 import {
 	type NoteSettings,
 	noteIds,
@@ -57,8 +57,8 @@ import {
 	readSettings,
 	settingsPath,
 	writeSettings,
-} from "./notes";
-import { writeUnitsFolder } from "./unitfolder";
+} from "./notes.ts";
+import { writeUnitsFolder } from "./unitfolder.ts";
 
 /** The model the units way starts with: it reads a whole period and writes long JSON. */
 export const DEFAULT_UNITS_MODEL = "anthropic/claude-sonnet-5.5";

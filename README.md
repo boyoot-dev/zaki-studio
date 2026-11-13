@@ -72,6 +72,8 @@ npm run dev        # opens the app on Windows
 | `npm run material-check -- <materials> <work>` | compares the Studio's register, text and OCR with a work folder's `index.csv`, `text/` and `pages/`; writes nothing |
 | `npm run notes-trial -- <materials> <work> <ids…> --out <folder> [--key] [--model <id>]` | writes a job folder and the pipeline's existing notes for a few files into a folder outside the repository, and with `--key` the Studio's notes too; calls no model without `--key` |
 | `npm run units-trial -- <project> <grade> <subject> <period> --out <folder> --work <folder>` | writes a units job for a period whose units the owner already has, with the existing facts set aside, and prints today's units beside the change set once the tool has written it; calls no model |
+| `npm run bench-project -- <folder> [files=35000]` | makes a synthetic project in an empty folder of that size (KG-12 at 35,000 files): tiny PDFs, the register, most files' texts, ~5% notes, and a model; invents everything |
+| `npm run bench -- <project>` | times the calls behind each IPC handler directly (open, model, the tree, notesState, scanState, the report, the changes list, the curriculum view's data) and reports the longest stall during a scan of known files; prints a table |
 
 Releases are built by GitHub Actions from a `v*` tag, on `windows-latest` and `macos-latest`;
 the installers are attached to the release. The workflow needs only `contents: write`.

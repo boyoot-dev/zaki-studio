@@ -16,7 +16,7 @@ import {
 	readKeyState,
 	type Secrets,
 	saveKey,
-} from "./key";
+} from "./key.ts";
 
 const KEY = "sk-or-v1-abcdefghijklmnopqrstuvwxyz0123456789";
 

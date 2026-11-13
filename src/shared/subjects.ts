@@ -3,7 +3,7 @@
 // module in scripts/subjects.ts, so a subject added to the app shows up here without a copy
 // to keep in step. Only what the Studio shows is typed here.
 
-import type { SubjectLabel } from "./project";
+import type { SubjectLabel } from "./project.ts";
 
 export type StudioSubject = SubjectLabel & {
 	/** The subject's one-character sign, as the app shows it. */

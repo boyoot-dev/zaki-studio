@@ -2,7 +2,7 @@
 // never in a project: a project folder can be shared on OneDrive, and what someone opened on
 // their computer is not part of the curriculum. At most eight, newest first.
 
-import type { RecentProject } from "./api";
+import type { RecentProject } from "./api.ts";
 
 /** How many projects "recent" keeps. */
 export const RECENT_MAX = 8;

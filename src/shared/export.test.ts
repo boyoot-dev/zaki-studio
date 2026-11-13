@@ -3,9 +3,14 @@
 
 import { describe, expect, it } from "vitest";
 
-import { bundleText, exportFileName, filledModel, issueLines } from "./export";
-import type { CurriculumModel } from "./model";
-import { type Project, presetPeriods, wizardProject } from "./project";
+import {
+	bundleText,
+	exportFileName,
+	filledModel,
+	issueLines,
+} from "./export.ts";
+import type { CurriculumModel } from "./model.ts";
+import { type Project, presetPeriods, wizardProject } from "./project.ts";
 
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";
 

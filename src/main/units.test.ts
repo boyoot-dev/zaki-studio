@@ -8,12 +8,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model";
-import { readStored } from "./changes";
-import { writeFiles, writeModel, writeTextFile } from "./model";
-import { saveNote } from "./notes";
-import { NoteError, type NoteReply, type NoteRequest } from "./openrouter";
-import { planChangeSet, unitsSystem, writeChangeSet } from "./units";
+import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
+import { readStored } from "./changes.ts";
+import { writeFiles, writeModel, writeTextFile } from "./model.ts";
+import { saveNote } from "./notes.ts";
+import { NoteError, type NoteReply, type NoteRequest } from "./openrouter.ts";
+import { planChangeSet, unitsSystem, writeChangeSet } from "./units.ts";
 
 const ID = "9a010f4b4816";
 const OTHER = "abcdef012345";

@@ -17,7 +17,7 @@ import {
 	TESSDATA,
 	TESSDATA_LANGS,
 	tessdataDir,
-} from "./ocr";
+} from "./ocr.ts";
 
 /** The Studio's own folder, as the app passes it. */
 const STUDIO = fileURLToPath(new URL("../../", import.meta.url));

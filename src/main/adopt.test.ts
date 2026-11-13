@@ -16,12 +16,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { bundleText, filledModel } from "../shared/export";
-import { parseBundle } from "../shared/format/bundle";
-import { NOTES_DIR } from "../shared/notes";
-import { adoptMaterial } from "./adopt";
-import { readProject } from "./files";
-import { readFiles, readModel, readPageText } from "./model";
+import { bundleText, filledModel } from "../shared/export.ts";
+import { parseBundle } from "../shared/format/bundle.ts";
+import { NOTES_DIR } from "../shared/notes.ts";
+import { adoptMaterial } from "./adopt.ts";
+import { readProject } from "./files.ts";
+import { readFiles, readModel, readPageText } from "./model.ts";
 
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";
 const FILE_ID = "9a010f4b4816";

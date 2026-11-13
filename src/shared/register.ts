@@ -7,7 +7,7 @@
 // same register on the owner's material (scripts/material-check.ts compares them). Nothing here
 // imports the app or Electron, so the check script can run it with plain Node.
 
-import type { FileField, FileRow } from "./model";
+import type { FileField, FileRow } from "./model.ts";
 
 /** One row of a work folder's index.csv, as the file writes it (every value a text). */
 export type IndexRow = {

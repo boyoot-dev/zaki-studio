@@ -5,8 +5,8 @@
 // imports only from src/lib files that have no imports themselves, and every check runs in
 // time proportional to the text.
 
-import { GRADE_MAX, GRADE_MIN } from "./grades";
-import { hasWebAddress } from "./web-address";
+import { GRADE_MAX, GRADE_MIN } from "./grades.ts";
+import { hasWebAddress } from "./web-address.ts";
 
 /** The limits of bundle format 1, for messages and forms. */
 export const BUNDLE_LIMITS = {

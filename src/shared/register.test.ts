@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FileRow } from "./model";
+import type { FileRow } from "./model.ts";
 import {
 	academicYearOf,
 	affectedUnits,
@@ -31,7 +31,7 @@ import {
 	subjectFromFolders,
 	subjectOf,
 	tessLangs,
-} from "./register";
+} from "./register.ts";
 
 /** The day the pipeline's own tests use, so a date this year is the same. */
 const TODAY = new Date(2026, 9, 29);

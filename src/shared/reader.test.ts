@@ -10,7 +10,7 @@ import {
 	READER_SCALE,
 	type ReaderJob,
 	readerApi,
-} from "./reader";
+} from "./reader.ts";
 
 describe("the reader window's door", () => {
 	it("is two calls, one in each direction", () => {

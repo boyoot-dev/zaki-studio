@@ -17,7 +17,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import type { Failure } from "../shared/api";
+import type { Failure } from "../shared/api.ts";
 import {
 	JOB_NAME,
 	type JobKind,
@@ -35,19 +35,19 @@ import {
 	type NoteRefusal,
 	type UnitsJobCourse,
 	validJobName,
-} from "../shared/job";
-import type { FileRow } from "../shared/model";
+} from "../shared/job.ts";
+import type { FileRow } from "../shared/model.ts";
 import {
 	clean,
 	header,
 	type NoteUsage,
 	noteFile,
 	usable,
-} from "../shared/notes";
-import { safePath } from "./files";
-import { writeJobFolder } from "./jobfolder";
-import { readFiles, readTextFile } from "./model";
-import { noteIds, saveNote } from "./notes";
+} from "../shared/notes.ts";
+import { safePath } from "./files.ts";
+import { writeJobFolder } from "./jobfolder.ts";
+import { readFiles, readTextFile } from "./model.ts";
+import { noteIds, saveNote } from "./notes.ts";
 
 /** Where the Studio keeps its jobs, under the project's own memory. */
 export const JOBS_DIR = ".studio/jobs";

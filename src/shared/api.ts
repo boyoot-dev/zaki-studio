@@ -3,10 +3,20 @@
 // path stays inside it, so the page never gets a file system, a shell or a network door. The
 // renderer and the preload share these types; nothing here runs.
 
-import type { JobSummary, JobTool } from "./job";
-import type { CurriculumModel, FileRow, ModelSummary } from "./model";
-import type { Project } from "./project";
-import type { NewMaterial } from "./register";
+import type { JobSummary, JobTool } from "./job.ts";
+import type {
+	ItemsPage,
+	NotesListItem,
+	ReportListItem,
+	ReportMeta,
+} from "./lists.ts";
+import type {
+	FileRow,
+	ModelCourse,
+	ModelCurriculum,
+	ModelSummary,
+} from "./model.ts";
+import type { Project } from "./project.ts";
 
 /** One row of the tree: a folder of the project, or a file in it. */
 export type TreeNode = {
@@ -20,6 +30,8 @@ export type TreeNode = {
 	/** The lowercase extension without the dot, or "" for a folder. */
 	ext: string;
 	children: TreeNode[];
+	/** The files directly inside the folder, or 0 for a file (task 168). */
+	files: number;
 };
 
 /** A folder at the top of a folder the author opened, for the wizard's guesses. */
@@ -101,20 +113,44 @@ export type FileFields = {
 	authority: number | null;
 };
 
-/** The last scan's report, and the register as it stands, for the "New material" panel. */
+/** The last scan's report, and how many files the register holds, for the "New material" panel. */
 export type ScanState =
-	| { ok: true; files: FileRow[]; report: NewMaterial | null }
+	| {
+			ok: true;
+			/** How many files the register holds. */
+			total: number;
+			/** The header of the last scan's report, or null when there is none. */
+			meta: ReportMeta | null;
+	  }
 	| Failure;
 
-/** What a scan found: the report, the register, and whether the author stopped it. */
+/** What a scan found: the report's header, the register's size, and whether the author stopped it. */
 export type Scanned =
-	| { ok: true; report: NewMaterial; files: FileRow[]; stopped: boolean }
+	| {
+			ok: true;
+			stopped: boolean;
+			/** How many files the register holds. */
+			total: number;
+			/** The header of the report the scan just wrote, or null when it found nothing new. */
+			meta: ReportMeta | null;
+	  }
 	| Failure;
 
-/** The curriculum a project holds, and the register rows its facts' pages come from. */
-export type ModelOpen =
-	| { ok: true; model: CurriculumModel; files: FileRow[] }
+/** One course of the model, as the curriculum's nav lists it (no units; task 168). */
+export type CourseHead = { grade: number; subject: string };
+
+/** The curriculum's header and its courses' heads, for the Curriculum tab's nav. */
+export type ModelOverview =
+	| {
+			ok: true;
+			/** `.studio/model/curriculum.json`, the names and periods of the year. */
+			curriculum: ModelCurriculum;
+			courses: CourseHead[];
+	  }
 	| Failure;
+
+/** One course in full, for the Curriculum tab's chosen course (task 168). */
+export type CourseOpen = { ok: true; course: ModelCourse } | Failure;
 
 /** What the page shows before saving an export, and whether the author must fill two fields. */
 export type ExportCheck =
@@ -152,13 +188,14 @@ export type NotesPlan = {
 	estimateUsd: number | null;
 };
 
-/** What the Notes tab shows: every register row, the files without a note, and the jobs. */
+/** What the Notes tab shows: how many files lack a note, the settings and the jobs. */
 export type NotesState =
 	| {
 			ok: true;
-			files: FileRow[];
-			/** The files a run would note now, in its order. */
-			missing: FileRow[];
+			/** How many files the register holds. */
+			total: number;
+			/** The files a run would note now, in its order (id, path, pages). */
+			missing: number;
 			settings: NoteSettings;
 			/** The page only ever learns whether a key is set, never the key. */
 			keySet: boolean;
@@ -278,8 +315,28 @@ export type StudioApi = {
 	adoptProject(): Promise<ProjectOpen>;
 	/** Opens one of the recent projects; only the ones the main process remembers. */
 	openRecent(root: string): Promise<ProjectOpen>;
-	/** The curriculum the project holds, for the Curriculum view and the export. */
-	readModel(root: string): Promise<ModelOpen>;
+	/** The curriculum's header and its courses' heads, for the Curriculum tab's nav (task 168). */
+	readModel(root: string): Promise<ModelOverview>;
+	/** One course in full, for the Curriculum tab's chosen course (task 168). */
+	course(root: string, grade: number, subject: string): Promise<CourseOpen>;
+	/** The register's row for one path, for the file's details pane (task 168). */
+	fileRow(
+		root: string,
+		path: string,
+	): Promise<{ ok: true; row: FileRow | null } | Failure>;
+	/** The register rows these ids name, as path and size, for the fact chips (task 168). */
+	filePaths(
+		root: string,
+		ids: string[],
+	): Promise<
+		| {
+				ok: true;
+				paths: Record<string, { path: string; size: number }>;
+		  }
+		| Failure
+	>;
+	/** Every folder of the project's tree, as relative paths, for the Inbox's picker (task 168). */
+	folders(root: string): Promise<{ ok: true; folders: string[] } | Failure>;
 	/** A page of a file's text kept in the project. */
 	readPageText(
 		root: string,
@@ -294,8 +351,12 @@ export type StudioApi = {
 	createProject(root: string, project: Project): Promise<ProjectOpen>;
 	/** The projects opened before, newest first. */
 	recentProjects(): Promise<RecentProject[]>;
-	/** The tree as it is now, after a change made in Explorer. */
-	listTree(root: string): Promise<{ ok: true; tree: TreeNode[] } | Failure>;
+	/** The one level of the tree at `rel` ("" is the top): folders carry the count of files
+	 * directly in them (task 168). */
+	listTree(
+		root: string,
+		rel?: string,
+	): Promise<{ ok: true; nodes: TreeNode[] } | Failure>;
 	/** Files and folders dropped from Explorer, copied in. */
 	importPaths(
 		root: string,
@@ -325,8 +386,14 @@ export type StudioApi = {
 	scanMaterial(root: string): Promise<Scanned>;
 	/** Stops the scan this window is running, after the page it is on. */
 	cancelScan(): Promise<Done>;
-	/** The last scan's report and the register as it stands. Nothing is scanned. */
+	/** How many files the register holds, and the last scan's report header. Nothing is scanned. */
 	scanState(root: string): Promise<ScanState>;
+	/** One page of the last scan's report, flattened for the New material list (task 168). */
+	reportRows(
+		root: string,
+		offset: number,
+		limit: number,
+	): Promise<({ ok: true } & ItemsPage<ReportListItem>) | Failure>;
 	/** Keeps the author's corrections on one row; a later scan keeps them too. */
 	setFileFields(root: string, id: string, fields: FileFields): Promise<Done>;
 	/** Tells the page how far the scan has got. */
@@ -343,8 +410,14 @@ export type StudioApi = {
 	pathForFile(file: File): string;
 	/** Puts text on the clipboard, for the job prompt's Copy button. */
 	copyText(text: string): Promise<Done>;
-	/** The register, the files without a note, the notes settings and the job folders. */
+	/** How many files lack a note, the notes settings and the job folders (task 168). */
 	notesState(root: string): Promise<NotesState>;
+	/** One page of the files without a note, grouped and flattened (task 168). */
+	notesRows(
+		root: string,
+		offset: number,
+		limit: number,
+	): Promise<({ ok: true } & ItemsPage<NotesListItem>) | Failure>;
 	/** One file's note, as plain text. */
 	noteText(root: string, id: string): Promise<NoteText>;
 	/** What a run would do, its cost and its limit; nothing is sent. */

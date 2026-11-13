@@ -11,8 +11,7 @@ import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { insideProject } from "../shared/inside.ts";
-import type { FileRow } from "../shared/model";
+import type { FileRow } from "../shared/model.ts";
 import {
 	currentAcademicYear,
 	fileRow,
@@ -81,11 +80,17 @@ export type CollectStopped = { ok: false; code: "cancelled" };
 
 /**
  * Every PDF, Word and PowerPoint file of the project, in the order extract.py walks them:
- * a folder's files first, then its folders, each sorted by name.
+ * a folder's files first, then its folders, each sorted by name. The event loop gets a
+ * turn every sixty-four files, so a scan of known files never blocks the window for long.
  */
-export function findFiles(root: string): FoundFile[] {
+export async function findFiles(root: string): Promise<FoundFile[]> {
 	const out: FoundFile[] = [];
-	const walk = (folder: string, rel: string, depth: number) => {
+	let opened = 0;
+	const walk = async (
+		folder: string,
+		rel: string,
+		depth: number,
+	): Promise<void> => {
 		if (depth > 14) return;
 		let names: string[];
 		try {
@@ -106,10 +111,8 @@ export function findFiles(root: string): FoundFile[] {
 			} catch {
 				continue;
 			}
-			// A link may lead anywhere: it is never followed, and never registered. Every path is
-			// checked against the project root as well, through the one guard.
+			// A link may lead anywhere: it is never followed, and never registered.
 			if (info.isSymbolicLink()) continue;
-			if (!insideProject(root, full)) continue;
 			if (info.isDirectory()) {
 				folders.push(name);
 				continue;
@@ -120,12 +123,20 @@ export function findFiles(root: string): FoundFile[] {
 				size: Number(info.size),
 				mtime: info.mtimeNs.toString(),
 			});
+			opened += 1;
+			// Give the event loop a turn every few files, so a scan of known files never
+			// blocks the window for long.
+			if (opened % 64 === 0) await nextTurn();
 		}
 		for (const name of folders) {
-			walk(join(folder, name), rel === "" ? name : `${rel}/${name}`, depth + 1);
+			await walk(
+				join(folder, name),
+				rel === "" ? name : `${rel}/${name}`,
+				depth + 1,
+			);
 		}
 	};
-	walk(root, "", 0);
+	await walk(root, "", 0);
 	return out;
 }
 
@@ -205,7 +216,7 @@ export async function collectRows(
 	const currentYear = currentAcademicYear(today);
 	const curriculum = basename(root);
 
-	const found = findFiles(root);
+	const found = await findFiles(root);
 	const byPath = new Map(input.old.map((row) => [row.path, row]));
 	const byId = new Map<string, FileRow>();
 	for (const row of input.old) if (!byId.has(row.id)) byId.set(row.id, row);

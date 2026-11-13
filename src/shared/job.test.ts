@@ -18,9 +18,9 @@ import {
 	unitsPrompt,
 	unitsReadme,
 	validJobName,
-} from "./job";
-import { clean, usable } from "./notes";
-import { CHANGE_FORMAT } from "./targets";
+} from "./job.ts";
+import { clean, usable } from "./notes.ts";
+import { CHANGE_FORMAT } from "./targets.ts";
 
 const FOLDER = "C:\\Users\\author\\Project\\.studio\\jobs\\2026-11-13-0830";
 

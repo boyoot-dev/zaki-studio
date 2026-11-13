@@ -1,29 +1,39 @@
 // The Inbox: files dropped or pasted without a place yet, and two pickers that say where each
 // belongs — grade, subject, section and unit for a wizard project, or any of the project's own
 // folders when it is an adopted one (task 156), which is how the owner's material is laid out.
-// Suggestions come with AI later; the pickers are the whole of it for now.
+// Suggestions come with AI later; the pickers are the whole of it for now. The file list
+// comes from the project's level of the tree, one folder at a time (task 168), and draws
+// only what is on screen.
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import type { TreeNode } from "../shared/api";
+import type { TreeNode } from "../shared/api.ts";
 import { gradeLabel, type Lang } from "../shared/i18n";
-import { type Project, SECTION_FOLDERS } from "../shared/project";
+import { type Project, SECTION_FOLDERS } from "../shared/project.ts";
 import { fileSign, fileSize } from "./Chrome";
 import { useLang, useSay } from "./i18n";
+import { WindowedList } from "./WindowedList";
+
+/** The height of one file row, in pixels. */
+const ROW = 40;
 
 export function Inbox({
+	root,
 	project,
-	tree,
-	files,
 	onMove,
+	reloadKey,
 }: {
+	root: string;
 	project: Project;
-	tree: TreeNode[];
-	files: TreeNode[];
 	onMove: (fromRel: string, toRel: string) => Promise<void>;
+	/** Bumped when the folder changed on disk; the Inbox is re-read. */
+	reloadKey: number;
 }) {
 	const say = useSay();
 	const lang: Lang = useLang();
+	const [files, setFiles] = useState<TreeNode[]>([]);
+	const [folders, setFolders] = useState<string[]>([]);
+	const [units, setUnits] = useState<TreeNode[]>([]);
 	const [chosen, setChosen] = useState<string | null>(null);
 	const [grade, setGrade] = useState("");
 	const [subject, setSubject] = useState("");
@@ -36,9 +46,6 @@ export function Inbox({
 	const subjectEntry = gradeEntry?.subjects.find(
 		(entry) => entry.folder === subject,
 	);
-	const units =
-		tree.find((node) => node.rel === `${grade}/${subject}/Units`)?.children ??
-		[];
 	const destination = [
 		grade,
 		subject,
@@ -47,6 +54,51 @@ export function Inbox({
 	]
 		.filter((part) => part !== "")
 		.join("/");
+
+	/** Reads the Inbox's level of the tree. */
+	const loadFiles = useCallback(async () => {
+		const result = await window.studio.listTree(root, "Inbox");
+		if (result.ok)
+			setFiles(result.nodes.filter((node) => node.kind === "file"));
+	}, [root]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
+	useEffect(() => {
+		void loadFiles();
+	}, [loadFiles, reloadKey]);
+
+	/** Reads every folder's relative path, depth-first, for the place picker. */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
+	useEffect(() => {
+		let alive = true;
+		void (async () => {
+			const result = await window.studio.folders(root);
+			if (alive && result.ok) setFolders(result.folders);
+		})();
+		return () => {
+			alive = false;
+		};
+	}, [root, reloadKey]);
+
+	/** Reads the units of the course the author is moving into. */
+	useEffect(() => {
+		if (section !== SECTION_FOLDERS[0] || grade === "" || subject === "") {
+			setUnits([]);
+			return;
+		}
+		let alive = true;
+		void (async () => {
+			const result = await window.studio.listTree(
+				root,
+				`${grade}/${subject}/Units`,
+			);
+			if (alive && result.ok)
+				setUnits(result.nodes.filter((node) => node.kind === "folder"));
+		})();
+		return () => {
+			alive = false;
+		};
+	}, [root, grade, subject, section]);
 
 	const moveSelected = async () => {
 		if (chosen === null || destination === "") return;
@@ -61,7 +113,7 @@ export function Inbox({
 		setChosen(null);
 		setPlace("");
 	};
-	const folders = folderOptions(tree);
+	const folderChoices = folderOptions(folders);
 
 	return (
 		<div className="inbox">
@@ -71,9 +123,17 @@ export function Inbox({
 			{files.length === 0 ? (
 				<p className="muted">{say("project.inboxEmpty")}</p>
 			) : (
-				<ul className="inbox-list">
-					{files.map((file) => (
-						<li key={file.rel}>
+				<WindowedList
+					count={files.length}
+					rowHeight={ROW}
+					className="inbox-list"
+					itemClassName="inbox-item"
+					ariaLabel={say("project.inbox")}
+				>
+					{(index) => {
+						const file = files[index];
+						if (file === undefined) return null;
+						return (
 							<button
 								type="button"
 								className={
@@ -88,9 +148,9 @@ export function Inbox({
 								</span>
 								<span className="muted">{fileSize(file.size)}</span>
 							</button>
-						</li>
-					))}
-				</ul>
+						);
+					}}
+				</WindowedList>
 			)}
 
 			<section className="move-picker" aria-label={say("project.moveTo")}>
@@ -190,7 +250,7 @@ export function Inbox({
 							onChange={(event) => setPlace(event.target.value)}
 						>
 							<option value="">{say("project.choose")}</option>
-							{folders.map((folder) => (
+							{folderChoices.map((folder) => (
 								<option key={folder.rel} value={folder.rel}>
 									{folder.label}
 								</option>
@@ -211,21 +271,17 @@ export function Inbox({
 	);
 }
 
-/** Every folder of the project in tree order, each with a name that shows how deep it is. */
+/** Every folder of the project, in tree order, each with a name that shows how deep it is. */
 export function folderOptions(
-	nodes: readonly TreeNode[],
-	depth = 0,
+	folders: readonly string[],
 ): { rel: string; label: string }[] {
 	const out: { rel: string; label: string }[] = [];
-	for (const node of nodes) {
-		if (node.kind !== "folder") continue;
+	for (const rel of folders) {
+		const depth = rel.split("/").length - 1;
+		const name = rel.split("/").pop() ?? rel;
 		// The Inbox is where files come from, never where they are put back.
-		if (depth === 0 && node.name === "Inbox") continue;
-		out.push({
-			rel: node.rel,
-			label: `${"— ".repeat(depth)}${node.name}`,
-		});
-		out.push(...folderOptions(node.children, depth + 1));
+		if (rel === "Inbox") continue;
+		out.push({ rel, label: `${"— ".repeat(depth)}${name}` });
 	}
 	return out;
 }
