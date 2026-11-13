@@ -3,7 +3,7 @@
 // which the preload put there; this file never touches a file itself.
 
 import studioSubjects from "virtual:subjects";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
 	Failure,
@@ -57,13 +57,17 @@ export function App() {
 		setLangState(next);
 	};
 
-	/** Says what happened, in a line that goes away by itself. */
-	const say = (text: string) => {
+	/**
+	 * Says what happened, in a line that goes away by itself. Kept the same function across
+	 * renders: pages list it among the things that restart their loading, and a new one on
+	 * every render made "Reading the curriculum…" flicker in a loop (owner, 2026-11-13).
+	 */
+	const say = useCallback((text: string) => {
 		if (text === "") return;
 		setToast(text);
 		if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
 		toastTimer.current = window.setTimeout(() => setToast(null), 2800);
-	};
+	}, []);
 
 	/** The same, for a text the window knows by its key. */
 	const sayMessage = (key: TextKey) => say(t(lang, key));
