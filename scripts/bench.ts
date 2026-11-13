@@ -32,8 +32,6 @@ import { scanProject } from "../src/main/scan.ts";
 import { reportMeta } from "../src/shared/lists.ts";
 import {
 	changeName,
-	notedRows,
-	notesOrder,
 	periodUnits,
 	type Target,
 	targetRows,
@@ -187,7 +185,11 @@ function calls(root: string, deep: string, userData: string): BenchCall[] {
 							0,
 						),
 						files: matching.length,
-						notes: notedRows(notesOrder(matching), noted).length,
+						// The count of files the period has a note for: order does not matter here.
+						notes: matching.reduce(
+							(total, row) => total + (noted.has(row.id) ? 1 : 0),
+							0,
+						),
 						pending:
 							key !== null &&
 							setList.some((set) => set.key === key && set.state === "pending"),
@@ -286,7 +288,7 @@ async function main(): Promise<void> {
 		console.log(`  one deep folder: ${deep === "" ? "(none)" : deep}`);
 		console.log("");
 		const nameWidth = Math.max(...benched.map((c) => c.name.length));
-		console.log(`${"Call".padEnd(nameWidth)}  Median   Reply`);
+		console.log(`${"Call".padEnd(nameWidth)}  First   Median   Reply`);
 		for (const call of benched) {
 			const times: number[] = [];
 			let last: unknown = null;
@@ -297,7 +299,7 @@ async function main(): Promise<void> {
 			}
 			const kb = sizeOf(last) / 1024;
 			console.log(
-				`${call.name.padEnd(nameWidth)}  ${median(times).toFixed(0).padStart(4)} ms  ${kb.toFixed(0).padStart(5)} KB`,
+				`${call.name.padEnd(nameWidth)}  ${(times[0] ?? 0).toFixed(0).padStart(4)} ms  ${median(times).toFixed(0).padStart(4)} ms  ${kb.toFixed(0).padStart(5)} KB`,
 			);
 		}
 	} finally {

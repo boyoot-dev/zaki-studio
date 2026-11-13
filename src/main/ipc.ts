@@ -62,8 +62,6 @@ import { currentAcademicYear } from "../shared/register.ts";
 import {
 	type AcceptChoice,
 	changeName,
-	notedRows,
-	notesOrder,
 	periodUnits,
 	type Target,
 	targetRows,
@@ -1200,7 +1198,11 @@ export function registerIpc(): void {
 							0,
 						),
 						files: rows.length,
-						notes: notedRows(notesOrder(rows), noted).length,
+						// The count of files the period has a note for: order does not matter here.
+						notes: rows.reduce(
+							(total, row) => total + (noted.has(row.id) ? 1 : 0),
+							0,
+						),
 						pending:
 							key !== null &&
 							sets.sets.some(
