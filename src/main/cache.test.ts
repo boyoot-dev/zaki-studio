@@ -281,11 +281,13 @@ describe("the project's cache", () => {
 			removed: [],
 			tessdataMissing: [],
 		};
-		const reportB = { ...reportA, found: 20, read: 20 };
+		// A different size as well as different content: two writes in the same clock tick
+		// with the same size look alike to the cache (GitHub's Windows runner, 2026-11-13).
+		const reportB = { ...reportA, found: 2000, read: 2000 };
 		expect(writeReport(project, reportA)).toEqual({ ok: true });
 		expect(readReport(project)?.found).toBe(10);
 		writeFileSync(join(project, REPORT_FILE), modelFileText(reportB), "utf8");
-		expect(readReport(project)?.found).toBe(20);
+		expect(readReport(project)?.found).toBe(2000);
 	});
 
 	it("serves the pending pages from memory, and picks up new ones on disk", () => {
