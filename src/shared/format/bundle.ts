@@ -1,14 +1,14 @@
-// The curriculum bundle format, version 1 (docs/BUNDLES.md): one JSON file that an author
-// writes and a family imports. A bundle is written by a stranger, so parseBundle checks the
-// whole file and builds its result from checked values only, and it never throws. It is also
-// the one validator the Studio and the checker page use, so they run it in a browser: it
-// imports only from src/lib files that have no imports themselves, and every check runs in
-// time proportional to the text.
+// The curriculum bundle format, versions 1 and 2 (docs/BUNDLES.md): one JSON file that an
+// author writes and a family imports. A bundle is written by a stranger, so parseBundle
+// checks the whole file and builds its result from checked values only, and it never throws.
+// It is also the one validator the Studio and the checker page use, so they run it in a
+// browser: it imports only from src/lib files that have no imports themselves, and every
+// check runs in time proportional to the text.
 
 import { GRADE_MAX, GRADE_MIN } from "./grades.ts";
 import { hasWebAddress } from "./web-address.ts";
 
-/** The limits of bundle format 1, for messages and forms. */
+/** The limits of the bundle format, for messages and forms. */
 export const BUNDLE_LIMITS = {
 	/** Characters in the whole file. Fourteen levels at the densest rate come to about 11 million. */
 	chars: 20_000_000,
@@ -56,7 +56,7 @@ export const BUNDLE_LIMITS = {
 	partId: 40,
 	/** How many questions or speakers, and what a question is worth. */
 	examCount: 200,
-	/** How long a text or a recording is, in words. */
+	/** How long a text or a recording is, or how long an answer must be, in words. */
 	examWords: 5_000,
 	/** A reading time, a pause or a checking time, in seconds. */
 	examSeconds: 600,
@@ -218,6 +218,8 @@ export type BundleQuestions = {
 	choiceOptions: number | null;
 	/** The longest answer, in words. */
 	maxWords: number | null;
+	/** How long the answer must be, in words: the shortest and the longest (a writing task). Version 2. */
+	answerWords: [number, number] | null;
 	/** What every question is worth, when they are all worth the same. */
 	marksEach: number | null;
 	/** What a question of each type is worth, for the papers that mix them. */
@@ -294,11 +296,20 @@ export type Bundle = {
 export type BundleIssue = { path: string; message: string };
 
 export type BundleResult =
-	| { ok: true; bundle: Bundle }
+	| {
+			ok: true;
+			bundle: Bundle;
+			/** The format version the file was written with: 1 or 2. */
+			formatVersion: BundleFormatVersion;
+	  }
 	| { ok: false; issues: BundleIssue[] };
 
 const FORMAT = "mr-zaki-curriculum";
-const FORMAT_VERSION = 1;
+/** The format versions this reader accepts (task 174): version 2 adds `answerWords`. */
+const SUPPORTED_VERSIONS = [1, 2] as const;
+export type BundleFormatVersion = (typeof SUPPORTED_VERSIONS)[number];
+/** The version a writer writes when a file uses the newest field (task 174). */
+export const LATEST_FORMAT_VERSION: BundleFormatVersion = 2;
 const NOT_JSON = "The file is not valid JSON.";
 
 const BUNDLE_KEYS = [
@@ -350,6 +361,8 @@ const QUESTIONS_KEYS = [
 	"example",
 	"copiedExactly",
 ];
+/** Version 2's one new field; a version 1 file still refuses it as unknown (task 174). */
+const QUESTIONS_KEYS_V2 = [...QUESTIONS_KEYS, "answerWords"];
 const TIMING_KEYS = [
 	"readingSeconds",
 	"plays",
@@ -1129,10 +1142,11 @@ function parseQuestions(
 	value: unknown,
 	path: string,
 	walk: Walk,
+	version: BundleFormatVersion,
 ): BundleQuestions | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
-	checkKeys(raw, QUESTIONS_KEYS, path, walk);
+	checkKeys(raw, version >= 2 ? QUESTIONS_KEYS_V2 : QUESTIONS_KEYS, path, walk);
 	const count = asInt(
 		read(raw, "count"),
 		field(path, "count"),
@@ -1151,6 +1165,46 @@ function parseQuestions(
 	};
 	const choiceOptions = number("choiceOptions", 3, 4);
 	const maxWords = number("maxWords", 0, BUNDLE_LIMITS.examCount);
+	// How long the child's own answer must be (task 174): version 2 only, and the
+	// shortest number may not be larger than the longest.
+	let answerWords: [number, number] | null = null;
+	const answerWordsRaw = read(raw, "answerWords");
+	if (answerWordsRaw !== undefined && version >= 2) {
+		const list = asArray(answerWordsRaw, field(path, "answerWords"), walk);
+		if (list !== null) {
+			if (list.length !== 2)
+				add(
+					walk,
+					field(path, "answerWords"),
+					"expected two numbers: the shortest and the longest",
+				);
+			else {
+				const low = asInt(
+					list[0],
+					entry(field(path, "answerWords"), 0),
+					0,
+					BUNDLE_LIMITS.examWords,
+					walk,
+				);
+				const high = asInt(
+					list[1],
+					entry(field(path, "answerWords"), 1),
+					0,
+					BUNDLE_LIMITS.examWords,
+					walk,
+				);
+				if (low !== null && high !== null) {
+					if (low > high)
+						add(
+							walk,
+							field(path, "answerWords"),
+							"the first number must not be larger than the second",
+						);
+					else answerWords = [low, high];
+				}
+			}
+		}
+	}
 	// What a question is worth is the one number here that may be a half (task 152).
 	const marks = (key: string): number | null => {
 		const entered = read(raw, key);
@@ -1193,6 +1247,7 @@ function parseQuestions(
 		types,
 		choiceOptions,
 		maxWords,
+		answerWords,
 		marksEach,
 		marksByType,
 		totalMarks,
@@ -1206,6 +1261,7 @@ function parsePart(
 	path: string,
 	walk: Walk,
 	ids: Set<string>,
+	version: BundleFormatVersion,
 ): BundlePart | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
@@ -1267,6 +1323,7 @@ function parsePart(
 		read(raw, "questions"),
 		field(path, "questions"),
 		walk,
+		version,
 	);
 	// The author's words about the part may run over several lines (task 152).
 	const notes = text("notes", BUNDLE_LIMITS.examText, true);
@@ -1293,6 +1350,7 @@ function parseParts(
 	path: string,
 	walk: Walk,
 	ids: Set<string>,
+	version: BundleFormatVersion,
 ): BundlePart[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -1307,7 +1365,7 @@ function parseParts(
 	const out: BundlePart[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const part = parsePart(list[i], entry(path, i), walk, ids);
+		const part = parsePart(list[i], entry(path, i), walk, ids, version);
 		if (part === null) bad = true;
 		else out.push(part);
 	}
@@ -1319,6 +1377,7 @@ function parsePaper(
 	path: string,
 	walk: Walk,
 	ids: Set<string>,
+	version: BundleFormatVersion,
 ): BundlePaper | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
@@ -1371,7 +1430,13 @@ function parsePaper(
 		);
 		if (marks === null) bad = true;
 	}
-	const parts = parseParts(read(raw, "parts"), field(path, "parts"), walk, ids);
+	const parts = parseParts(
+		read(raw, "parts"),
+		field(path, "parts"),
+		walk,
+		ids,
+		version,
+	);
 	if (
 		name === null ||
 		skill === null ||
@@ -1388,6 +1453,7 @@ function parsePapers(
 	path: string,
 	walk: Walk,
 	ids: Set<string>,
+	version: BundleFormatVersion,
 ): BundlePaper[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -1402,7 +1468,7 @@ function parsePapers(
 	const out: BundlePaper[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const paper = parsePaper(list[i], entry(path, i), walk, ids);
+		const paper = parsePaper(list[i], entry(path, i), walk, ids, version);
 		if (paper === null) bad = true;
 		else out.push(paper);
 	}
@@ -1414,6 +1480,7 @@ function parseExam(
 	path: string,
 	walk: Walk,
 	ids: Set<string>,
+	version: BundleFormatVersion,
 ): BundleExam | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
@@ -1440,6 +1507,7 @@ function parseExam(
 		field(path, "papers"),
 		walk,
 		ids,
+		version,
 	);
 	if (name === null || papers === null) return null;
 	return { period, name, papers };
@@ -1451,6 +1519,7 @@ function parseExams(
 	path: string,
 	walk: Walk,
 	ids: Set<string>,
+	version: BundleFormatVersion,
 ): BundleExam[] | null {
 	if (value === undefined) return [];
 	const list = asArray(value, path, walk);
@@ -1466,7 +1535,7 @@ function parseExams(
 	const out: BundleExam[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const exam = parseExam(list[i], entry(path, i), walk, ids);
+		const exam = parseExam(list[i], entry(path, i), walk, ids, version);
 		if (exam === null) bad = true;
 		else out.push(exam);
 	}
@@ -1480,9 +1549,10 @@ function parseExams(
 export function parseCourseExams(
 	value: unknown,
 	path = "exams",
+	formatVersion: BundleFormatVersion = LATEST_FORMAT_VERSION,
 ): { exams: BundleExam[]; issues: BundleIssue[] } {
 	const walk: Walk = { issues: [] };
-	const exams = parseExams(value, path, walk, new Set());
+	const exams = parseExams(value, path, walk, new Set(), formatVersion);
 	return { exams: exams ?? [], issues: walk.issues };
 }
 
@@ -1513,6 +1583,7 @@ function parseCourse(
 	walk: Walk,
 	subjectIds: readonly string[],
 	pairs: Set<string>,
+	version: BundleFormatVersion,
 ): BundleCourse | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
@@ -1555,6 +1626,7 @@ function parseCourse(
 		field(path, "exams"),
 		walk,
 		new Set<string>(),
+		version,
 	);
 	if (grade === null || subject === null || units === null || exams === null)
 		return null;
@@ -1565,6 +1637,7 @@ function parseCourses(
 	value: unknown,
 	walk: Walk,
 	subjectIds: readonly string[],
+	version: BundleFormatVersion,
 ): BundleCourse[] | null {
 	const list = asArray(value, "courses", walk);
 	if (list === null) return null;
@@ -1585,6 +1658,7 @@ function parseCourses(
 			walk,
 			subjectIds,
 			pairs,
+			version,
 		);
 		if (course !== null) out.push(course);
 	}
@@ -1741,8 +1815,14 @@ export function parseBundle(
 	checkKeys(root, BUNDLE_KEYS, "", walk);
 	if (read(root, "format") !== FORMAT)
 		add(walk, "format", `expected "${FORMAT}"`);
-	if (read(root, "formatVersion") !== FORMAT_VERSION)
-		add(walk, "formatVersion", `expected ${FORMAT_VERSION}`);
+	const formatVersionRaw = read(root, "formatVersion");
+	const formatVersion =
+		typeof formatVersionRaw === "number" &&
+		(SUPPORTED_VERSIONS as readonly number[]).includes(formatVersionRaw)
+			? (formatVersionRaw as BundleFormatVersion)
+			: null;
+	if (formatVersion === null)
+		add(walk, "formatVersion", `expected ${SUPPORTED_VERSIONS.join(" or ")}`);
 	const id = asId(read(root, "id"), walk);
 	const version = asInt(
 		read(root, "version"),
@@ -1787,7 +1867,12 @@ export function parseBundle(
 	if (tally.periods > BUNDLE_LIMITS.periods)
 		add(walk, "periods", `at most ${BUNDLE_LIMITS.periods} periods`);
 
-	const courses = parseCourses(read(root, "courses"), walk, subjectIds);
+	const courses = parseCourses(
+		read(root, "courses"),
+		walk,
+		subjectIds,
+		formatVersion ?? LATEST_FORMAT_VERSION,
+	);
 	if (courses !== null && periods !== null) {
 		checkUnitPeriods(courses, periods, walk);
 		const every = new Set<string>();
@@ -1803,6 +1888,7 @@ export function parseBundle(
 
 	if (
 		walk.issues.length > 0 ||
+		formatVersion === null ||
 		id === null ||
 		version === null ||
 		nameEn === null ||
@@ -1817,5 +1903,6 @@ export function parseBundle(
 	return {
 		ok: true,
 		bundle: { id, version, nameEn, nameAr, author, rights, periods, courses },
+		formatVersion,
 	};
 }

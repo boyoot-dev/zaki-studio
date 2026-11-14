@@ -225,6 +225,7 @@ describe("the model's files", () => {
 									types: { short: 4 },
 									choiceOptions: null,
 									maxWords: null,
+									answerWords: null,
 									marksEach: 0.5,
 									marksByType: null,
 									totalMarks: 2,

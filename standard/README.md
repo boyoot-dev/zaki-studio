@@ -1,6 +1,6 @@
 # The Curriculum Bundle Format
 
-**Version 1, stable.**
+**Version 2, stable. Version 1 files remain valid.**
 
 A curriculum bundle is one JSON file that one author writes: whichever grades
 and subjects they cover, from one subject for one grade to every subject in a
@@ -16,13 +16,15 @@ so that anyone can implement it without the original code.
 
 ## The files
 
-- **[SPEC.md](SPEC.md)** — the format, version 1. A stranger can write a valid
-  bundle, or a reader for it, from this document alone. This is the normative
-  text.
-- **[schema/bundle-v1.schema.json](schema/bundle-v1.schema.json)** — a JSON
-  Schema (draft 2020-12) for the shapes, types, required fields and limits.
-- **[examples/](examples/)** — one minimal valid bundle, one fuller valid
-  bundle, and two refused examples, each with the reason it is refused.
+- **[SPEC.md](SPEC.md)** — the format, versions 1 and 2. A stranger can write a
+  valid bundle, or a reader for it, from this document alone. This is the
+  normative text.
+- **[schema/bundle-v2.schema.json](schema/bundle-v2.schema.json)** — a JSON
+  Schema (draft 2020-12) for version 2, the current version: the shapes, types,
+  required fields and limits. **[schema/bundle-v1.schema.json](schema/bundle-v1.schema.json)**
+  stays for version 1 files.
+- **[examples/](examples/)** — three valid bundles (two version 1 and one
+  version 2) and three refused examples, each with the reason it is refused.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed between versions of the
   standard.
 - **[LICENSE-TEXT](LICENSE-TEXT)** — the licence for `SPEC.md` and this
@@ -34,8 +36,8 @@ so that anyone can implement it without the original code.
 
 Both licences cover the files in this folder only, Copyright 2026 Amr Bedair.
 `SPEC.md` and this `README.md` are CC BY 4.0 (share and adapt the text, with
-credit and a link to the licence). `schema/bundle-v1.schema.json` and the
-files in `examples/` are MIT.
+credit and a link to the licence). `schema/` and the files in `examples/` are
+MIT.
 
 ## Conformance
 

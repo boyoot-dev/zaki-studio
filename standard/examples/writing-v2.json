@@ -1,0 +1,97 @@
+{
+	"format": "mr-zaki-curriculum",
+	"formatVersion": 2,
+	"id": "6c1d4f8a-2b9e-4d7c-a1f3-5e8b0c2d9a64",
+	"version": 1,
+	"nameEn": "Starlight Astronomy",
+	"nameAr": "علم الفلك",
+	"author": "R. Farouk",
+	"rights": "Written from common-knowledge astronomy texts, for anyone to use and share.",
+	"periods": [
+		{
+			"id": "year",
+			"nameEn": "The school year",
+			"nameAr": "العام الدراسي",
+			"wholeYear": true
+		}
+	],
+	"courses": [
+		{
+			"grade": 9,
+			"subject": "science",
+			"exams": [
+				{
+					"name": "Writing paper",
+					"papers": [
+						{
+							"name": "Paper 1: Writing",
+							"skill": "writing",
+							"minutes": 60,
+							"marks": 40,
+							"parts": [
+								{
+									"id": "write-1",
+									"name": "Part 1",
+									"instruction": "Write about why day and night happen.",
+									"marks": 20,
+									"minutes": 30,
+									"material": { "kind": "none" },
+									"questions": {
+										"count": 1,
+										"types": { "essay": 1 },
+										"answerWords": [300, 400],
+										"marksEach": 20,
+										"totalMarks": 20
+									}
+								},
+								{
+									"id": "write-2",
+									"name": "Part 2",
+									"instruction": "Write about why the Moon has phases.",
+									"marks": 20,
+									"minutes": 30,
+									"material": { "kind": "none" },
+									"questions": {
+										"count": 1,
+										"types": { "essay": 1 },
+										"answerWords": [300, 400],
+										"marksEach": 20,
+										"totalMarks": 20
+									}
+								}
+							]
+						}
+					]
+				}
+			],
+			"units": [
+				{
+					"number": 1,
+					"period": "year",
+					"title": "The Earth and the Moon",
+					"keywords": ["moon", "phases"],
+					"lessons": [
+						{
+							"number": 1,
+							"title": "Day and night",
+							"skills": ["State why we have day and night"],
+							"facts": [
+								"The Earth spins on its axis once every 24 hours.",
+								"The Sun appears to rise in the east and set in the west."
+							]
+						},
+						{
+							"number": 2,
+							"title": "The phases of the Moon",
+							"skills": ["Explain the phases of the Moon"],
+							"facts": [
+								"The Moon orbits Earth once every 27 and a third days.",
+								"We see phases because the sunlit half of the Moon faces us in different amounts."
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}

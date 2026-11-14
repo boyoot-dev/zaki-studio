@@ -1,6 +1,6 @@
-# The Curriculum Bundle Format, Version 1
+# The Curriculum Bundle Format, Version 2
 
-Status: Version 1, stable. This text is licensed under CC BY 4.0; see `LICENSE-TEXT`.
+Status: Version 2, stable. Version 1 files remain valid. This text is licensed under CC BY 4.0; see `LICENSE-TEXT`.
 The JSON Schema and the examples are licensed under MIT; see `LICENSE-SCHEMA`.
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT** and **MAY** in this
@@ -102,7 +102,9 @@ Schema. See "Rules beyond the schema".
 Three fields make a bundle who it is:
 
 - `format` — always the string `mr-zaki-curriculum`.
-- `formatVersion` — always the integer `1`.
+- `formatVersion` — the integer `1` or `2`. Version 2 adds one optional field,
+  `questions.answerWords` (§9.1). A version 2 reader **MUST** accept version 1
+  files; a version 1 reader knows nothing of `answerWords` and refuses it.
 - `id` — a **lowercase UUID** (`8-4-4-4-12` hex groups), written once by the
   author and never changed.
 
@@ -179,7 +181,7 @@ Unknown fields are refused everywhere, including here.
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
 | `format` | string | yes | exactly `mr-zaki-curriculum` | The format this file claims to be. |
-| `formatVersion` | integer | yes | exactly `1` | The version of the format. |
+| `formatVersion` | integer | yes | `1` or `2` | The version of the format. |
 | `id` | string | yes | lowercase UUID, `8-4-4-4-12` hex | The stable identity of this bundle (§4). |
 | `version` | integer | yes | 1–1,000,000 | The author's version of this file (§4). Bumped on every export. |
 | `nameEn` | string | yes | 1–100 characters | The bundle's name, in English (or the author's first language). |
@@ -311,6 +313,7 @@ left out is the exam's own choice.
 | `types` | object | yes | keys are known question types (below); values are counts 0–200 | Question type → how many of that type. Unknown keys are refused. |
 | `choiceOptions` | integer | no | 3 or 4 | How many options a choice question has, as the paper prints. |
 | `maxWords` | integer | no | 0–200 | The longest answer, in words. |
+| `answerWords` | array of two integers | no | both 0–5,000; the first no larger than the second | How long the answer must be, in words: the shortest and the longest (a writing task). Version 2. |
 | `marksEach` | marks | no | 0–200 in halves | What every question is worth, when they are all worth the same. |
 | `marksByType` | object | no | keys are known question types; values are marks 0–200 in halves | What a question of each type is worth, for papers that mix them. Unknown keys are refused. |
 | `totalMarks` | marks | no | 0–200 in halves | What the questions are worth in all. |
@@ -369,9 +372,11 @@ the JSON Schema:
 3. Unknown fields are refused, everywhere. In objects whose keys are fixed
    (the header, a period, a course, …) every key must be a defined field; in
    `types` and `marksByType` every key must be a known question type.
-4. The JSON Schema (`schema/bundle-v1.schema.json`, draft 2020-12) accepts the
-   file: the shapes, the required fields, the types, the enumerations, the
-   integer and marks ranges, and the per-field limits it can express.
+4. The JSON Schema for the file's `formatVersion`
+   (`schema/bundle-v1.schema.json` or `schema/bundle-v2.schema.json`, draft
+   2020-12) accepts the file: the shapes, the required fields, the types, the
+   enumerations, the integer and marks ranges, and the per-field limits it can
+   express.
 5. "Rules beyond the schema", below, all hold.
 
 ### Rules beyond the schema
@@ -395,6 +400,8 @@ and a conforming reader **MUST** enforce them:
   - Unit numbers are unique in a course; lesson numbers are unique in a unit.
   - A grade and subject pair appears at most once per file.
 - The material kind `other` **requires** a `description`.
+- `answerWords`, when present, holds exactly two integers, and the first is no
+  larger than the second (§6.4.4).
 - A multi-line text may contain `\n`; a single-line text may not (§3).
 - An absent `nameAr` on the header or a period defaults to the matching
   `nameEn`; an absent `source` defaults to `sheet`; an absent `wholeYear`
@@ -404,10 +411,11 @@ and a conforming reader **MUST** enforce them:
 
 ### Invalid examples
 
-The `examples/` folder carries two refused files and says why. Both are
+The `examples/` folder carries three refused files and says why. All are
 refused by the rules above; `invalid-web-address.json` passes the JSON Schema
-(it breaks a rule beyond the schema) and `invalid-unknown-field.json` fails
-the JSON Schema as well.
+(it breaks a rule beyond the schema), `invalid-unknown-field.json` fails the
+JSON Schema as well, and `invalid-answer-words-v1.json` carries a version 2
+field in a version 1 file and fails the version 1 JSON Schema too.
 
 ## 8. Conformance
 
@@ -446,33 +454,53 @@ A writer is any program that produces bundles. A conforming writer:
 - **MUST NOT** put a web address, or a forbidden character, in any text.
 - **SHOULD** check its own output with a validating reader before export.
 
-A file both accepts is version 1. A reader and a writer that both conform
-interoperate on any valid version 1 file.
+A file both accept is version 1 or version 2. A reader and a writer that both
+conform interoperate on any valid file of a version the reader supports. A
+version 2 reader **MUST** accept a valid version 1 file, because version 2 adds
+a field and changes nothing else.
 
 ## 9. Versioning of the standard
 
 This section is about the standard, not about a bundle's own `version`.
 
-Version 1 is stable. The following changes **keep version 1**:
+Version 2 is stable. The following changes **keep the current version**:
 
 - Editorial fixes to this text, and to the schema's descriptions.
 - New examples, or clearer error messages.
-- Fixing the schema so it rejects exactly the files the rules already reject
+- Fixing a schema so it rejects exactly the files the rules already reject
   (for example a pattern the text already required).
 
-The following changes **need version 2** (a new `formatVersion` and a new
+The following changes **need a new version** (a new `formatVersion` and a new
 schema, published together):
 
 - A new required field, or a new field of any kind. Unknown fields are
-  refused, so even an optional new field is an incompatible change for
-  version 1 readers.
+  refused, so even an optional new field is an incompatible change for readers
+  of the previous version.
 - A new refusal: a character, a pattern, a limit tightened.
 - A relaxed limit, or a newly allowed character.
 - A change to the meaning of any field, or to the defaults.
 - A change to what a valid bundle is, in either direction.
 
-Readers of version 1 files **MUST NOT** accept a `formatVersion` they do not
-know. Writers **MUST NOT** write one.
+A reader **MUST NOT** accept a `formatVersion` it does not know. A reader of
+this standard accepts `formatVersion` 1 and 2.
+
+A writer **MUST** write the **lowest version that holds the file**: version 2
+only when some part has `answerWords`, otherwise version 1. A file that does
+not use the new field therefore stays readable by version 1 readers.
+
+### 9.1 Differences from version 1
+
+Version 2 is version 1 plus one optional field: `questions.answerWords`
+(§6.4.4), a pair of integers from 0 to 5,000 that says how long the child's own
+answer must be, for a writing task. The first is no larger than the second.
+Nothing else changes: every limit, every rule and every refusal of version 1
+still holds, and a version 1 file whose `formatVersion` is changed to `2` is a
+valid version 2 file.
+
+In a version 1 file `answerWords` is an unknown field and is refused, exactly
+as any undefined field is. In a version 2 file it is allowed. That is why the
+change needs a new version: unknown fields are refused, so even an optional
+new field is incompatible with version 1 readers.
 
 ## 10. The limits, at a glance
 
@@ -504,4 +532,5 @@ know. Writers **MUST NOT** write one.
 | Counts and option numbers | 0–200 (whole); `choiceOptions` 3–4 |
 | Marks | 0–200 in halves (0.5 steps) |
 | `words` | both 0–5,000 |
+| `answerWords` | both 0–5,000; the first no larger than the second |
 | Reading, pause and check times | 0–600 seconds |
