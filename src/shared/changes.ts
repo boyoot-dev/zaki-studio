@@ -11,6 +11,7 @@
 // Today's Arabic text layers can be reversed, so a failed page check is a warning, not a
 // refusal (found 2026-10-25, docs/CURRICULA.md).
 
+import type { ReviewExam } from "./exam-changes.ts";
 import { BUNDLE_LIMITS, type BundleSkill, checkText } from "./format/bundle.ts";
 import type {
 	FileRow,
@@ -276,7 +277,7 @@ function text(
 }
 
 /** A list of short texts (key words, evidence, open questions); empty when absent. */
-function textList(
+export function textList(
 	value: unknown,
 	at: string,
 	max: number,
@@ -568,10 +569,13 @@ export type ReviewUnit = {
 
 /** What "Changes to review" shows of one change set. */
 export type ChangeReview = {
+	/** "units" for units and lessons, "exams" for exam papers (task 177). */
+	kind: "units" | "exams";
 	/** "7-science-block-3", the set's name in .studio/changes. */
 	key: string;
 	grade: number;
 	subject: string;
+	/** The period for a units set, or "" for exams, which cover the whole course. */
 	period: string;
 	state: "pending" | "rejected";
 	/** The day it was written, "YYYY-MM-DD". */
@@ -581,6 +585,8 @@ export type ChangeReview = {
 	/** The choices already accepted: "5" for a unit, "5.1" for a lesson. */
 	accepted: string[];
 	units: ReviewUnit[];
+	/** The exams side by side, for an exams set; empty for a units set. */
+	exams: ReviewExam[];
 	open: string[];
 	refused: ChangeRefusal[];
 };

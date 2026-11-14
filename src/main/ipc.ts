@@ -32,6 +32,8 @@ import type {
 	ChangeTargetView,
 	CourseHead,
 	Done,
+	ExamsPlanView,
+	ExamTargetView,
 	ExportCheck,
 	Exported,
 	Failure,
@@ -54,6 +56,8 @@ import type {
 	ScanState,
 	UnitsPlanView,
 } from "../shared/api.ts";
+import type { ExamTarget } from "../shared/exam-changes.ts";
+import { examTargetOf } from "../shared/exam-changes.ts";
 import type { JobTool } from "../shared/job.ts";
 import { reportMeta } from "../shared/lists.ts";
 import type { CurriculumModel, FileRow } from "../shared/model.ts";
@@ -70,15 +74,28 @@ import {
 import { adoptMaterial } from "./adopt.ts";
 import {
 	acceptChange,
+	acceptExamChange,
 	collectUnitsJob,
 	deleteChange,
+	deleteExamChange,
+	examKey,
 	knownTarget,
 	prepareUnitsJob,
 	readChangeSets,
 	readUnitsSettings,
 	rejectChange,
+	rejectExamChange,
+	targetCourse,
 	writeUnitsSettings,
 } from "./changes.ts";
+import {
+	collectExamsJob,
+	examRows,
+	examYears,
+	planExamSet,
+	prepareExamsJob,
+	writeExamSet,
+} from "./exams.ts";
 import { exportProject, summaryFor } from "./export.ts";
 import {
 	createProject,
@@ -206,6 +223,11 @@ function rulesText(): string {
 /** The change set's rules, from the Studio's own resources; "" when they are not there. */
 function unitsRulesText(): string {
 	return rulesTextFrom("unit-rules.md");
+}
+
+/** The exam change set's rules, from the Studio's own resources; "" when they are not there. */
+function examRulesText(): string {
+	return rulesTextFrom("exam-rules.md");
 }
 
 /** The files a notes action covers: the ones the page chose, or every file without a note. */
@@ -375,6 +397,22 @@ function changeContext(
 	const target = knownTarget(model.model, grade, subject, period);
 	if (target === null)
 		return { ok: false, code: "missing", detail: "no such course and period" };
+	const files = readFiles(where);
+	if (!files.ok) return files;
+	return { model: model.model, rows: files.files, target };
+}
+
+/** A course an exams call names, the register rows, or the failure the page reads. */
+function examContext(
+	where: string,
+	grade: unknown,
+	subject: unknown,
+): { model: CurriculumModel; rows: FileRow[]; target: ExamTarget } | Failure {
+	const model = readModel(where);
+	if (!model.ok) return model;
+	const target = examTargetOf(grade, subject);
+	if (target === null || targetCourse(model.model, target) === null)
+		return { ok: false, code: "missing", detail: "no such course" };
 	const files = readFiles(where);
 	if (!files.ok) return files;
 	return { model: model.model, rows: files.files, target };
@@ -1183,9 +1221,33 @@ export function registerIpc(): void {
 				else bucket.push(row);
 			}
 			const targets: ChangeTargetView[] = [];
+			const examTargets: ExamTargetView[] = [];
 			for (const course of model.model.courses) {
 				const courseRows =
 					byCourse.get(`${course.grade}|${course.subject}`) ?? [];
+				const examTarget = {
+					grade: course.grade,
+					subject: course.subject,
+				};
+				const examRowsNow = examRows(courseRows, examTarget);
+				if (examRowsNow.length > 0) {
+					const years = examYears(courseRows, examTarget, noted);
+					examTargets.push({
+						...examTarget,
+						exams: course.exams.length,
+						files: examRowsNow.length,
+						notes: examRowsNow.reduce(
+							(total, row) => total + (noted.has(row.id) ? 1 : 0),
+							0,
+						),
+						yearsLeftOut: years.leftOut,
+						pending: sets.sets.some(
+							(set) =>
+								set.key === examKey(course.grade, course.subject) &&
+								set.state === "pending",
+						),
+					});
+				}
 				const periods = [
 					...new Set(course.units.map((unit) => unit.period)),
 				].sort();
@@ -1225,14 +1287,19 @@ export function registerIpc(): void {
 					a.subject.localeCompare(b.subject) ||
 					a.period.localeCompare(b.period),
 			);
+			examTargets.sort(
+				(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),
+			);
 			return {
 				ok: true,
 				targets,
+				examTargets,
 				sets: sets.sets.filter((set) => set.state === "pending"),
 				rejected: sets.sets.filter((set) => set.state === "rejected"),
 				settings: readUnitsSettings(userData()),
 				keySet: readKeyState(userData(), secrets).set,
 				jobs: listJobs(where, "units"),
+				examJobs: listJobs(where, "exams"),
 			};
 		},
 	);
@@ -1496,6 +1563,247 @@ export function registerIpc(): void {
 			return settings === null
 				? { ok: false, code: "invalidName" }
 				: { ok: true, settings };
+		},
+	);
+
+	// The exams step (task 177): one request per course, the same key, limit and rules cache as
+	// the units step. The page sends only a grade and a subject; every path is built here.
+	ipcMain.handle(
+		"studio:examsPlan",
+		async (
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+		): Promise<ExamsPlanView> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const context = examContext(where, grade, subject);
+			if ("ok" in context) return context;
+			const rules = examRulesText();
+			if (rules === "") return failure("missing");
+			const settings = readUnitsSettings(userData());
+			const plan = await planExamSet(
+				where,
+				context.model,
+				context.rows,
+				context.target,
+				rules,
+				settings.model,
+			);
+			if (plan === null) return failure("missing");
+			return {
+				ok: true,
+				plan,
+				limit: settings.limit,
+				keySet: readKeyState(userData(), secrets).set,
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:writeExams",
+		async (
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			limit: unknown,
+		): Promise<ChangesWritten> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const context = examContext(where, grade, subject);
+			if ("ok" in context) return context;
+			const key = loadKey(userData(), secrets);
+			if (key === null) return { ok: false, code: "noKey" };
+			const rules = examRulesText();
+			if (rules === "") return failure("missing");
+			const settings = readUnitsSettings(userData());
+			const prices = await modelInfo(settings.model).catch(() => null);
+			const amount =
+				typeof limit === "number" && Number.isFinite(limit)
+					? Math.min(100, Math.max(0.01, limit))
+					: settings.limit;
+			const written = await writeExamSet({
+				root: where,
+				model: context.model,
+				rows: context.rows,
+				target: context.target,
+				rules,
+				key,
+				modelName: settings.model,
+				priceIn: prices?.priceIn ?? null,
+				priceOut: prices?.priceOut ?? null,
+				limitUsd: amount,
+				today: new Date(),
+			});
+			if (!written.ok) return written;
+			return { ok: true, spent: written.spentUsd };
+		},
+	);
+
+	ipcMain.handle(
+		"studio:prepareExamsJob",
+		(event, root: unknown, targets: unknown, tool: unknown): JobMade => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const rules = examRulesText();
+			if (rules === "") return failure("missing");
+			const wanted = Array.isArray(targets) ? targets.slice(0, 40) : [];
+			const chosen = new Map<string, ExamTarget>();
+			for (const item of wanted) {
+				if (typeof item !== "object" || item === null) continue;
+				const raw = item as Record<string, unknown>;
+				const target = examTargetOf(raw.grade, raw.subject);
+				const key =
+					target === null ? null : examKey(target.grade, target.subject);
+				if (
+					target !== null &&
+					key !== null &&
+					targetCourse(model.model, target) !== null &&
+					!chosen.has(key)
+				)
+					chosen.set(key, target);
+			}
+			if (chosen.size === 0) return failure("missing");
+			const chosenTool: JobTool =
+				tool === "claude-code" ? "claude-code" : "other";
+			return prepareExamsJob({
+				root: where,
+				model: model.model,
+				rows: files.files,
+				targets: [...chosen.values()],
+				curriculum: basename(where),
+				rules,
+				tool: chosenTool,
+				now: new Date(),
+			});
+		},
+	);
+
+	ipcMain.handle(
+		"studio:collectExamsJob",
+		(event, root: unknown, name: unknown): ChangesCollected => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const outcome = collectExamsJob({
+				root: where,
+				model: model.model,
+				files: files.files,
+				name: text(name, 20),
+				today: new Date(),
+			});
+			if ("ok" in outcome) return outcome;
+			return {
+				ok: true,
+				collected: outcome.collected.length,
+				skipped: outcome.skipped.length,
+				refused: outcome.refused,
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:deleteExamsJob",
+		async (event, root: unknown, name: unknown): Promise<Done> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const job = text(name, 20);
+			if (!/^\d{4}-\d{2}-\d{2}-\d{4}$/.test(job)) return failure("invalidName");
+			const window = BrowserWindow.getFocusedWindow();
+			const question = {
+				type: "question" as const,
+				buttons: ["Delete", "Cancel"],
+				defaultId: 1,
+				cancelId: 1,
+				title: "Delete an exams job",
+				message: `Delete the job "${job}"?`,
+				detail:
+					"Its folder goes, and any exam change set still waiting in out/. Sets already collected stay for review.",
+			};
+			const answer =
+				window === null
+					? await dialog.showMessageBox(question)
+					: await dialog.showMessageBox(window, question);
+			if (answer.response !== 0) return { ok: false, code: "cancelled" };
+			return deleteJob(where, job, "exams");
+		},
+	);
+
+	ipcMain.handle(
+		"studio:acceptExams",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			exam: unknown,
+			paper: unknown,
+		): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const context = examContext(where, grade, subject);
+			if ("ok" in context) return context;
+			const wantedExam =
+				typeof exam === "number" && Number.isInteger(exam) ? exam : undefined;
+			const wantedPaper =
+				typeof paper === "number" && Number.isInteger(paper)
+					? paper
+					: undefined;
+			if (exam !== undefined && wantedExam === undefined)
+				return failure("invalidName");
+			if (paper !== undefined && wantedPaper === undefined)
+				return failure("invalidName");
+			const accepted = acceptExamChange({
+				root: where,
+				model: context.model,
+				files: context.rows,
+				target: context.target,
+				choice:
+					wantedExam === undefined || wantedPaper === undefined
+						? { kind: "all" }
+						: { kind: "paper", exam: wantedExam, paper: wantedPaper },
+			});
+			if (!accepted.ok) return accepted;
+			return { ok: true };
+		},
+	);
+
+	ipcMain.handle(
+		"studio:rejectExams",
+		(event, root: unknown, grade: unknown, subject: unknown): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const context = examContext(where, grade, subject);
+			if ("ok" in context) return context;
+			return rejectExamChange(
+				where,
+				context.target.grade,
+				context.target.subject,
+			);
+		},
+	);
+
+	ipcMain.handle(
+		"studio:deleteExams",
+		(event, root: unknown, grade: unknown, subject: unknown): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const context = examContext(where, grade, subject);
+			if ("ok" in context) return context;
+			return deleteExamChange(
+				where,
+				context.target.grade,
+				context.target.subject,
+			);
 		},
 	);
 }

@@ -10,6 +10,8 @@ import type {
 	ChangesCollected,
 	ChangesState,
 	ChangeTargetView,
+	ExamsPlanView,
+	ExamTargetView,
 	JobMade,
 	UnitsPlanView,
 } from "../shared/api";
@@ -21,7 +23,12 @@ import type {
 	ReviewLesson,
 	ReviewUnit,
 } from "../shared/changes";
-import type { BundlePeriod } from "../shared/format/bundle";
+import type {
+	ReviewExam,
+	ReviewPaper,
+	ReviewPart,
+} from "../shared/exam-changes";
+import type { BundlePart, BundlePeriod } from "../shared/format/bundle";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { JobTool } from "../shared/job";
 import type { ModelFact, ModelLesson, ModelUnit } from "../shared/model";
@@ -40,6 +47,11 @@ function targetKey(target: {
 	period: string;
 }): string {
 	return `${target.grade}|${target.subject}|${target.period}`;
+}
+
+/** The key an exam target is chosen by: its grade and subject. */
+function examTargetKey(target: { grade: number; subject: string }): string {
+	return `${target.grade}|${target.subject}`;
 }
 
 /** The subject's own name, in the window's language. */
@@ -351,6 +363,314 @@ function UnitLists({
 	);
 }
 
+/** A number pair as the paper prints it: "300–400". */
+function pairText(value: [number, number] | null): string {
+	return value === null ? "" : `${value[0]}–${value[1]}`;
+}
+
+/** The lines of one part that the review shows on its own side. */
+function PartSummary({ part }: { part: BundlePart }) {
+	const lines: string[] = [];
+	if (part.minutes !== null) lines.push(`minutes ${part.minutes}`);
+	if (part.marks !== null) lines.push(`marks ${part.marks}`);
+	lines.push(`material ${part.material.kind}`);
+	if (part.material.words !== null)
+		lines.push(`words ${pairText(part.material.words)}`);
+	if (part.material.speakers !== null)
+		lines.push(`speakers ${part.material.speakers}`);
+	if (part.material.topic !== null) lines.push(`topic ${part.material.topic}`);
+	if (part.questions.answerWords !== null)
+		lines.push(`answerWords ${pairText(part.questions.answerWords)}`);
+	if (part.questions.maxWords !== null)
+		lines.push(`maxWords ${part.questions.maxWords}`);
+	const types = Object.entries(part.questions.types)
+		.map(([type, count]) => `${type} ${count}`)
+		.join(", ");
+	lines.push(
+		`questions ${part.questions.count}${types === "" ? "" : ` (${types})`}`,
+	);
+	if (part.questions.totalMarks !== null)
+		lines.push(`totalMarks ${part.questions.totalMarks}`);
+	return (
+		<>
+			<p dir="auto">{part.name}</p>
+			<ul className="skills">
+				{lines.map((line) => (
+					<li key={line}>{line}</li>
+				))}
+			</ul>
+			{part.notes !== null && (
+				<p className="fact muted" dir="auto">
+					{part.notes}
+				</p>
+			)}
+			{part.marking !== null && (
+				<p className="fact muted" dir="auto">
+					{part.marking}
+				</p>
+			)}
+		</>
+	);
+}
+
+/** The fields that changed, each one highlighted as a plain text line. */
+function ExamChanges({ part, say }: { part: ReviewPart; say: Say }) {
+	if (part.state === "added" || part.state === "removed")
+		return (
+			<span className="fact-flag">
+				{say(part.state === "added" ? "changes.added" : "changes.removed")}
+			</span>
+		);
+	if (part.changes.length === 0) return null;
+	return (
+		<div>
+			<h6>{say("changes.changedFields")}</h6>
+			<ul className="new-list">
+				{part.changes.map((change) => (
+					<li key={change} dir="ltr">
+						<mark>{change}</mark>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
+/** One part, now beside proposed, with the files it was read from. */
+function PartPair({
+	part,
+	paths,
+	say,
+}: {
+	part: ReviewPart;
+	paths: Record<string, { path: string; size: number }>;
+	say: Say;
+}) {
+	const name = part.proposed?.name ?? part.now?.name ?? part.key;
+	return (
+		<section className="lesson">
+			<h6 dir="auto">{say("changes.part", { name })}</h6>
+			<div className="changes-pair">
+				<div className="changes-side">
+					<h5>{say("changes.now")}</h5>
+					{part.now === null ? (
+						<p className="muted">—</p>
+					) : (
+						<PartSummary part={part.now} />
+					)}
+				</div>
+				<div className="changes-side">
+					<h5>{say("changes.proposed")}</h5>
+					{part.proposed === null ? (
+						<p className="muted">—</p>
+					) : (
+						<PartSummary part={part.proposed} />
+					)}
+				</div>
+			</div>
+			<ExamChanges part={part} say={say} />
+			{part.sources.length > 0 && (
+				<div className="chips">
+					<span className="muted">{say("changes.sources")}:</span>
+					{part.sources.map((id) => (
+						<span key={id} className="chip">
+							{paths[id] === undefined ? id : fileLabel(paths[id].path)}
+						</span>
+					))}
+				</div>
+			)}
+		</section>
+	);
+}
+
+/** One paper, now beside proposed, with a choice to accept just this paper. */
+function PaperPair({
+	paper,
+	examIndex,
+	paperIndex,
+	reviewSet,
+	paths,
+	say,
+	onAccept,
+}: {
+	paper: ReviewPaper;
+	examIndex: number;
+	paperIndex: number;
+	reviewSet: ChangeReview;
+	paths: Record<string, { path: string; size: number }>;
+	say: Say;
+	onAccept: (exam: number, paper: number) => void;
+}) {
+	const accepted = reviewSet.accepted.includes(`${examIndex}.${paperIndex}`);
+	return (
+		<section className="unit">
+			<h4 dir="auto">{say("changes.paper", { name: paper.name })}</h4>
+			<div className="changes-pair">
+				<div className="changes-side">
+					<h5>{say("changes.now")}</h5>
+					{paper.now === null ? (
+						<p className="muted">—</p>
+					) : (
+						<ul className="skills">
+							<li>{paper.now.skill}</li>
+							{paper.now.minutes !== null && (
+								<li>minutes {paper.now.minutes}</li>
+							)}
+							{paper.now.marks !== null && <li>marks {paper.now.marks}</li>}
+						</ul>
+					)}
+				</div>
+				<div className="changes-side">
+					<h5>{say("changes.proposed")}</h5>
+					{paper.proposed === null ? (
+						<p className="muted">—</p>
+					) : (
+						<ul className="skills">
+							<li>{paper.proposed.skill}</li>
+							{paper.proposed.minutes !== null && (
+								<li>minutes {paper.proposed.minutes}</li>
+							)}
+							{paper.proposed.marks !== null && (
+								<li>marks {paper.proposed.marks}</li>
+							)}
+						</ul>
+					)}
+				</div>
+			</div>
+			{paper.changes.length > 0 && (
+				<ul className="new-list">
+					{paper.changes.map((change) => (
+						<li key={change} dir="ltr">
+							<mark>{change}</mark>
+						</li>
+					))}
+				</ul>
+			)}
+			{paper.parts.map((part) => (
+				<PartPair key={part.key} part={part} paths={paths} say={say} />
+			))}
+			{paper.proposed !== null && (
+				<button
+					type="button"
+					className="btn btn-quiet"
+					disabled={accepted}
+					onClick={() => onAccept(examIndex, paperIndex)}
+				>
+					{accepted ? say("changes.accepted") : say("changes.acceptPaper")}
+				</button>
+			)}
+		</section>
+	);
+}
+
+/** One exam, now beside proposed, with its papers. */
+function ExamPair({
+	exam,
+	examIndex,
+	reviewSet,
+	paths,
+	say,
+	onAccept,
+}: {
+	exam: ReviewExam;
+	examIndex: number;
+	reviewSet: ChangeReview;
+	paths: Record<string, { path: string; size: number }>;
+	say: Say;
+	onAccept: (exam: number, paper: number) => void;
+}) {
+	return (
+		<section>
+			<h4 dir="auto">
+				{exam.name} {exam.period === null ? "" : `· ${exam.period}`}
+			</h4>
+			{exam.changes.length > 0 && (
+				<ul className="new-list">
+					{exam.changes.map((change) => (
+						<li key={change} dir="ltr">
+							<mark>{change}</mark>
+						</li>
+					))}
+				</ul>
+			)}
+			{exam.papers.map((paper, index) => (
+				<PaperPair
+					key={paper.name}
+					paper={paper}
+					examIndex={examIndex}
+					paperIndex={index}
+					reviewSet={reviewSet}
+					paths={paths}
+					say={say}
+					onAccept={onAccept}
+				/>
+			))}
+		</section>
+	);
+}
+
+/** One exam change set, beside the course's exams as they are now. */
+function ExamSet({
+	set,
+	paths,
+	lang,
+	say,
+	onAccept,
+	onReject,
+}: {
+	set: ChangeReview;
+	paths: Record<string, { path: string; size: number }>;
+	lang: Lang;
+	say: Say;
+	onAccept: (exam?: number, paper?: number) => void;
+	onReject: () => void;
+}) {
+	return (
+		<section className="notes-actions">
+			<header className="new-head">
+				<div>
+					<h3>
+						<span className="chip">{say("changes.exams")}</span> ·{" "}
+						{gradeLabel(lang, set.grade)} · {subjectName(set.subject, lang)}
+					</h3>
+					<p className="muted">
+						{say(
+							set.source === "job" ? "changes.from.job" : "changes.from.key",
+						)}{" "}
+						· {set.at} · {set.model}
+					</p>
+				</div>
+				<div className="notes-row">
+					<button type="button" className="btn" onClick={() => onAccept()}>
+						{say("changes.acceptAll")}
+					</button>
+					<button
+						type="button"
+						className="btn btn-quiet btn-danger"
+						onClick={onReject}
+					>
+						{say("changes.reject")}
+					</button>
+				</div>
+			</header>
+			{set.exams.map((exam, index) => (
+				<ExamPair
+					key={`${exam.period ?? "year"}-${exam.name}`}
+					exam={exam}
+					examIndex={index}
+					reviewSet={set}
+					paths={paths}
+					say={say}
+					onAccept={(wantedExam, wantedPaper) =>
+						onAccept(wantedExam, wantedPaper)
+					}
+				/>
+			))}
+			<SetNotes set={set} say={say} />
+		</section>
+	);
+}
+
 /** Why one file in a job's out/ folder was refused, in the window's words. */
 function refusalText(code: string, say: Say): string {
 	const known = [
@@ -427,14 +747,24 @@ export function Changes({
 	const [modelInput, setModelInput] = useState("");
 	const [limit, setLimit] = useState(2);
 	const [picked, setPicked] = useState<Set<string>>(new Set());
+	const [examPicked, setExamPicked] = useState<Set<string>>(new Set());
 	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [plan, setPlan] = useState<{
 		target: ChangeTargetView;
 		view: UnitsPlanView;
 	} | null>(null);
+	const [examPlan, setExamPlan] = useState<{
+		target: ExamTargetView;
+		view: ExamsPlanView;
+	} | null>(null);
 	const [writing, setWriting] = useState(false);
+	const [examWriting, setExamWriting] = useState(false);
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
+	const [examPrepared, setExamPrepared] = useState<JobMade | null>(null);
 	const [collected, setCollected] = useState<ChangesCollected | null>(null);
+	const [examCollected, setExamCollected] = useState<ChangesCollected | null>(
+		null,
+	);
 
 	/** Reads the periods, the sets and the jobs; nothing is sent. */
 	const load = useCallback(async () => {
@@ -470,6 +800,13 @@ export function Changes({
 					}
 				}
 			}
+			for (const exam of set.exams) {
+				for (const paper of exam.papers) {
+					for (const part of paper.parts) {
+						for (const id of part.sources) ids.add(id);
+					}
+				}
+			}
 		}
 		const wanted = [...ids].slice(0, 1500);
 		if (wanted.length === 0) return;
@@ -480,15 +817,28 @@ export function Changes({
 	}, [state, root]);
 
 	const targets = state?.ok === true ? state.targets : [];
+	const examTargets = state?.ok === true ? state.examTargets : [];
 	const sets = state?.ok === true ? state.sets : [];
 	const rejected = state?.ok === true ? state.rejected : [];
 	const jobs = state?.ok === true ? state.jobs : [];
+	const examJobs = state?.ok === true ? state.examJobs : [];
 	const keySet = state?.ok === true && state.keySet;
 
 	/** Ticks or unticks one period for the job folder way. */
 	const toggle = (target: ChangeTargetView) => {
 		const key = targetKey(target);
 		setPicked((now) => {
+			const next = new Set(now);
+			if (next.has(key)) next.delete(key);
+			else next.add(key);
+			return next;
+		});
+	};
+
+	/** Ticks or unticks one course for the exam job folder way. */
+	const toggleExam = (target: ExamTargetView) => {
+		const key = examTargetKey(target);
+		setExamPicked((now) => {
 			const next = new Set(now);
 			if (next.has(key)) next.delete(key);
 			else next.add(key);
@@ -547,6 +897,139 @@ export function Changes({
 		} finally {
 			setWriting(false);
 		}
+	};
+
+	/** Prices one course's exams, so the author sees the cost before anything is sent. */
+	const priceExam = async (target: ExamTargetView) => {
+		const answer = await window.studio.examsPlan(
+			root,
+			target.grade,
+			target.subject,
+		);
+		if (!answer.ok) {
+			onNotify(failureText(lang, answer));
+			return;
+		}
+		setExamPlan({ target, view: answer });
+	};
+
+	/** Writes the priced exam change set with the author's key. */
+	const writeExam = async () => {
+		if (examPlan === null) return;
+		const target = examPlan.target;
+		setExamWriting(true);
+		try {
+			const answer = await window.studio.writeExams(
+				root,
+				target.grade,
+				target.subject,
+				limit,
+			);
+			if (!answer.ok) {
+				onNotify(failureText(lang, answer));
+				if (answer.detail !== undefined) onNotify(answer.detail);
+				return;
+			}
+			setExamPlan(null);
+			onNotify(say("changes.wrote"));
+			await load();
+			onChanged();
+		} finally {
+			setExamWriting(false);
+		}
+	};
+
+	/** Prepares one exams job folder for the ticked courses. */
+	const prepareExam = async () => {
+		const chosen = examTargets.filter((target) =>
+			examPicked.has(examTargetKey(target)),
+		);
+		if (chosen.length === 0) return;
+		const answer = await window.studio.prepareExamsJob(
+			root,
+			chosen.map((target) => ({
+				grade: target.grade,
+				subject: target.subject,
+			})),
+			tool,
+		);
+		if (!answer.ok) {
+			onNotify(failureText(lang, answer));
+			return;
+		}
+		setExamPrepared(answer);
+		setExamPicked(new Set());
+		onNotify(say("changes.examJobReady", { n: answer.files }));
+		await load();
+	};
+
+	const copyExamPrompt = async () => {
+		if (examPrepared?.ok !== true) return;
+		const answer = await window.studio.copyText(examPrepared.prompt);
+		onNotify(answer.ok ? say("notes.copied") : failureText(lang, answer));
+	};
+
+	const collectExam = async (name: string) => {
+		const answer = await window.studio.collectExamsJob(root, name);
+		if (!answer.ok) {
+			onNotify(failureText(lang, answer));
+			return;
+		}
+		setExamCollected(answer);
+		onNotify(
+			say("changes.collected", {
+				n: answer.collected,
+				skipped: answer.skipped,
+			}),
+		);
+		await load();
+	};
+
+	const removeExamJob = async (name: string) => {
+		await window.studio.deleteExamsJob(root, name);
+		await load();
+	};
+
+	/** Accepts a whole exam set, or one paper, through the main process. */
+	const acceptExam = async (
+		set: ChangeReview,
+		exam?: number,
+		paper?: number,
+	) => {
+		const answer = await window.studio.acceptExams(
+			root,
+			set.grade,
+			set.subject,
+			exam,
+			paper,
+		);
+		if (!answer.ok) {
+			onNotify(failureText(lang, answer));
+			return;
+		}
+		onNotify(say("toast.saved"));
+		await load();
+		onChanged();
+	};
+
+	const rejectExam = async (set: ChangeReview) => {
+		const answer = await window.studio.rejectExams(
+			root,
+			set.grade,
+			set.subject,
+		);
+		onNotify(answer.ok ? say("toast.saved") : failureText(lang, answer));
+		await load();
+	};
+
+	const deleteExam = async (set: ChangeReview) => {
+		const answer = await window.studio.deleteExams(
+			root,
+			set.grade,
+			set.subject,
+		);
+		onNotify(answer.ok ? say("toast.deleted") : failureText(lang, answer));
+		await load();
 	};
 
 	/** Prepares one job folder for the ticked periods. */
@@ -643,6 +1126,12 @@ export function Changes({
 	const pickedCount = useMemo(
 		() => targets.filter((target) => picked.has(targetKey(target))).length,
 		[picked, targets],
+	);
+	const examPickedCount = useMemo(
+		() =>
+			examTargets.filter((target) => examPicked.has(examTargetKey(target)))
+				.length,
+		[examPicked, examTargets],
 	);
 
 	if (state === null)
@@ -793,6 +1282,115 @@ export function Changes({
 				<p className="muted">{say("changes.pickHint")}</p>
 			</section>
 
+			<section>
+				<h3>{say("changes.examTargets")}</h3>
+				{examTargets.length === 0 && (
+					<p className="muted">{say("changes.examTargetsNone")}</p>
+				)}
+				<WindowedList
+					count={examTargets.length}
+					rowHeight={44}
+					className="targets-list"
+					itemClassName="targets-item"
+					listRole="list"
+					ariaLabel={say("changes.examTargets")}
+				>
+					{(index) => {
+						const target = examTargets[index];
+						if (target === undefined) return null;
+						const key = examTargetKey(target);
+						return (
+							<li className="changes-target">
+								<label className="check">
+									<input
+										type="checkbox"
+										checked={examPicked.has(key)}
+										onChange={() => toggleExam(target)}
+									/>
+									<span dir="auto">
+										{gradeLabel(lang, target.grade)} ·{" "}
+										{subjectName(target.subject, lang)}
+									</span>
+								</label>
+								<span className="muted">
+									{say("changes.examTargetLine", {
+										exams: target.exams,
+										files: target.files,
+										notes: target.notes,
+									})}
+								</span>
+								{target.yearsLeftOut.length > 0 && (
+									<span className="muted">
+										{say("changes.examYears", {
+											years: target.yearsLeftOut.join(", "),
+										})}
+									</span>
+								)}
+								{target.pending && (
+									<span className="chip">{say("changes.pending")}</span>
+								)}
+								<button
+									type="button"
+									className="btn btn-quiet"
+									disabled={target.notes === 0}
+									onClick={() => void priceExam(target)}
+								>
+									{say("changes.examWrite")}
+								</button>
+							</li>
+						);
+					}}
+				</WindowedList>
+				{examPlan?.view.ok === true && (
+					<div className="notes-actions">
+						<p className="muted">
+							{gradeLabel(lang, examPlan.target.grade)} ·{" "}
+							{subjectName(examPlan.target.subject, lang)}
+						</p>
+						<p className="muted">
+							{examPlan.view.plan.estimateUsd === null
+								? say("changes.noPrice")
+								: say("changes.examPlan", {
+										exams: examPlan.view.plan.exams,
+										notes: examPlan.view.plan.notes,
+										cost: `$${examPlan.view.plan.estimateUsd.toFixed(4)}`,
+										model: examPlan.view.plan.model,
+									})}
+						</p>
+						{examPlan.view.plan.yearsLeftOut.length > 0 && (
+							<p className="muted">
+								{say("changes.examYears", {
+									years: examPlan.view.plan.yearsLeftOut.join(", "),
+								})}
+							</p>
+						)}
+						<div className="notes-row">
+							<button
+								type="button"
+								className="btn"
+								disabled={!keySet || examWriting}
+								onClick={() => void writeExam()}
+							>
+								{examWriting
+									? say("changes.writing")
+									: say("changes.confirmWrite")}
+							</button>
+							{!keySet && (
+								<span className="muted">{say("changes.noKeyHint")}</span>
+							)}
+							<button
+								type="button"
+								className="btn btn-quiet"
+								onClick={() => setExamPlan(null)}
+							>
+								{say("common.cancel")}
+							</button>
+						</div>
+					</div>
+				)}
+				<p className="muted">{say("changes.examPickHint")}</p>
+			</section>
+
 			<section className="notes-job">
 				<h3>{say("changes.jobTitle")}</h3>
 				<p className="muted">{say("changes.jobIntro")}</p>
@@ -900,59 +1498,183 @@ export function Changes({
 				)}
 			</section>
 
+			<section className="notes-job">
+				<h3>{say("changes.examJobTitle")}</h3>
+				<p className="muted">{say("changes.examJobIntro")}</p>
+				<div className="notes-row">
+					<label className="field">
+						<span className="field-label">{say("notes.jobTool")}</span>
+						<select
+							value={tool}
+							onChange={(event) => setTool(event.target.value as JobTool)}
+						>
+							<option value="claude-code">
+								{say("notes.tool.claude-code")}
+							</option>
+							<option value="other">{say("notes.tool.other")}</option>
+						</select>
+					</label>
+					<button
+						type="button"
+						className="btn btn-quiet"
+						disabled={examPickedCount === 0}
+						onClick={() => void prepareExam()}
+					>
+						{say("changes.examPrepare")}
+					</button>
+				</div>
+				{examPrepared?.ok === true && (
+					<div className="job-prompt">
+						<p className="muted">
+							{say("notes.promptHint", { path: examPrepared.path })}
+						</p>
+						<textarea
+							readOnly
+							value={examPrepared.prompt}
+							dir="ltr"
+							rows={10}
+						/>
+						<button
+							type="button"
+							className="btn"
+							onClick={() => void copyExamPrompt()}
+						>
+							{say("notes.copy")}
+						</button>
+					</div>
+				)}
+
+				<h3>{say("changes.jobs")}</h3>
+				{examJobs.length === 0 ? (
+					<p className="muted">{say("changes.jobsNone")}</p>
+				) : (
+					<WindowedList
+						count={examJobs.length}
+						rowHeight={36}
+						className="jobs-list"
+						itemClassName="jobs-item"
+						listRole="list"
+						ariaLabel={say("changes.jobs")}
+					>
+						{(index) => {
+							const job = examJobs[index];
+							if (job === undefined) return null;
+							return (
+								<li className="job-row">
+									<span dir="ltr">{job.name}</span>
+									<span className="muted">
+										{" "}
+										{say("changes.jobLine", {
+											created: job.created,
+											tool: say(`notes.tool.${job.tool}` as TextKey),
+											n: job.files,
+										})}
+									</span>
+									<button
+										type="button"
+										className="btn btn-quiet"
+										onClick={() => void collectExam(job.name)}
+									>
+										{say("changes.collect")}
+									</button>
+									<button
+										type="button"
+										className="btn btn-quiet btn-danger"
+										onClick={() => void removeExamJob(job.name)}
+									>
+										{say("notes.deleteJob")}
+									</button>
+								</li>
+							);
+						}}
+					</WindowedList>
+				)}
+				{examCollected?.ok === true && (
+					<div>
+						<p className="muted">
+							{say("changes.collected", {
+								n: examCollected.collected,
+								skipped: examCollected.skipped,
+							})}
+						</p>
+						{examCollected.refused.length > 0 && (
+							<ul className="new-list issues">
+								{examCollected.refused.map((entry) => (
+									<li key={entry.name} dir="auto">
+										{entry.name}: {refusalText(entry.code, say)}
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				)}
+			</section>
+
 			<section>
 				<h3>{say("changes.review")}</h3>
 				{sets.length === 0 ? (
 					<p className="muted">{say("changes.none")}</p>
 				) : (
-					sets.map((set) => (
-						<section key={set.key} className="notes-actions">
-							<header className="new-head">
-								<div>
-									<h3 dir="auto">
-										{gradeLabel(lang, set.grade)} ·{" "}
-										{subjectName(set.subject, lang)} ·{" "}
-										{periodName(project.periods, set.period, lang)}
-									</h3>
-									<p className="muted">
-										{say(
-											set.source === "job"
-												? "changes.from.job"
-												: "changes.from.key",
-										)}{" "}
-										· {set.at} · {set.model}
-									</p>
-								</div>
-								<div className="notes-row">
-									<button
-										type="button"
-										className="btn"
-										onClick={() => void accept(set)}
-									>
-										{say("changes.acceptAll")}
-									</button>
-									<button
-										type="button"
-										className="btn btn-quiet btn-danger"
-										onClick={() => void reject(set)}
-									>
-										{say("changes.reject")}
-									</button>
-								</div>
-							</header>
-							{set.units.map((review) => (
-								<UnitPair
-									key={review.number}
-									review={review}
-									reviewSet={set}
-									paths={paths}
-									say={say}
-									onAccept={(unit, lesson) => void accept(set, unit, lesson)}
-								/>
-							))}
-							<SetNotes set={set} say={say} />
-						</section>
-					))
+					sets.map((set) =>
+						set.kind === "exams" ? (
+							<ExamSet
+								key={set.key}
+								set={set}
+								paths={paths}
+								lang={lang}
+								say={say}
+								onAccept={(exam, paper) => void acceptExam(set, exam, paper)}
+								onReject={() => void rejectExam(set)}
+							/>
+						) : (
+							<section key={set.key} className="notes-actions">
+								<header className="new-head">
+									<div>
+										<h3 dir="auto">
+											{gradeLabel(lang, set.grade)} ·{" "}
+											{subjectName(set.subject, lang)} ·{" "}
+											{periodName(project.periods, set.period, lang)}
+										</h3>
+										<p className="muted">
+											{say(
+												set.source === "job"
+													? "changes.from.job"
+													: "changes.from.key",
+											)}{" "}
+											· {set.at} · {set.model}
+										</p>
+									</div>
+									<div className="notes-row">
+										<button
+											type="button"
+											className="btn"
+											onClick={() => void accept(set)}
+										>
+											{say("changes.acceptAll")}
+										</button>
+										<button
+											type="button"
+											className="btn btn-quiet btn-danger"
+											onClick={() => void reject(set)}
+										>
+											{say("changes.reject")}
+										</button>
+									</div>
+								</header>
+								{set.units.map((review) => (
+									<UnitPair
+										key={review.number}
+										review={review}
+										reviewSet={set}
+										paths={paths}
+										say={say}
+										onAccept={(unit, lesson) => void accept(set, unit, lesson)}
+									/>
+								))}
+								<SetNotes set={set} say={say} />
+							</section>
+						),
+					)
 				)}
 			</section>
 
@@ -974,8 +1696,10 @@ export function Changes({
 								<li className="job-row">
 									<span dir="auto">
 										{gradeLabel(lang, set.grade)} ·{" "}
-										{subjectName(set.subject, lang)} ·{" "}
-										{periodName(project.periods, set.period, lang)}
+										{subjectName(set.subject, lang)}
+										{set.kind === "exams"
+											? ` · ${say("changes.exams")}`
+											: ` · ${periodName(project.periods, set.period, lang)}`}
 									</span>
 									<span className="muted">
 										{say("changes.rejectedLine", {
@@ -986,7 +1710,11 @@ export function Changes({
 									<button
 										type="button"
 										className="btn btn-quiet btn-danger"
-										onClick={() => void deleteSet(set)}
+										onClick={() =>
+											void (set.kind === "exams"
+												? deleteExam(set)
+												: deleteSet(set))
+										}
 									>
 										{say("changes.deleteSet")}
 									</button>

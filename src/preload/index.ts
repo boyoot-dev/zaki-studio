@@ -123,6 +123,22 @@ const api: StudioApi = {
 		ipcRenderer.invoke("studio:collectUnitsJob", root, name),
 	deleteUnitsJob: (root, name) =>
 		ipcRenderer.invoke("studio:deleteUnitsJob", root, name),
+	examsPlan: (root, grade, subject) =>
+		ipcRenderer.invoke("studio:examsPlan", root, grade, subject),
+	writeExams: (root, grade, subject, limit) =>
+		ipcRenderer.invoke("studio:writeExams", root, grade, subject, limit),
+	prepareExamsJob: (root, targets, tool) =>
+		ipcRenderer.invoke("studio:prepareExamsJob", root, targets, tool),
+	collectExamsJob: (root, name) =>
+		ipcRenderer.invoke("studio:collectExamsJob", root, name),
+	deleteExamsJob: (root, name) =>
+		ipcRenderer.invoke("studio:deleteExamsJob", root, name),
+	acceptExams: (root, grade, subject, exam, paper) =>
+		ipcRenderer.invoke("studio:acceptExams", root, grade, subject, exam, paper),
+	rejectExams: (root, grade, subject) =>
+		ipcRenderer.invoke("studio:rejectExams", root, grade, subject),
+	deleteExams: (root, grade, subject) =>
+		ipcRenderer.invoke("studio:deleteExams", root, grade, subject),
 	acceptChanges: (root, grade, subject, period, unit, lesson) =>
 		ipcRenderer.invoke(
 			"studio:acceptChanges",

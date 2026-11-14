@@ -46,6 +46,9 @@ it. Nothing is uploaded anywhere else, and there is no telemetry.
   a job folder; shows the cost before a run and stops at a limit.
 - Proposes changes to the curriculum (the new or confirmed units with their lessons, skills
   and facts) for you to review; accepts, rejects or edits per unit or lesson.
+- Proposes a course's exam papers from its exam papers' and mark schemes' notes (papers,
+  parts, timing, marks, question types and a writing task's answer length); accepts, rejects
+  or edits per paper.
 - Exports the bundle that Mr. Zaki imports, checked by the same validator the app uses.
 
 ## Building from source
@@ -62,7 +65,7 @@ npm run dev        # opens the app on Windows
 |---|---|
 | `npm run dev` | Electron with hot reload for the page |
 | `npm run build` | builds `out/main`, `out/preload` and `out/renderer` |
-| `npm test` | unit tests (paths, the granted folders, the project file, the wizard's plan, the files, the window, the PDF settings, the model and its bundle, adoption, the register, the text, the zip limits, the reader window's two calls, the OCR settings, a whole scan on disk, the panes, the notes' rules and headers, the job folder, the key's keeping, the IPC surface, a notes run with a fake asker, a change set's checks and merge, a units job on disk, a units run with a fake asker) |
+| `npm test` | unit tests (paths, the granted folders, the project file, the wizard's plan, the files, the window, the PDF settings, the model and its bundle, adoption, the register, the text, the zip limits, the reader window's two calls, the OCR settings, a whole scan on disk, the panes, the notes' rules and headers, the job folder, the key's keeping, the IPC surface, a notes run with a fake asker, a change set's checks and merge, a units job on disk, a units run with a fake asker, an exam change set's checks and merge, an exams job on disk and an exams run with a fake asker) |
 | `npm run check` | Biome lint and format (`npx biome check --write` to fix) |
 | `npm run typecheck` | TypeScript, no output |
 | `npm start` | runs a build, for checking what an installer will ship |
@@ -114,23 +117,24 @@ so a project folder carries no trace of how anyone arranged it.
 ```
 src/main/       the main process: the window, the dialogs, the granted folders, the files,
                 the folder watch, the scan (register, reading, OCR, the hidden reader), the
-                notes (the key, OpenRouter, the run), the job folders, and the change sets
-                (their files, the units request, the merge)
+                notes (the key, OpenRouter, the run), the job folders, the change sets
+                (their files, the units request, the merge), and the exam change sets
+                (their files, the exams request, the merge)
 src/preload/    the small typed APIs: the page's (window.studio) and the reader's two calls
 src/renderer/   React: start screen, wizard, tree, viewers, Inbox, the New material panel,
                 the panes' borders, the Notes tab, the Changes tab, both languages; and the
                 hidden reader page
 src/shared/     the project file, the model and its bundle, adoption's decisions, the
                 register's rules, the text format, the notes' rules and the job's words, a
-                period and its change set, the path guard, the panes' widths, the words,
-                the APIs' types, the format copies (format/)
+                period and its change set, a course's exam change set, the path guard, the
+                panes' widths, the words, the APIs' types, the format copies (format/)
 scripts/        two build-time plugins (the subject list, the page's policy), the icon,
                 the language data's download, the material check, the notes trial, the units
                 trial, the dist wrapper
 resources/      the icon the window and the installer show, the rules the model gets
-                (`rules/note-rules.md` and `rules/unit-rules.md`), the Tesseract worker
-                (`ocr-worker.cjs`), and the language data `npm run tessdata` fetches (ignored
-                by git); `npm run icon` makes the icon
+                (`rules/note-rules.md`, `rules/unit-rules.md` and `rules/exam-rules.md`), the
+                Tesseract worker (`ocr-worker.cjs`), and the language data `npm run tessdata`
+                fetches (ignored by git); `npm run icon` makes the icon
 ```
 
 `src/shared/format/` is the reference reader of the bundle format (`bundle.ts`, `grades.ts`,
@@ -273,6 +277,47 @@ Two ways, as for the notes:
 Unit jobs share `.studio/jobs/` with notes jobs; each folder's own `job.json` says which kind
 it is, so each panel lists only its own.
 
+## Exams from notes
+
+Each course's exam papers and mark schemes have notes too, and those notes become the course's
+proposed exam papers (`src/shared/exam-changes.ts`). The input is the notes of the register
+files whose kind is `exam` or `mark-scheme`, newest academic year first and then by authority,
+and only the newest three academic years: the older years are left out and the request says
+which they were. A year's question paper and its mark scheme go together, and the course's
+current `exams` travel with the request so a part keeps its `id`.
+
+The model answers with the course's whole `exams` list in the bundle's own shape (format 2, so
+`answerWords` is allowed), a `sources` map from each part id to the register file ids it was
+read from, and `open` questions where the papers disagree. Every exam goes through
+`parseCourseExams`, so a writing task whose answer length runs backwards is refused with its
+path; every part needs at least one source, and a source must be an exam paper or mark scheme
+of that course, not a worksheet. The rules are `resources/rules/exam-rules.md`, pinned by a
+test: describe the format, never copy a passage or question, the newest year decides, and a
+writing task's printed length (`"من ٣٠٠ إلى ٤٠٠ كلمة"`) becomes `questions.answerWords` `[300,
+400]`.
+
+"Changes to review" shows an exam set beside the course's papers, paper by paper and part by
+part, with the fields that changed (`minutes 70 → 75`, `answerWords — → 300–400`) highlighted
+and the open questions listed. The choices are all of it, one paper, or reject. Accepting an
+exam set merges through the main process and writes `.studio/model/`, so the next export
+carries the new papers; a paper the author did not accept stays exactly as it was. A rejected
+set is kept as a file under `.studio/changes/` until it is deleted, as for units.
+
+Two ways, as for the notes and units:
+
+- **With a key.** One request per course: the rules as the system text, then the course's own
+  exams JSON and its exam notes newest year first in the user content. The default model is
+  the units step's; the cost is shown first and the limit stops a request that would pass it.
+- **With a job folder.** `.studio/jobs/<yyyy-mm-dd-hhmm>/` holds `README.md`, `rules.md`,
+  `courses/<grade>-<subject>/` (its `course.json` with the exams, and `notes/` numbered in
+  priority order) and an empty `out/`. Answers go to `out/<grade>-<subject>.json`. The prompt
+  and README are fixed in `src/shared/job.ts` and pinned by tests. Collecting refuses a wrong
+  name, a link, a non-file, 2 MB or more, bytes that are not UTF-8, and JSON that is not an
+  exam change set; collecting again skips what already waits for review.
+
+Exam jobs share `.studio/jobs/` with notes and units jobs; each folder's own `job.json` says
+which kind it is, so each panel lists only its own.
+
 ## The Curriculum tab and export
 
 The Curriculum tab shows grades → subjects → units (with their period) → lessons, with
@@ -333,7 +378,8 @@ The page is a web page that can see files on disk, so it is treated as one:
 - A change set is data too: the page sends only a grade, subject and period the model knows,
   and every path is built in the main process. The model text and the notes are user content;
   the system text is the rules plus the sentence that says the notes are data (pinned by a
-  test).
+  test). An exam change set works the same way with a grade and a subject, and its sources
+  must name exam papers or mark schemes of that course.
 - The hidden reader window has no Node and no network either, and its preload exposes exactly
   two calls (`src/shared/reader.ts`, tested): one takes a file's bytes and a page number from
   the main process, the other returns a picture. It never learns a path, and the main process
@@ -372,11 +418,11 @@ no icon set, no CSS framework, no clipboard library.
 
 ## Not in this build
 
-Units, lessons, skills and facts from notes are built in the Changes tab; guides, audio
-transcription, other providers than OpenRouter (the job folder covers any AI tool), `.doc`
-and `.ppt` (the old formats), watching a project folder while the Studio is open, the
-coverage map, editing in the Curriculum view, rebuilding, and the import button are not in
-this build.
+Units, lessons, skills and facts, and a course's exam papers, from notes are built in the
+Changes tab; guides, audio transcription, other providers than OpenRouter (the job folder
+covers any AI tool), `.doc` and `.ppt` (the old formats), watching a project folder while the
+Studio is open, the coverage map, editing in the Curriculum view, rebuilding, and the import
+button are not in this build.
 
 ## Developer notes
 

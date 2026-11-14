@@ -244,14 +244,30 @@ export type ChangeTargetView = {
 	pending: boolean;
 };
 
+/** One course of the model, as the Changes tab lists its exams (task 177). */
+export type ExamTargetView = {
+	grade: number;
+	subject: string;
+	/** The exams the course has now, and how many its exam files are. */
+	exams: number;
+	files: number;
+	notes: number;
+	/** The academic years older than the newest three that an exams request leaves out. */
+	yearsLeftOut: string[];
+	/** True when an exam change set for it waits for review. */
+	pending: boolean;
+};
+
 /** The units model and the spending limit; never the key. */
 export type ChangeSettings = { model: string; limit: number };
 
-/** What "Changes to review" shows: the periods, the sets, and the units jobs. */
+/** What "Changes to review" shows: the periods, the sets, and the units and exams jobs. */
 export type ChangesState =
 	| {
 			ok: true;
 			targets: ChangeTargetView[];
+			/** The courses with exam papers, for the exams step. */
+			examTargets: ExamTargetView[];
 			/** The sets waiting for review, newest first. */
 			sets: import("./changes").ChangeReview[];
 			/** The sets the author rejected, kept for reference until deleted. */
@@ -259,6 +275,8 @@ export type ChangesState =
 			settings: ChangeSettings;
 			keySet: boolean;
 			jobs: JobSummary[];
+			/** The exam jobs waiting for their tool's answer. */
+			examJobs: JobSummary[];
 	  }
 	| Failure;
 
@@ -280,6 +298,26 @@ export type ChangePlanView = {
 /** A plan with the settings it was made with; the key is still only a boolean. */
 export type UnitsPlanView =
 	| { ok: true; plan: ChangePlanView; limit: number; keySet: boolean }
+	| Failure;
+
+/** What one exam change set would do, as the page shows it before anything is sent. */
+export type ExamPlanView = {
+	model: string;
+	found: boolean;
+	priceIn: number | null;
+	priceOut: number | null;
+	exams: number;
+	parts: number;
+	notes: number;
+	yearsLeftOut: string[];
+	in: number;
+	out: number;
+	estimateUsd: number | null;
+};
+
+/** An exam plan with the settings it was made with; the key is still only a boolean. */
+export type ExamsPlanView =
+	| { ok: true; plan: ExamPlanView; limit: number; keySet: boolean }
 	| Failure;
 
 /** What writing a change set with the key gave: what it spent, and nothing about the key. */
@@ -479,6 +517,41 @@ export type StudioApi = {
 	collectUnitsJob(root: string, name: string): Promise<ChangesCollected>;
 	/** Deletes a units job's folder, after a confirmation. */
 	deleteUnitsJob(root: string, name: string): Promise<Done>;
+	/** What one course's exams would take, before anything is sent (task 177). */
+	examsPlan(
+		root: string,
+		grade: number,
+		subject: string,
+	): Promise<ExamsPlanView>;
+	/** Writes one course's exam change set with the author's key. */
+	writeExams(
+		root: string,
+		grade: number,
+		subject: string,
+		limit: number,
+	): Promise<ChangesWritten>;
+	/** Writes an exams job folder for the chosen courses, and returns its prompt. */
+	prepareExamsJob(
+		root: string,
+		targets: { grade: number; subject: string }[],
+		tool: JobTool,
+	): Promise<JobMade>;
+	/** Reads an exams job's out/ folder and keeps every set that passes the checks. */
+	collectExamsJob(root: string, name: string): Promise<ChangesCollected>;
+	/** Deletes an exams job's folder, after a confirmation. */
+	deleteExamsJob(root: string, name: string): Promise<Done>;
+	/** Accepts a whole exam change set, or one paper of it. */
+	acceptExams(
+		root: string,
+		grade: number,
+		subject: string,
+		exam?: number,
+		paper?: number,
+	): Promise<Done>;
+	/** Marks an exam change set as rejected, keeping it until it is deleted. */
+	rejectExams(root: string, grade: number, subject: string): Promise<Done>;
+	/** Deletes a rejected exam change set's file. */
+	deleteExams(root: string, grade: number, subject: string): Promise<Done>;
 	/** Merges a whole set, one unit, or one lesson into the model; the page sends no path. */
 	acceptChanges(
 		root: string,
