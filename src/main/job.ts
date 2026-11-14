@@ -19,6 +19,7 @@ import { join } from "node:path";
 
 import type { Failure } from "../shared/api.ts";
 import {
+	type ExamsJobCourse,
 	JOB_NAME,
 	type JobKind,
 	type JobRecord,
@@ -178,6 +179,7 @@ export function jobRecord(folder: string): JobRecord | null {
 			kind: jobKind(raw.kind),
 			ids,
 			courses: coursesOf(raw.courses),
+			exams: examsOf(raw.exams),
 		};
 	} catch {
 		return null;
@@ -204,6 +206,30 @@ function coursesOf(value: unknown): UnitsJobCourse[] {
 				subject: raw.subject,
 				period: raw.period,
 				units: typeof raw.units === "number" ? raw.units : 0,
+				notes: typeof raw.notes === "number" ? raw.notes : 0,
+			},
+		];
+	});
+}
+
+/** The course folders an exams job's record names, with every field the folders were made from. */
+function examsOf(value: unknown): ExamsJobCourse[] {
+	if (!Array.isArray(value)) return [];
+	return value.flatMap((item) => {
+		if (typeof item !== "object" || item === null) return [];
+		const raw = item as Record<string, unknown>;
+		if (
+			typeof raw.folder !== "string" ||
+			typeof raw.grade !== "number" ||
+			typeof raw.subject !== "string"
+		)
+			return [];
+		return [
+			{
+				folder: raw.folder,
+				grade: raw.grade,
+				subject: raw.subject,
+				exams: typeof raw.exams === "number" ? raw.exams : 0,
 				notes: typeof raw.notes === "number" ? raw.notes : 0,
 			},
 		];

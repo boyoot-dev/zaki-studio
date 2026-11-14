@@ -116,6 +116,7 @@ export function writeUnitsFolder(input: UnitsFolderInput): UnitsFolderResult {
 			kind: "units",
 			ids: lines.map((line) => line.folder),
 			courses: lines,
+			exams: [],
 		};
 		writeFileSync(
 			join(input.folder, "job.json"),

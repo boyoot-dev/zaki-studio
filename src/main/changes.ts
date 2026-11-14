@@ -32,6 +32,19 @@ import {
 	parseChangeSet,
 	reviewUnits,
 } from "../shared/changes.ts";
+import {
+	type ExamChoice,
+	type ExamGiven,
+	type ExamTarget,
+	examName,
+	examTargetOf,
+	mergeExams,
+	paperAcceptKey,
+	paperKeys,
+	parseExamChangeSet,
+	periodIds,
+	reviewExams,
+} from "../shared/exam-changes.ts";
 import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
 import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes.ts";
@@ -93,7 +106,7 @@ export function writeUnitsSettings(
 /** The course a target names, or null when the model has no such course. */
 export function targetCourse(
 	model: CurriculumModel,
-	target: Target,
+	target: { grade: number; subject: string },
 ): ModelCourse | null {
 	return (
 		model.courses.find(
@@ -128,6 +141,9 @@ export function changeFile(root: string, target: Target): string | null {
 
 /** One change set as it waits on disk: its state, where it came from, and the model's JSON. */
 export type StoredChange = {
+	/** "units" for units and lessons, "exams" for exam papers; a set from before task 177 is
+	 * a units set. */
+	kind: "units" | "exams";
 	state: "pending" | "rejected";
 	at: string;
 	source: "key" | "job";
@@ -151,6 +167,7 @@ function storedAt(path: string | null): StoredChange | null {
 					: null;
 		if (state === null) return null;
 		return {
+			kind: raw.kind === "exams" ? "exams" : "units",
 			state,
 			at: typeof raw.at === "string" ? raw.at : "",
 			source: raw.source === "job" ? "job" : "key",
@@ -205,6 +222,65 @@ function givenFor(
 	};
 }
 
+/** The registry view one course's exams are checked against: the course and its register rows. */
+function examGivenFor(
+	model: CurriculumModel,
+	files: readonly FileRow[],
+	target: ExamTarget,
+): ExamGiven | null {
+	const course = targetCourse(model, target);
+	if (course === null) return null;
+	return {
+		target,
+		periods: [...periodIds(model.curriculum.periods)],
+		exams: course.exams,
+		files,
+	};
+}
+
+/** The exam change set's own file, or null when the course could not name one. */
+export function examFile(
+	root: string,
+	grade: number,
+	subject: string,
+): string | null {
+	const name = examName(grade, subject);
+	if (name === null) return null;
+	return safePath(root, `${CHANGES_DIR}/${name}-exams.json`);
+}
+
+/** The name an exam change set takes in .studio/changes and in the review's key: "9-arabic". */
+export function examKey(grade: number, subject: string): string | null {
+	return examName(grade, subject);
+}
+
+/** A stored exam change set for a course, or null. */
+export function readExamStored(
+	root: string,
+	grade: number,
+	subject: string,
+): StoredChange | null {
+	return storedAt(examFile(root, grade, subject));
+}
+
+/** Writes an exam change set under .studio/changes, replacing what was there. */
+function saveExamStored(
+	root: string,
+	grade: number,
+	subject: string,
+	stored: StoredChange,
+): Failure | { ok: true } {
+	const path = examFile(root, grade, subject);
+	if (path === null) return failure("invalidName");
+	try {
+		mkdirSync(join(root, CHANGES_DIR), { recursive: true });
+		writeFileSync(path, `${JSON.stringify(stored, null, "\t")}\n`, "utf8");
+		return { ok: true };
+	} catch {
+		return failure("unreadable");
+	}
+}
+
 /** The stored sets' file names in .studio/changes, without a path. */
 function storedNames(root: string): string[] {
 	try {
@@ -235,27 +311,72 @@ export function readChangeSets(
 			typeof stored.set === "object" && stored.set !== null
 				? (stored.set as Record<string, unknown>)
 				: {};
-		const target = targetOf(raw.grade, raw.subject, raw.period);
-		if (target === null) continue;
-		if (`${changeName(target)}.json` !== name) continue;
-		const given = givenFor(root, model, files, target);
-		if (given === null) continue;
-		const base = {
-			key: changeName(target) ?? name,
-			grade: target.grade,
-			subject: target.subject,
-			period: target.period,
+		const common = {
+			kind: stored.kind,
 			state: stored.state,
 			at: stored.at,
 			source: stored.source,
 			model: stored.model,
 			accepted: stored.accepted,
 		};
+		if (stored.kind === "exams") {
+			const target = examTargetOf(raw.grade, raw.subject);
+			if (target === null) continue;
+			if (`${examName(target.grade, target.subject)}-exams.json` !== name)
+				continue;
+			const course = targetCourse(model, target);
+			if (course === null) continue;
+			const given = examGivenFor(model, files, target);
+			if (given === null) continue;
+			const key = examName(target.grade, target.subject) ?? name;
+			const base = {
+				...common,
+				key,
+				grade: target.grade,
+				subject: target.subject,
+				period: "",
+			};
+			const parsed = parseExamChangeSet(stored.set, given);
+			if (!parsed.ok) {
+				sets.push({
+					...base,
+					units: [],
+					exams: [],
+					open: [],
+					refused:
+						parsed.refused.length > 0
+							? parsed.refused
+							: [{ path: name, message: parsed.issue }],
+				});
+				continue;
+			}
+			sets.push({
+				...base,
+				units: [],
+				exams: reviewExams(course.exams, parsed.set),
+				open: parsed.set.open,
+				refused: parsed.refused,
+			});
+			continue;
+		}
+		const target = targetOf(raw.grade, raw.subject, raw.period);
+		if (target === null) continue;
+		if (`${changeName(target)}.json` !== name) continue;
+		const given = givenFor(root, model, files, target);
+		if (given === null) continue;
+		const base = {
+			...common,
+			key: changeName(target) ?? name,
+			grade: target.grade,
+			subject: target.subject,
+			period: target.period,
+		};
 		const parsed = parseChangeSet(stored.set, given);
 		if (!parsed.ok) {
 			sets.push({
 				...base,
 				units: [],
+				exams: [],
 				open: [],
 				refused: [{ path: name, message: parsed.issue }],
 			});
@@ -264,6 +385,7 @@ export function readChangeSets(
 		sets.push({
 			...base,
 			units: reviewUnits(parsed.set, targetCourse(model, target)),
+			exams: [],
 			open: parsed.set.open,
 			refused: parsed.refused,
 		});
@@ -295,6 +417,7 @@ export function saveChangeSet(
 	const parsed = parseChangeSet(set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	return saveStored(root, target, {
+		kind: "units",
 		state: "pending",
 		at: isoDay(today),
 		source,
@@ -316,7 +439,7 @@ export function acceptChange(input: {
 	choice: AcceptChoice;
 }): Failure | { ok: true; left: number } {
 	const stored = readStored(input.root, input.target);
-	if (stored === null || stored.state !== "pending")
+	if (stored === null || stored.state !== "pending" || stored.kind !== "units")
 		return failure("missing", "no change set to accept");
 	const given = givenFor(input.root, input.model, input.files, input.target);
 	if (given === null) return failure("missing", "no such course and period");
@@ -372,6 +495,128 @@ export function deleteChange(
 	target: Target,
 ): Failure | { ok: true } {
 	const path = changeFile(root, target);
+	if (path === null) return failure("invalidName");
+	try {
+		rmSync(path, { force: true });
+		return { ok: true };
+	} catch {
+		return failure("unreadable");
+	}
+}
+
+/**
+ * Keeps an exam change set for review: it is checked first, so a set the page could not review
+ * is never written. A set whose exams or sources fail the checks is refused with the reason.
+ */
+export function saveExamChangeSet(
+	root: string,
+	model: CurriculumModel,
+	files: readonly FileRow[],
+	target: ExamTarget,
+	set: unknown,
+	source: "key" | "job",
+	modelName: string,
+	today: Date,
+): Failure | { ok: true } {
+	const given = examGivenFor(model, files, target);
+	if (given === null) return failure("missing", "no such course");
+	const parsed = parseExamChangeSet(set, given);
+	if (!parsed.ok) return failure("refused", parsed.issue);
+	return saveExamStored(root, target.grade, target.subject, {
+		kind: "exams",
+		state: "pending",
+		at: isoDay(today),
+		source,
+		model: modelName,
+		accepted: [],
+		set,
+	});
+}
+
+/**
+ * Accepts an exam change set, or one paper of it, and writes the model. Every paper the author
+ * did not accept stays exactly as it was, and no paper is ever removed.
+ */
+export function acceptExamChange(input: {
+	root: string;
+	model: CurriculumModel;
+	files: readonly FileRow[];
+	target: ExamTarget;
+	choice: ExamChoice;
+}): Failure | { ok: true; left: number } {
+	const stored = readExamStored(
+		input.root,
+		input.target.grade,
+		input.target.subject,
+	);
+	if (stored === null || stored.state !== "pending" || stored.kind !== "exams")
+		return failure("missing", "no exam change set to accept");
+	const given = examGivenFor(input.model, input.files, input.target);
+	if (given === null) return failure("missing", "no such course");
+	const parsed = parseExamChangeSet(stored.set, given);
+	if (!parsed.ok) return failure("refused", parsed.issue);
+	const course = targetCourse(input.model, input.target);
+	if (course === null) return failure("missing", "no such course");
+	const merged = mergeExams(course, parsed.set, input.choice);
+	const next: CurriculumModel = {
+		...input.model,
+		courses: input.model.courses.map((entry) =>
+			entry.grade === course.grade && entry.subject === course.subject
+				? merged
+				: entry,
+		),
+	};
+	const written = writeModel(input.root, next);
+	if (!written.ok) return written;
+	const path = examFile(input.root, input.target.grade, input.target.subject);
+	if (path === null) return failure("invalidName");
+	if (input.choice.kind === "all") {
+		rmSync(path, { force: true });
+		return { ok: true, left: 0 };
+	}
+	const accepted = [
+		...new Set([
+			...stored.accepted,
+			paperAcceptKey(input.choice.exam, input.choice.paper),
+		]),
+	];
+	const left = paperKeys(parsed.set).filter(
+		(key) => !accepted.includes(key),
+	).length;
+	if (left === 0) {
+		rmSync(path, { force: true });
+		return { ok: true, left };
+	}
+	const kept = saveExamStored(
+		input.root,
+		input.target.grade,
+		input.target.subject,
+		{ ...stored, accepted },
+	);
+	return kept.ok ? { ok: true, left } : kept;
+}
+
+/** Keeps a rejected exam change set for reference until the author deletes it. */
+export function rejectExamChange(
+	root: string,
+	grade: number,
+	subject: string,
+): Failure | { ok: true } {
+	const stored = readExamStored(root, grade, subject);
+	if (stored === null) return failure("missing");
+	return saveExamStored(root, grade, subject, {
+		...stored,
+		state: "rejected",
+	});
+}
+
+/** Deletes an exam change set's file, rejected or not. */
+export function deleteExamChange(
+	root: string,
+	grade: number,
+	subject: string,
+): Failure | { ok: true } {
+	const path = examFile(root, grade, subject);
 	if (path === null) return failure("invalidName");
 	try {
 		rmSync(path, { force: true });

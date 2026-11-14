@@ -114,6 +114,7 @@ export function writeJobFolder(input: FolderInput): FolderResult {
 			kind: "notes",
 			ids: lines.map((line) => line.id),
 			courses: [],
+			exams: [],
 		};
 		writeFileSync(
 			join(input.folder, "job.json"),

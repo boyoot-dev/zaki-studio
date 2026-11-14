@@ -343,6 +343,31 @@ const en = {
 	"changes.refusal.invalid": "not a change set this project can review",
 	"changes.refusal.other": "refused",
 
+	// The exams step (task 177).
+	"changes.exams": "Exams",
+	"changes.examTargets": "Courses with exam papers",
+	"changes.examTargetsNone":
+		"No course has an exam paper or mark scheme with a note yet.",
+	"changes.examTargetLine": "{exams} exams · {files} files · {notes} notes",
+	"changes.examYears": "Older years left out: {years}",
+	"changes.examPlan":
+		"{exams} exams and {notes} notes: about {cost} with {model}.",
+	"changes.examJobTitle": "Exam papers with my AI tool",
+	"changes.examJobIntro":
+		"Prepare one folder per course with its exam notes, then collect the exam change sets your tool writes.",
+	"changes.examPrepare": "Prepare an exams job",
+	"changes.examJobReady": "The exams job is ready for {n} course folders.",
+	"changes.examWrite": "Write the exams with my key",
+	"changes.examPickHint": "Tick the courses to put in one exams job.",
+	"changes.examsNone": "No exam change set is waiting.",
+	"changes.paper": "Paper: {name}",
+	"changes.part": "Part: {name}",
+	"changes.changedFields": "Changed fields",
+	"changes.added": "added",
+	"changes.removed": "removed",
+	"changes.acceptPaper": "Accept this paper",
+	"changes.sources": "Read from",
+
 	// A file's details: what the register guessed, and the author may correct.
 	"detail.title": "The file's details",
 	"detail.hint":
@@ -739,6 +764,30 @@ const ar: Record<TextKey, string> = {
 	"changes.refusal.notUtf8": "ليس نصًّا بترميز UTF-8",
 	"changes.refusal.invalid": "ليس تغييرات يستطيع المشروع مراجعتها",
 	"changes.refusal.other": "رُفض",
+
+	// The exams step (task 177).
+	"changes.exams": "الامتحانات",
+	"changes.examTargets": "المواد التي لها أوراق امتحان",
+	"changes.examTargetsNone":
+		"لا توجد مادة لها ورقة امتحان أو نموذج إجابة بملاحظة بعد.",
+	"changes.examTargetLine": "{exams} امتحانًا · {files} ملفًا · {notes} ملاحظة",
+	"changes.examYears": "السنوات الأقدم المستبعدة: {years}",
+	"changes.examPlan": "{exams} امتحانًا و{notes} ملاحظة: نحو {cost} مع {model}.",
+	"changes.examJobTitle": "أوراق الامتحان بأداتي",
+	"changes.examJobIntro":
+		"جهّز مجلدًا لكل مادة مع ملاحظات امتحاناتها، ثم اجمع تغييرات الامتحانات التي تكتبها أداتك.",
+	"changes.examPrepare": "جهّز مهمة امتحانات",
+	"changes.examJobReady": "مهمة الامتحانات جاهزة لـ {n} مجلد مادة.",
+	"changes.examWrite": "اكتب الامتحانات بمفتاحي",
+	"changes.examPickHint": "علّم المواد التي تريد وضعها في مهمة امتحانات واحدة.",
+	"changes.examsNone": "لا يوجد تغيير امتحان في الانتظار.",
+	"changes.paper": "الورقة: {name}",
+	"changes.part": "الجزء: {name}",
+	"changes.changedFields": "الحقول المتغيرة",
+	"changes.added": "مضاف",
+	"changes.removed": "محذوف",
+	"changes.acceptPaper": "اقبل هذه الورقة",
+	"changes.sources": "مقروء من",
 
 	"detail.title": "بيانات الملف",
 	"detail.hint": "ما تغيّره هنا يبقى عند فحص المشروع مرة أخرى.",
