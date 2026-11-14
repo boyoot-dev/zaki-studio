@@ -10,6 +10,7 @@ import {
 	BUNDLE_LIMITS,
 	type Bundle,
 	type BundleExam,
+	type BundleFormatVersion,
 	type BundleIssue,
 	type BundlePeriod,
 	type BundleSkill,
@@ -158,7 +159,9 @@ export function courseFile(grade: number, subject: string): string {
 /**
  * The two values every bundle file carries (task 134, docs/tasks/134-bundle-format.md). The
  * format is published, so a tool writing bundles writes them; the shared parseBundle checks
- * them, which is why the round trip in model.test.ts runs the real parser.
+ * them, which is why the round trip in model.test.ts runs the real parser. This is the
+ * version a file takes when it uses nothing from version 2; export.ts writes 2 for a file
+ * whose exam parts give the answer's length (task 174).
  */
 export const BUNDLE_FORMAT = "mr-zaki-curriculum";
 export const BUNDLE_FORMAT_VERSION = 1;
@@ -166,7 +169,7 @@ export const BUNDLE_FORMAT_VERSION = 1;
 /** A bundle as it is written to a file: the shared type, plus the file's own two fields. */
 export type BundleFile = Bundle & {
 	format: typeof BUNDLE_FORMAT;
-	formatVersion: typeof BUNDLE_FORMAT_VERSION;
+	formatVersion: BundleFormatVersion;
 };
 
 /**

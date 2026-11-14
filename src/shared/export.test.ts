@@ -9,6 +9,7 @@ import {
 	filledModel,
 	issueLines,
 } from "./export.ts";
+import type { BundleExam } from "./format/bundle.ts";
 import type { CurriculumModel } from "./model.ts";
 import { type Project, presetPeriods, wizardProject } from "./project.ts";
 
@@ -92,6 +93,28 @@ describe("the bundle an export writes", () => {
 		}
 	});
 
+	it("says version 1 when no part gives the answer's length", () => {
+		const result = bundleText(project(), model(), 1, ["science"]);
+		expect(result.ok).toBe(true);
+		if (result.ok) expect(JSON.parse(result.text).formatVersion).toBe(1);
+	});
+
+	it("says version 2 when a part gives the answer's length", () => {
+		const withWriting = model();
+		const course = withWriting.courses[0];
+		if (course === undefined) throw new Error("the model has no course");
+		course.exams.push(writingExam([300, 400]));
+		const result = bundleText(project(), withWriting, 1, ["science"]);
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			const parsed = JSON.parse(result.text);
+			expect(parsed.formatVersion).toBe(2);
+			expect(
+				parsed.courses[0].exams[0].papers[0].parts[0].questions.answerWords,
+			).toEqual([300, 400]);
+		}
+	});
+
 	it("refuses a subject the app doesn't know", () => {
 		const result = bundleText(project(), model("astrology"), 1, ["science"]);
 		expect(result.ok).toBe(false);
@@ -101,6 +124,57 @@ describe("the bundle an export writes", () => {
 			);
 	});
 });
+
+/** A writing paper with one part, so a test can give the answer's length. */
+function writingExam(answerWords: [number, number] | null): BundleExam {
+	return {
+		period: null,
+		name: "Writing paper",
+		papers: [
+			{
+				name: "Paper 1: Writing",
+				skill: "writing",
+				language: null,
+				minutes: null,
+				marks: null,
+				parts: [
+					{
+						id: "write-1",
+						name: "Part 1",
+						nameEn: null,
+						instruction: null,
+						instructionEn: null,
+						marks: null,
+						minutes: null,
+						material: {
+							kind: "none",
+							description: null,
+							words: null,
+							speakers: null,
+							topic: null,
+							layout: [],
+							timing: null,
+						},
+						questions: {
+							count: 1,
+							types: { essay: 1 },
+							choiceOptions: null,
+							maxWords: null,
+							answerWords,
+							marksEach: null,
+							marksByType: null,
+							totalMarks: null,
+							example: null,
+							copiedExactly: null,
+						},
+						notes: null,
+						marking: null,
+					},
+				],
+			},
+		],
+	};
+}
 
 describe("the author's answers", () => {
 	it("go into the file the first export writes", () => {

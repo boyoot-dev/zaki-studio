@@ -1,0 +1,471 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Curriculum bundle, format version 2",
+	"description": "One JSON file that an author writes and an app reads: one curriculum, one author. Version 2 is version 1 plus questions.answerWords; a version 2 reader must also accept version 1 files. This schema covers the shapes, types, required fields and the limits that can be written in a schema. The rest (the file size, the total number of periods, the character rules, the web-address rule, the cross-references, and that answerWords' first number is no larger than its second) are listed in SPEC.md under \"Rules beyond the schema\".",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"format",
+		"formatVersion",
+		"id",
+		"version",
+		"nameEn",
+		"author",
+		"rights",
+		"periods",
+		"courses"
+	],
+	"properties": {
+		"format": { "const": "mr-zaki-curriculum" },
+		"formatVersion": { "enum": [2] },
+		"id": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+		},
+		"version": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 1000000
+		},
+		"nameEn": { "$ref": "#/$defs/text100" },
+		"nameAr": { "$ref": "#/$defs/text100" },
+		"author": { "$ref": "#/$defs/text80" },
+		"rights": { "$ref": "#/$defs/text300" },
+		"periods": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 60,
+			"items": { "$ref": "#/$defs/period1" }
+		},
+		"courses": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 400,
+			"items": { "$ref": "#/$defs/course" }
+		}
+	},
+	"$defs": {
+		"text100": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 100
+		},
+		"text80": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 80
+		},
+		"text300": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 300
+		},
+		"text150": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 150
+		},
+		"text400": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 400
+		},
+		"examText": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 2000,
+			"description": "May run over several lines, written as \\n."
+		},
+		"examName": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 300
+		},
+		"examStyle": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 8000,
+			"description": "May run over several lines, written as \\n."
+		},
+		"marks": {
+			"type": "number",
+			"minimum": 0,
+			"maximum": 200,
+			"multipleOf": 0.5
+		},
+		"count": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 200
+		},
+		"seconds": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 600
+		},
+		"number99": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 99
+		},
+		"periodId": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 40,
+			"pattern": "^[a-z0-9-]+$"
+		},
+		"partId": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 40,
+			"pattern": "^[a-z0-9-]+$"
+		},
+		"periodRef": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 40,
+			"description": "A period id of this bundle. Which ids exist, and (for units) that it is a leaf period, is a cross-reference and is beyond the schema."
+		},
+		"typeCounts": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"choice": { "$ref": "#/$defs/count" },
+				"truefalse": { "$ref": "#/$defs/count" },
+				"gap": { "$ref": "#/$defs/count" },
+				"short": { "$ref": "#/$defs/count" },
+				"form": { "$ref": "#/$defs/count" },
+				"yesno": { "$ref": "#/$defs/count" },
+				"match": { "$ref": "#/$defs/count" },
+				"picture": { "$ref": "#/$defs/count" },
+				"multi": { "$ref": "#/$defs/count" },
+				"truefalse-justify": { "$ref": "#/$defs/count" },
+				"extract": { "$ref": "#/$defs/count" },
+				"essay": { "$ref": "#/$defs/count" },
+				"calculation": { "$ref": "#/$defs/count" },
+				"labelling": { "$ref": "#/$defs/count" },
+				"ordering": { "$ref": "#/$defs/count" },
+				"other": { "$ref": "#/$defs/count" }
+			}
+		},
+		"typeMarks": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"choice": { "$ref": "#/$defs/marks" },
+				"truefalse": { "$ref": "#/$defs/marks" },
+				"gap": { "$ref": "#/$defs/marks" },
+				"short": { "$ref": "#/$defs/marks" },
+				"form": { "$ref": "#/$defs/marks" },
+				"yesno": { "$ref": "#/$defs/marks" },
+				"match": { "$ref": "#/$defs/marks" },
+				"picture": { "$ref": "#/$defs/marks" },
+				"multi": { "$ref": "#/$defs/marks" },
+				"truefalse-justify": { "$ref": "#/$defs/marks" },
+				"extract": { "$ref": "#/$defs/marks" },
+				"essay": { "$ref": "#/$defs/marks" },
+				"calculation": { "$ref": "#/$defs/marks" },
+				"labelling": { "$ref": "#/$defs/marks" },
+				"ordering": { "$ref": "#/$defs/marks" },
+				"other": { "$ref": "#/$defs/marks" }
+			}
+		},
+		"period1": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "nameEn"],
+			"properties": {
+				"id": { "$ref": "#/$defs/periodId" },
+				"nameEn": { "$ref": "#/$defs/text80" },
+				"nameAr": { "$ref": "#/$defs/text80" },
+				"wholeYear": { "type": "boolean" },
+				"periods": {
+					"type": "array",
+					"maxItems": 60,
+					"items": { "$ref": "#/$defs/period2" }
+				}
+			}
+		},
+		"period2": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "nameEn"],
+			"properties": {
+				"id": { "$ref": "#/$defs/periodId" },
+				"nameEn": { "$ref": "#/$defs/text80" },
+				"nameAr": { "$ref": "#/$defs/text80" },
+				"wholeYear": { "type": "boolean" },
+				"periods": {
+					"type": "array",
+					"maxItems": 60,
+					"items": { "$ref": "#/$defs/period3" }
+				}
+			}
+		},
+		"period3": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "nameEn"],
+			"properties": {
+				"id": { "$ref": "#/$defs/periodId" },
+				"nameEn": { "$ref": "#/$defs/text80" },
+				"nameAr": { "$ref": "#/$defs/text80" },
+				"wholeYear": { "type": "boolean" },
+				"periods": {
+					"type": "array",
+					"maxItems": 0,
+					"items": false
+				}
+			}
+		},
+		"skill": {
+			"anyOf": [
+				{ "$ref": "#/$defs/text300" },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["code", "text"],
+					"properties": {
+						"code": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 20
+						},
+						"text": { "$ref": "#/$defs/text300" }
+					}
+				}
+			]
+		},
+		"lesson": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["number", "title", "skills"],
+			"properties": {
+				"number": { "$ref": "#/$defs/number99" },
+				"title": { "$ref": "#/$defs/text150" },
+				"skills": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 20,
+					"items": { "$ref": "#/$defs/skill" }
+				},
+				"facts": {
+					"type": "array",
+					"maxItems": 25,
+					"items": { "$ref": "#/$defs/text400" }
+				},
+				"activity": { "enum": ["writing", "reading"] }
+			}
+		},
+		"unit": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["number", "period", "title", "lessons"],
+			"properties": {
+				"number": { "$ref": "#/$defs/number99" },
+				"period": { "$ref": "#/$defs/periodRef" },
+				"title": { "$ref": "#/$defs/text150" },
+				"source": { "enum": ["sheet", "provisional"] },
+				"keywords": {
+					"type": "array",
+					"maxItems": 40,
+					"items": { "$ref": "#/$defs/text400" }
+				},
+				"evidence": {
+					"type": "array",
+					"maxItems": 40,
+					"items": { "$ref": "#/$defs/text400" }
+				},
+				"lessons": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 40,
+					"items": { "$ref": "#/$defs/lesson" }
+				}
+			}
+		},
+		"timing": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"readingSeconds": { "$ref": "#/$defs/seconds" },
+				"plays": { "$ref": "#/$defs/count" },
+				"repeat": { "enum": ["segment", "whole"] },
+				"pauseSeconds": { "$ref": "#/$defs/seconds" },
+				"checkSeconds": { "$ref": "#/$defs/seconds" }
+			}
+		},
+		"material": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["kind"],
+			"properties": {
+				"kind": {
+					"enum": [
+						"talk",
+						"dialogue",
+						"conversation",
+						"interview",
+						"talk-and-interview",
+						"report",
+						"phone-message",
+						"messages",
+						"announcement",
+						"advert",
+						"extracts",
+						"exercises",
+						"situations",
+						"article",
+						"story",
+						"poem",
+						"letter",
+						"notices",
+						"form",
+						"notes",
+						"documents",
+						"mixed",
+						"none",
+						"other"
+					]
+				},
+				"description": { "$ref": "#/$defs/examText" },
+				"words": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 5000
+					}
+				},
+				"speakers": { "$ref": "#/$defs/count" },
+				"topic": { "enum": ["units", "outside-units"] },
+				"layout": {
+					"type": "array",
+					"items": {
+						"enum": [
+							"line-numbers",
+							"paragraph-numbers",
+							"gapped-text",
+							"inline-gaps",
+							"cloze",
+							"word-formation"
+						]
+					}
+				},
+				"timing": { "$ref": "#/$defs/timing" }
+			}
+		},
+		"questions": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["count", "types"],
+			"properties": {
+				"count": { "$ref": "#/$defs/count" },
+				"types": { "$ref": "#/$defs/typeCounts" },
+				"choiceOptions": {
+					"type": "integer",
+					"minimum": 3,
+					"maximum": 4
+				},
+				"maxWords": { "$ref": "#/$defs/count" },
+				"answerWords": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 5000
+					},
+					"description": "How long the answer must be, in words: the shortest and the longest. A schema cannot compare the two items, so the format also requires the first number to be no larger than the second."
+				},
+				"marksEach": { "$ref": "#/$defs/marks" },
+				"marksByType": { "$ref": "#/$defs/typeMarks" },
+				"totalMarks": { "$ref": "#/$defs/marks" },
+				"example": { "type": "boolean" },
+				"copiedExactly": { "type": "boolean" }
+			}
+		},
+		"part": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "material", "questions"],
+			"properties": {
+				"id": { "$ref": "#/$defs/partId" },
+				"name": { "$ref": "#/$defs/examName" },
+				"nameEn": { "$ref": "#/$defs/examName" },
+				"instruction": { "$ref": "#/$defs/examName" },
+				"instructionEn": { "$ref": "#/$defs/examName" },
+				"marks": { "$ref": "#/$defs/marks" },
+				"minutes": { "$ref": "#/$defs/count" },
+				"material": { "$ref": "#/$defs/material" },
+				"questions": { "$ref": "#/$defs/questions" },
+				"notes": { "$ref": "#/$defs/examText" },
+				"marking": { "$ref": "#/$defs/examText" }
+			}
+		},
+		"paper": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "skill", "parts"],
+			"properties": {
+				"name": { "$ref": "#/$defs/examName" },
+				"skill": {
+					"enum": ["listening", "reading", "writing", "speaking", "written"]
+				},
+				"language": { "enum": ["en", "ar", "fr"] },
+				"minutes": { "$ref": "#/$defs/count" },
+				"marks": { "$ref": "#/$defs/marks" },
+				"parts": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 8,
+					"items": { "$ref": "#/$defs/part" }
+				}
+			}
+		},
+		"exam": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "papers"],
+			"properties": {
+				"period": { "$ref": "#/$defs/periodRef" },
+				"name": { "$ref": "#/$defs/examName" },
+				"papers": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 6,
+					"items": { "$ref": "#/$defs/paper" }
+				}
+			}
+		},
+		"course": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["grade", "subject", "units"],
+			"properties": {
+				"grade": {
+					"type": "integer",
+					"minimum": -1,
+					"maximum": 12
+				},
+				"subject": { "type": "string", "minLength": 1 },
+				"examStyle": { "$ref": "#/$defs/examStyle" },
+				"exams": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 12,
+					"items": { "$ref": "#/$defs/exam" }
+				},
+				"units": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 60,
+					"items": { "$ref": "#/$defs/unit" }
+				}
+			}
+		}
+	}
+}

@@ -134,9 +134,10 @@ resources/      the icon the window and the installer show, the rules the model 
 ```
 
 `src/shared/format/` is the reference reader of the bundle format (`bundle.ts`, `grades.ts`,
-`web-address.ts` and the subject list). This repository is its home. Apps that read bundles,
-such as Mr. Zaki, copy these files byte for byte from a tagged commit here, so the Studio and
-the apps can never disagree about what a valid file is. Change them here, never in a copy.
+`web-address.ts` and the subject list). It reads version 1 and version 2 of the format. This
+repository is its home. Apps that read bundles, such as Mr. Zaki, copy these files byte for
+byte from a tagged commit here, so the Studio and the apps can never disagree about what a
+valid file is. Change them here, never in a copy.
 
 ## Opening an existing curriculum built elsewhere
 
@@ -288,7 +289,10 @@ the next start.
 and the version (the last copy's plus one). The author's name and rights sentence are asked
 for when the project still lacks them. The bundle is checked by the app's own `parseBundle`
 before anything is written; the save dialog picks the file, and a copy goes to
-`.studio/exports/v<N>.json`. Nothing is written when the check finds a problem.
+`.studio/exports/v<N>.json`. Nothing is written when the check finds a problem. The file says
+format version 1, or version 2 when an exam part gives how long the child's own answer must
+be (`questions.answerWords`), so a file that doesn't use the new field stays readable by
+version 1 readers.
 
 ## Security
 

@@ -3,7 +3,12 @@
 // dialog suggests. Pure and tested; src/main/export.ts reads the project, asks where to save
 // and writes the file.
 
-import { BUNDLE_LIMITS, type BundleIssue, checkText } from "./format/bundle.ts";
+import {
+	BUNDLE_LIMITS,
+	type BundleFormatVersion,
+	type BundleIssue,
+	checkText,
+} from "./format/bundle.ts";
 import {
 	type CurriculumModel,
 	checkBundle,
@@ -11,6 +16,20 @@ import {
 	toBundle,
 } from "./model.ts";
 import type { Project } from "./project.ts";
+
+/**
+ * The lowest format version that holds this model's file (task 174): 2 only when an exam part
+ * says how long the child's answer must be, otherwise 1. A file that doesn't use the new
+ * field stays readable by version 1 readers.
+ */
+function bundleFormatVersion(model: CurriculumModel): BundleFormatVersion {
+	for (const course of model.courses)
+		for (const exam of course.exams)
+			for (const paper of exam.papers)
+				for (const part of paper.parts)
+					if (part.questions.answerWords !== null) return 2;
+	return 1;
+}
 
 /**
  * The bundle text, or the parser's problems. The subject list is the app's own
@@ -23,7 +42,10 @@ export function bundleText(
 	version: number,
 	subjectIds: readonly string[],
 ): { ok: true; text: string } | { ok: false; issues: BundleIssue[] } {
-	const bundle = toBundle(model, project, version);
+	const bundle = {
+		...toBundle(model, project, version),
+		formatVersion: bundleFormatVersion(model),
+	};
 	const checked = checkBundle(bundle, subjectIds);
 	if (!checked.ok) return { ok: false, issues: checked.issues };
 	return { ok: true, text: modelFileText(bundle) };
