@@ -10,6 +10,8 @@ Write only a change set (JSON, the format below), nothing else.
 - Work only on units of the given period. Keep the units' numbers. A provisional unit
   whose sheets are now in the notes becomes "sheet". Its title and lessons follow the
   sheets, in the sheets' order and with their titles.
+  If the course has no unit in this period yet (a new course or an empty block), number
+  the units from the sheets, in the sheets' order.
 - Skills: what the child should be able to do, one line each, the sheet's learning
   outcomes where it states them (with their codes in "code").
 - Facts: what the child must know for the lesson, each one short, complete and
