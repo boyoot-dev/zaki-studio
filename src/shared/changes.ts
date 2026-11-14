@@ -95,6 +95,11 @@ export type Given = {
 	target: Target;
 	/** The period's units as the model has them now. */
 	units: readonly ModelUnit[];
+	/** True when this set may write new units for the period: it was made before the period
+	 * had any, so accepting one unit must not refuse the rest of its own set (task 178). */
+	allowNewUnits?: boolean;
+	/** Every unit number the course has, in any period, so a new unit can't take one. */
+	taken?: ReadonlySet<number>;
 	/** The register rows, so a source names a known file and one of its pages. */
 	files: readonly FileRow[];
 	/** One page's text, from .studio/text; "" when the file has no such page. */
@@ -320,13 +325,22 @@ function parseUnit(
 	}
 	const now = given.units.find((unit) => unit.number === number);
 	// A period with no unit yet (a new course, or a block the course has none in) has nothing
-	// to match: the set writes its units from the notes alone (task 178). Anywhere else a unit
-	// must already sit in this period, so a set can never invent one (task 158).
-	if (now === undefined && given.units.length > 0) {
+	// to match: the set writes its units from the notes alone (task 178). A set made that way
+	// may still add the rest after the author has accepted one of its units. Anywhere else a
+	// unit must already sit in this period, so a set can never invent one (task 158).
+	if (
+		now === undefined &&
+		given.units.length > 0 &&
+		given.allowNewUnits !== true
+	) {
 		add(
 			`${at}.number`,
 			`unit ${number} is not a unit of ${given.target.period}`,
 		);
+		return null;
+	}
+	if (now === undefined && given.taken?.has(number) === true) {
+		add(`${at}.number`, `unit ${number} is already a unit of another period`);
 		return null;
 	}
 	if (number < 0 || number > BUNDLE_LIMITS.numberMax) {

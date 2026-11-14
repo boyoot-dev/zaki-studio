@@ -797,9 +797,21 @@ describe("a new course built from the notes (task 178)", () => {
 			model: before.model,
 			files,
 			target: EIGHT,
-			choice: { kind: "all" },
+			choice: { kind: "unit", unit: 1 },
 		});
-		if (!accepted.ok) throw new Error(`accepting failed: ${accepted.code}`);
+		expect(accepted).toEqual({ ok: true, left: 1 });
+		// The rest of the same set is still acceptable after one unit is in the model.
+		const afterOne = readModel(project);
+		if (!afterOne.ok) throw new Error("the model was not read");
+		const second = acceptChange({
+			root: project,
+			model: afterOne.model,
+			files,
+			target: EIGHT,
+			choice: { kind: "unit", unit: 2 },
+		});
+		if (!second.ok) throw new Error(`accepting failed: ${second.code}`);
+		expect(second.left).toBe(0);
 		const read = readModel(project);
 		if (!read.ok) throw new Error("the model was not read");
 		const course = targetCourse(read.model, EIGHT);

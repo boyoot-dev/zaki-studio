@@ -23,7 +23,10 @@
   appended a proposed lesson), filtered by the author's choice (all / one unit / one lesson).
 - `acceptChange`, `acceptExamChange`, `saveChangeSet`, `saveExamChangeSet`, the job prep and
   the job collection all work from an empty course; accepting adds the course to the model
-  and `writeModel` writes its own `grade-<g>-<subject>.json`.
+  and `writeModel` writes its own `grade-<g>-<subject>.json`. A units set written for a period
+  with no unit yet is stored with `newUnits: true`, so accepting one of its units leaves the
+  rest of the same set acceptable (and re-writing or re-collecting it keeps that). A new unit
+  number may never take a number the course already uses in another period.
 - `readChangeSets` shows units and exams sets whose course does not exist yet.
 - `studio:changesState` builds its targets from the register as well as the model: every
   grade, subject and block with noted files is offered even without a course or a unit in that
@@ -55,8 +58,9 @@
   two units (and one unit / one lesson) to an empty course.
 - `src/shared/model.test.ts`: `emptyCourse` round-trips through the model's writer and reader.
 - `src/main/changes.test.ts`: `allowedTarget`'s four cases; a stored set for Grade 8 Arabic
-  block 1 is reviewed, accepted, gives the model that course with its two units, writes its
-  course file, and exports a bundle the shared parser accepts.
+  block 1 is reviewed, accepted one unit at a time (the rest stays acceptable), gives the
+  model that course with its two units, writes its course file, and exports a bundle the
+  shared parser accepts.
 - `src/main/exams.test.ts`: a plan for a course the model has not got, and an exam set for
   Grade 8 French that is reviewed and accepted into a new course with those papers.
 - `src/main/units.test.ts`: the plan for a new course instead of the old "null" case.
@@ -115,7 +119,7 @@
 `npm run check`
 
 ```
-Checked 131 files in 201ms. No fixes applied.
+Checked 131 files in 123ms. No fixes applied.
 ```
 
 `npm run typecheck`
@@ -130,5 +134,5 @@ Checked 131 files in 201ms. No fixes applied.
 
 ```
 out/renderer/assets/index-BxfHSgX9.js              833.31 kB
-✓ built in 123ms
+✓ built in 240ms
 ```

@@ -188,19 +188,23 @@ export function blockPeriods(block: string): string[] {
 /**
  * The request the change set's own file and the register are checked against. A course the
  * project has not got yet, or a block it has no unit in, is an empty course: the set writes
- * the units from the notes alone (task 178).
+ * the units from the notes alone (task 178). `allowNewUnits` keeps a set made for such a
+ * period acceptable after the author has accepted one of its units.
  */
 function givenFor(
 	root: string,
 	model: CurriculumModel,
 	files: readonly FileRow[],
 	target: Target,
+	allowNewUnits = false,
 ) {
 	const course =
 		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
 	return {
 		target,
 		units: periodUnits(course, target.period),
+		allowNewUnits,
+		taken: new Set(course.units.map((unit) => unit.number)),
 		files,
 		page: (id: string, page: number) => readPageText(root, id, page),
 		pages: (id: string) => readPageCount(root, id),
@@ -240,6 +244,9 @@ export type StoredChange = {
 	source: "key" | "job";
 	model: string;
 	accepted: string[];
+	/** True when the set was written for a period with no unit yet, so accepting one of its
+	 * units leaves the rest acceptable (task 178). */
+	newUnits?: boolean;
 	set: unknown;
 };
 
@@ -266,6 +273,7 @@ function storedAt(path: string | null): StoredChange | null {
 			accepted: Array.isArray(raw.accepted)
 				? raw.accepted.filter((key): key is string => typeof key === "string")
 				: [],
+			newUnits: raw.newUnits === true,
 			set: raw.set,
 		};
 	} catch {
@@ -417,7 +425,13 @@ export function readChangeSets(
 		const target = targetOf(raw.grade, raw.subject, raw.period);
 		if (target === null) continue;
 		if (`${changeName(target)}.json` !== name) continue;
-		const given = givenFor(root, model, files, target);
+		const given = givenFor(
+			root,
+			model,
+			files,
+			target,
+			stored.newUnits === true,
+		);
 		const base = {
 			...common,
 			key: changeName(target) ?? name,
@@ -466,7 +480,11 @@ export function saveChangeSet(
 	modelName: string,
 	today: Date,
 ): Failure | { ok: true } {
-	const given = givenFor(root, model, files, target);
+	// A set written for a period with no unit yet may still add its units after the author has
+	// accepted one of them; the set on disk remembers that it was made that way.
+	const known = readStored(root, target);
+	const allowNewUnits = known?.newUnits === true;
+	const given = givenFor(root, model, files, target, allowNewUnits);
 	const parsed = parseChangeSet(set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	return saveStored(root, target, {
@@ -476,6 +494,7 @@ export function saveChangeSet(
 		source,
 		model: modelName,
 		accepted: [],
+		newUnits: allowNewUnits || given.units.length === 0,
 		set,
 	});
 }
@@ -494,7 +513,13 @@ export function acceptChange(input: {
 	const stored = readStored(input.root, input.target);
 	if (stored === null || stored.state !== "pending" || stored.kind !== "units")
 		return failure("missing", "no change set to accept");
-	const given = givenFor(input.root, input.model, input.files, input.target);
+	const given = givenFor(
+		input.root,
+		input.model,
+		input.files,
+		input.target,
+		stored.newUnits === true,
+	);
 	const parsed = parseChangeSet(stored.set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	const course =
