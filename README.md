@@ -125,9 +125,10 @@ src/renderer/   React: start screen, wizard, tree, viewers, Inbox, the New mater
                 the panes' borders, the Notes tab, the Changes tab, both languages; and the
                 hidden reader page
 src/shared/     the project file, the model and its bundle, adoption's decisions, the
-                register's rules, the text format, the notes' rules and the job's words, a
-                period and its change set, a course's exam change set, the path guard, the
-                panes' widths, the words, the APIs' types, the format copies (format/)
+                register's rules, the text format, the notes' rules and the job's words, the
+                Notes list's filter, a period and its change set, a course's exam change set,
+                the path guard, the panes' widths, the words, the APIs' types, the format
+                copies (format/)
 scripts/        two build-time plugins (the subject list, the page's policy), the icon,
                 the language data's download, the material check, the notes trial, the units
                 trial, the dist wrapper
@@ -209,6 +210,12 @@ way the pipeline writes them (`src/shared/notes.ts`). The note is
 curriculum, and who wrote it), then the model's body. It is shown beside the file as plain
 text, never as HTML. A note is never rewritten unless the author says "Write again".
 
+The list of files can be narrowed with three selects — grade, subject, and block (or "no
+block") — and "only files without a note", which is on at first. The selects offer only the
+values the files have, and the choice is kept for the session, never written to the project.
+The filter only hides rows: a file chosen and then hidden stays chosen, and the count of
+chosen files includes it. The group checkbox ticks only the rows the filter leaves visible.
+
 Two ways, and the author chooses:
 
 - **With a key.** The Notes tab takes an OpenRouter key and keeps it with Electron's
@@ -245,6 +252,12 @@ with its pages. The rules are `resources/rules/unit-rules.md`, pinned by a test.
 own facts (`own: true`) are never changed or removed; what they accept replaces the rest with
 `status: "draft"`.
 
+A course need not exist yet, and neither does a block. Every grade, subject and block that has
+files with notes is offered: a new course says "new course", and a period the course has no
+unit in says "new block". The request then carries an empty course, so the model writes that
+period's units from the notes alone, and accepting the set adds the course to the model (its
+own file through `courseFile`) with the units it proposes. The rules are the same.
+
 A change set is one JSON object per course and period: `grade`, `subject`, `period`, `units`
 and `open` questions. Every text goes through the app's own bundle checks, so a bad title, key
 word, skill or fact is refused and listed, not kept. A unit outside the given period, and a
@@ -280,11 +293,13 @@ it is, so each panel lists only its own.
 ## Exams from notes
 
 Each course's exam papers and mark schemes have notes too, and those notes become the course's
-proposed exam papers (`src/shared/exam-changes.ts`). The input is the notes of the register
-files whose kind is `exam` or `mark-scheme`, newest academic year first and then by authority,
-and only the newest three academic years: the older years are left out and the request says
-which they were. A year's question paper and its mark scheme go together, and the course's
-current `exams` travel with the request so a part keeps its `id`.
+proposed exam papers (`src/shared/exam-changes.ts`). A course the project has not got yet is
+offered as a new course too: the request carries an empty course, and accepting the set adds
+it to the model with those papers. The input is the notes of the register files whose kind is
+`exam` or `mark-scheme`, newest academic year first and then by authority, and only the newest
+three academic years: the older years are left out and the request says which they were. A
+year's question paper and its mark scheme go together, and the course's current `exams` travel
+with the request so a part keeps its `id`.
 
 The model answers with the course's whole `exams` list in the bundle's own shape (format 2, so
 `answerWords` is allowed), a `sources` map from each part id to the register file ids it was

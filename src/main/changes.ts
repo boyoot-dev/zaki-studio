@@ -4,10 +4,12 @@
 // writes the same files into `.studio/jobs/<yyyy-mm-dd-hhmm>/` as task 157 does for notes.
 //
 // The page sends only a target (grade, subject, period) and, for a job, its name; every path is
-// built here from the project root through safePath, and a target counts only when the model
-// has that course and period. Collecting refuses a wrong name, a link (lstat, including a
-// linked out/ folder), a file that is not regular, one of 2 MB or more, bytes that are not
-// UTF-8, and JSON that is not a change set; nothing it refuses is kept.
+// built here from the project root through safePath, and a target counts only when the year
+// can name its grade, subject and period — a course the project has not got yet, or a block it
+// has no unit in, counts too (task 178), and its request carries an empty course. Collecting
+// refuses a wrong name, a link (lstat, including a linked out/ folder), a file that is not
+// regular, one of 2 MB or more, bytes that are not UTF-8, and JSON that is not a change set;
+// nothing it refuses is kept.
 //
 // Cost: writing a set with the author's key is one request per course and period; the plan
 // prices it before it is sent, and the limit stops a request that would pass it.
@@ -45,12 +47,15 @@ import {
 	periodIds,
 	reviewExams,
 } from "../shared/exam-changes.ts";
+import { GRADE_MAX, GRADE_MIN } from "../shared/format/grades.ts";
 import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
+import { emptyCourse } from "../shared/model.ts";
 import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes.ts";
 import {
 	type AcceptChoice,
 	acceptKey,
+	blockOf,
 	changeName,
 	MAX_CHANGE_BYTES,
 	notedRows,
@@ -116,20 +121,110 @@ export function targetCourse(
 	);
 }
 
-/** A target the model knows, and whose course has a unit in that period, or null. */
-export function knownTarget(
+/** A target the model may build, and whether it is a course the project has not got yet. */
+export type AllowedTarget = Target & { isNew: boolean };
+
+/** The periods the year holds, at any level. */
+function periodIdsOf(model: CurriculumModel): Set<string> {
+	return periodIds(model.curriculum.periods);
+}
+
+/** True when a period is one the year can name, or a block of 1 to 6 for a year with none. */
+function periodAllowed(model: CurriculumModel, period: string): boolean {
+	const ids = periodIdsOf(model);
+	if (ids.size === 0) return /^block-[1-6]$/.test(period);
+	return ids.has(period);
+}
+
+/**
+ * A target the units step may build (task 178), or null when it names something the project
+ * cannot be about. A new course and a block the course has no unit in are both allowed; the
+ * change set's rules do not change, and the request's course is simply empty.
+ */
+export function allowedTarget(
 	model: CurriculumModel,
 	grade: unknown,
 	subject: unknown,
 	period: unknown,
-): Target | null {
+	subjectIds: readonly string[],
+): AllowedTarget | null {
 	const target = targetOf(grade, subject, period);
 	if (target === null) return null;
-	const course = targetCourse(model, target);
-	if (course === null) return null;
-	return course.units.some((unit) => unit.period === target.period)
-		? target
-		: null;
+	if (target.grade < GRADE_MIN || target.grade > GRADE_MAX) return null;
+	if (!subjectIds.includes(target.subject)) return null;
+	if (!periodAllowed(model, target.period)) return null;
+	return { ...target, isNew: targetCourse(model, target) === null };
+}
+
+/** A course the exams step may build, and whether the project has it yet. */
+export type AllowedExamTarget = ExamTarget & { isNew: boolean };
+
+/** A course the exams step may build, or null when its grade or subject is not one we know. */
+export function allowedExamTarget(
+	model: CurriculumModel,
+	grade: unknown,
+	subject: unknown,
+	subjectIds: readonly string[],
+): AllowedExamTarget | null {
+	const target = examTargetOf(grade, subject);
+	if (target === null) return null;
+	if (target.grade < GRADE_MIN || target.grade > GRADE_MAX) return null;
+	if (!subjectIds.includes(target.subject)) return null;
+	return { ...target, isNew: targetCourse(model, target) === null };
+}
+
+/** The periods a register block names, for a target built from the material itself. */
+export function blockPeriods(block: string): string[] {
+	return block
+		.split("&")
+		.map((part) => part.trim())
+		.filter((part) => part !== "")
+		.flatMap((part) => {
+			const period = `block-${part}`;
+			return blockOf(period) === part ? [period] : [];
+		});
+}
+
+/**
+ * The request the change set's own file and the register are checked against. A course the
+ * project has not got yet, or a block it has no unit in, is an empty course: the set writes
+ * the units from the notes alone (task 178). `allowNewUnits` keeps a set made for such a
+ * period acceptable after the author has accepted one of its units.
+ */
+function givenFor(
+	root: string,
+	model: CurriculumModel,
+	files: readonly FileRow[],
+	target: Target,
+	allowNewUnits = false,
+) {
+	const course =
+		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
+	return {
+		target,
+		units: periodUnits(course, target.period),
+		allowNewUnits,
+		taken: new Set(course.units.map((unit) => unit.number)),
+		files,
+		page: (id: string, page: number) => readPageText(root, id, page),
+		pages: (id: string) => readPageCount(root, id),
+	};
+}
+
+/** The registry view one course's exams are checked against: the course and its register rows. */
+function examGivenFor(
+	model: CurriculumModel,
+	files: readonly FileRow[],
+	target: ExamTarget,
+): ExamGiven {
+	const course =
+		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
+	return {
+		target,
+		periods: [...periodIds(model.curriculum.periods)],
+		exams: course.exams,
+		files,
+	};
 }
 
 /** The change set's own file, or null when the target could not name one. */
@@ -149,6 +244,9 @@ export type StoredChange = {
 	source: "key" | "job";
 	model: string;
 	accepted: string[];
+	/** True when the set was written for a period with no unit yet, so accepting one of its
+	 * units leaves the rest acceptable (task 178). */
+	newUnits?: boolean;
 	set: unknown;
 };
 
@@ -175,6 +273,7 @@ function storedAt(path: string | null): StoredChange | null {
 			accepted: Array.isArray(raw.accepted)
 				? raw.accepted.filter((key): key is string => typeof key === "string")
 				: [],
+			newUnits: raw.newUnits === true,
 			set: raw.set,
 		};
 	} catch {
@@ -202,40 +301,6 @@ function saveStored(
 	} catch {
 		return failure("unreadable");
 	}
-}
-
-/** The reader's view of one target, or null when the model no longer has it. */
-function givenFor(
-	root: string,
-	model: CurriculumModel,
-	files: readonly FileRow[],
-	target: Target,
-) {
-	const course = targetCourse(model, target);
-	if (course === null) return null;
-	return {
-		target,
-		units: periodUnits(course, target.period),
-		files,
-		page: (id: string, page: number) => readPageText(root, id, page),
-		pages: (id: string) => readPageCount(root, id),
-	};
-}
-
-/** The registry view one course's exams are checked against: the course and its register rows. */
-function examGivenFor(
-	model: CurriculumModel,
-	files: readonly FileRow[],
-	target: ExamTarget,
-): ExamGiven | null {
-	const course = targetCourse(model, target);
-	if (course === null) return null;
-	return {
-		target,
-		periods: [...periodIds(model.curriculum.periods)],
-		exams: course.exams,
-		files,
-	};
 }
 
 /** The exam change set's own file, or null when the course could not name one. */
@@ -325,9 +390,7 @@ export function readChangeSets(
 			if (`${examName(target.grade, target.subject)}-exams.json` !== name)
 				continue;
 			const course = targetCourse(model, target);
-			if (course === null) continue;
 			const given = examGivenFor(model, files, target);
-			if (given === null) continue;
 			const key = examName(target.grade, target.subject) ?? name;
 			const base = {
 				...common,
@@ -353,7 +416,7 @@ export function readChangeSets(
 			sets.push({
 				...base,
 				units: [],
-				exams: reviewExams(course.exams, parsed.set),
+				exams: reviewExams(course?.exams ?? [], parsed.set),
 				open: parsed.set.open,
 				refused: parsed.refused,
 			});
@@ -362,8 +425,13 @@ export function readChangeSets(
 		const target = targetOf(raw.grade, raw.subject, raw.period);
 		if (target === null) continue;
 		if (`${changeName(target)}.json` !== name) continue;
-		const given = givenFor(root, model, files, target);
-		if (given === null) continue;
+		const given = givenFor(
+			root,
+			model,
+			files,
+			target,
+			stored.newUnits === true,
+		);
 		const base = {
 			...common,
 			key: changeName(target) ?? name,
@@ -412,8 +480,11 @@ export function saveChangeSet(
 	modelName: string,
 	today: Date,
 ): Failure | { ok: true } {
-	const given = givenFor(root, model, files, target);
-	if (given === null) return failure("missing", "no such course and period");
+	// A set written for a period with no unit yet may still add its units after the author has
+	// accepted one of them; the set on disk remembers that it was made that way.
+	const known = readStored(root, target);
+	const allowNewUnits = known?.newUnits === true;
+	const given = givenFor(root, model, files, target, allowNewUnits);
 	const parsed = parseChangeSet(set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	return saveStored(root, target, {
@@ -423,6 +494,7 @@ export function saveChangeSet(
 		source,
 		model: modelName,
 		accepted: [],
+		newUnits: allowNewUnits || given.units.length === 0,
 		set,
 	});
 }
@@ -441,20 +513,29 @@ export function acceptChange(input: {
 	const stored = readStored(input.root, input.target);
 	if (stored === null || stored.state !== "pending" || stored.kind !== "units")
 		return failure("missing", "no change set to accept");
-	const given = givenFor(input.root, input.model, input.files, input.target);
-	if (given === null) return failure("missing", "no such course and period");
+	const given = givenFor(
+		input.root,
+		input.model,
+		input.files,
+		input.target,
+		stored.newUnits === true,
+	);
 	const parsed = parseChangeSet(stored.set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
-	const course = targetCourse(input.model, input.target);
-	if (course === null) return failure("missing", "no such course");
+	const course =
+		targetCourse(input.model, input.target) ??
+		emptyCourse(input.target.grade, input.target.subject);
 	const merged = mergeCourse(course, parsed.set, input.choice);
+	const exists = targetCourse(input.model, input.target) !== null;
 	const next: CurriculumModel = {
 		...input.model,
-		courses: input.model.courses.map((entry) =>
-			entry.grade === course.grade && entry.subject === course.subject
-				? merged
-				: entry,
-		),
+		courses: exists
+			? input.model.courses.map((entry) =>
+					entry.grade === course.grade && entry.subject === course.subject
+						? merged
+						: entry,
+				)
+			: [...input.model.courses, merged],
 	};
 	const written = writeModel(input.root, next);
 	if (!written.ok) return written;
@@ -519,7 +600,6 @@ export function saveExamChangeSet(
 	today: Date,
 ): Failure | { ok: true } {
 	const given = examGivenFor(model, files, target);
-	if (given === null) return failure("missing", "no such course");
 	const parsed = parseExamChangeSet(set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	return saveExamStored(root, target.grade, target.subject, {
@@ -552,19 +632,22 @@ export function acceptExamChange(input: {
 	if (stored === null || stored.state !== "pending" || stored.kind !== "exams")
 		return failure("missing", "no exam change set to accept");
 	const given = examGivenFor(input.model, input.files, input.target);
-	if (given === null) return failure("missing", "no such course");
 	const parsed = parseExamChangeSet(stored.set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
-	const course = targetCourse(input.model, input.target);
-	if (course === null) return failure("missing", "no such course");
+	const course =
+		targetCourse(input.model, input.target) ??
+		emptyCourse(input.target.grade, input.target.subject);
 	const merged = mergeExams(course, parsed.set, input.choice);
+	const exists = targetCourse(input.model, input.target) !== null;
 	const next: CurriculumModel = {
 		...input.model,
-		courses: input.model.courses.map((entry) =>
-			entry.grade === course.grade && entry.subject === course.subject
-				? merged
-				: entry,
-		),
+		courses: exists
+			? input.model.courses.map((entry) =>
+					entry.grade === course.grade && entry.subject === course.subject
+						? merged
+						: entry,
+				)
+			: [...input.model.courses, merged],
 	};
 	const written = writeModel(input.root, next);
 	if (!written.ok) return written;
@@ -658,9 +741,11 @@ export function prepareUnitsJob(
 ): UnitsJobMade | Failure {
 	const noted = input.noted ?? noteIds(input.root);
 	const courses = input.targets.flatMap((target) => {
-		const course = targetCourse(input.model, target);
+		const course =
+			targetCourse(input.model, target) ??
+			emptyCourse(target.grade, target.subject);
 		const folder = changeName(target);
-		if (course === null || folder === null) return [];
+		if (folder === null) return [];
 		const notes = notesOrder(
 			notedRows(targetRows(input.rows, target), noted),
 		).flatMap((row) => {
@@ -787,10 +872,6 @@ export function collectUnitsJob(
 			continue;
 		}
 		const given = givenFor(input.root, input.model, input.files, wanted);
-		if (given === null) {
-			outcome.refused.push({ name: entry, code: "unknown" });
-			continue;
-		}
 		const parsed = parseChangeSet(value, given);
 		if (!parsed.ok) {
 			outcome.refused.push({ name: entry, code: "invalid" });

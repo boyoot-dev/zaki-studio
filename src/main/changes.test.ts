@@ -22,12 +22,14 @@ import type { Project } from "../shared/project.ts";
 import { MAX_CHANGE_BYTES } from "../shared/targets.ts";
 import {
 	acceptChange,
+	allowedTarget,
 	collectUnitsJob,
 	deleteChange,
 	prepareUnitsJob,
 	readChangeSets,
 	readStored,
 	rejectChange,
+	saveChangeSet,
 	targetCourse,
 } from "./changes.ts";
 import { listJobs } from "./job.ts";
@@ -152,6 +154,13 @@ function model(): CurriculumModel {
 			author: "",
 			rights: "",
 			periods: [
+				{
+					id: "block-1",
+					nameEn: "Block 1",
+					nameAr: "المرحلة 1",
+					wholeYear: false,
+					periods: [],
+				},
 				{
 					id: "block-3",
 					nameEn: "Block 3",
@@ -663,5 +672,202 @@ describe("a set parsed from the review's own reading", () => {
 		const fact = parsed.set.units[0]?.lessons[0]?.facts[0];
 		expect(fact?.pageOk).toBe(true);
 		expect(fact?.copy).toBeNull();
+	});
+});
+
+describe("the targets a change set may be built for (task 178)", () => {
+	const SUBJECTS = ["science", "arabic"];
+
+	it("allows a course that has a unit in the period, and does not call it new", () => {
+		expect(allowedTarget(model(), 7, "science", "block-3", SUBJECTS)).toEqual({
+			grade: 7,
+			subject: "science",
+			period: "block-3",
+			isNew: false,
+		});
+	});
+
+	it("allows a block the course has no unit in yet", () => {
+		expect(allowedTarget(model(), 7, "science", "block-1", SUBJECTS)).toEqual({
+			grade: 7,
+			subject: "science",
+			period: "block-1",
+			isNew: false,
+		});
+	});
+
+	it("allows a grade and subject the project has no course for", () => {
+		expect(allowedTarget(model(), 8, "arabic", "block-1", SUBJECTS)).toEqual({
+			grade: 8,
+			subject: "arabic",
+			period: "block-1",
+			isNew: true,
+		});
+	});
+
+	it("refuses an unknown subject, an impossible grade or a period the year lacks", () => {
+		expect(
+			allowedTarget(model(), 8, "wizardry", "block-1", SUBJECTS),
+		).toBeNull();
+		expect(
+			allowedTarget(model(), 15, "science", "block-1", SUBJECTS),
+		).toBeNull();
+		expect(
+			allowedTarget(model(), 7, "science", "block-9", SUBJECTS),
+		).toBeNull();
+		expect(allowedTarget(model(), 7, "science", "term-1", SUBJECTS)).toBeNull();
+	});
+});
+
+describe("a new course built from the notes (task 178)", () => {
+	const EIGHT = { grade: 8, subject: "arabic", period: "block-1" };
+	const FOLDER_EIGHT = "8-arabic-block-1";
+	const ARAB = "111111111111";
+
+	/** The register row of the new course's one made-up sheet. */
+	function arabRow(): FileRow {
+		return row(ARAB, { grade: 8, subject: "arabic", block: "1" });
+	}
+
+	/** A set with the two units the model writes for a course that has none. */
+	function newCourseSet(): Record<string, unknown> {
+		return {
+			grade: 8,
+			subject: "arabic",
+			period: "block-1",
+			units: [1, 2].map((number) => ({
+				number,
+				title: `Unit ${number}`,
+				source: "sheet",
+				keywords: [],
+				evidence: [],
+				lessons: [
+					{
+						number: 1,
+						title: "First lesson",
+						activity: null,
+						skills: [{ code: null, text: "say a word" }],
+						facts: [
+							{
+								text: `A made-up fact of unit ${number}.`,
+								sources: [`${ARAB}#p1`],
+							},
+						],
+					},
+				],
+			})),
+			open: [],
+		};
+	}
+
+	it("keeps the set for review, then adds the course and its units on accept", () => {
+		const files = [arabRow()];
+		writeTextFile(
+			project,
+			ARAB,
+			`# Grade 8/Arabic/${ARAB}.pdf\n\n## Page 1\nA made-up page about handwriting.\n`,
+		);
+		const before = readModel(project);
+		if (!before.ok) throw new Error("the model was not read");
+		expect(targetCourse(before.model, EIGHT)).toBeNull();
+
+		const saved = saveChangeSet(
+			project,
+			before.model,
+			files,
+			EIGHT,
+			newCourseSet(),
+			"key",
+			"anthropic/claude-sonnet-5.5",
+			TODAY,
+		);
+		expect(saved).toEqual({ ok: true });
+		const sets = readChangeSets(project, before.model, files);
+		if (!sets.ok) throw new Error("the sets were not read");
+		expect(sets.sets.find((set) => set.key === FOLDER_EIGHT)).toMatchObject({
+			state: "pending",
+			grade: 8,
+			subject: "arabic",
+			period: "block-1",
+			units: [{ number: 1 }, { number: 2 }],
+		});
+
+		const accepted = acceptChange({
+			root: project,
+			model: before.model,
+			files,
+			target: EIGHT,
+			choice: { kind: "unit", unit: 1 },
+		});
+		expect(accepted).toEqual({ ok: true, left: 1 });
+		// The rest of the same set is still acceptable after one unit is in the model.
+		const afterOne = readModel(project);
+		if (!afterOne.ok) throw new Error("the model was not read");
+		const second = acceptChange({
+			root: project,
+			model: afterOne.model,
+			files,
+			target: EIGHT,
+			choice: { kind: "unit", unit: 2 },
+		});
+		if (!second.ok) throw new Error(`accepting failed: ${second.code}`);
+		expect(second.left).toBe(0);
+		const read = readModel(project);
+		if (!read.ok) throw new Error("the model was not read");
+		const course = targetCourse(read.model, EIGHT);
+		expect(course?.units.map((unit) => unit.number)).toEqual([1, 2]);
+		expect(course?.units[0]?.period).toBe("block-1");
+		// The course has its own file, as every course of the model does.
+		expect(
+			existsSync(join(project, ".studio", "model", "grade-8-arabic.json")),
+		).toBe(true);
+	});
+
+	it("exports the new course as a bundle the app's own parser accepts", () => {
+		const files = [arabRow()];
+		writeTextFile(
+			project,
+			ARAB,
+			`# Grade 8/Arabic/${ARAB}.pdf\n\n## Page 1\nA made-up page about handwriting.\n`,
+		);
+		const before = readModel(project);
+		if (!before.ok) throw new Error("the model was not read");
+		const saved = saveChangeSet(
+			project,
+			before.model,
+			files,
+			EIGHT,
+			newCourseSet(),
+			"key",
+			"x",
+			TODAY,
+		);
+		if (!saved.ok) throw new Error(`the set was not saved: ${saved.code}`);
+		const accepted = acceptChange({
+			root: project,
+			model: before.model,
+			files,
+			target: EIGHT,
+			choice: { kind: "all" },
+		});
+		if (!accepted.ok) throw new Error(`accepting failed: ${accepted.code}`);
+		const read = readModel(project);
+		if (!read.ok) throw new Error("the model was not read");
+		const bundle = toBundle(
+			{
+				...read.model,
+				curriculum: {
+					...read.model.curriculum,
+					author: "A made-up author",
+					rights: "For this test only.",
+				},
+			},
+			projectFile(),
+			1,
+		);
+		expect(checkBundle(bundle, ["science", "arabic"])).toEqual({ ok: true });
+		const course = bundle.courses.find((entry) => entry.grade === 8);
+		expect(course?.subject).toBe("arabic");
+		expect(course?.units).toHaveLength(2);
 	});
 });

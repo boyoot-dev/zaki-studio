@@ -1,8 +1,9 @@
 // One change set written with the author's key (task 158): the rules, the course as it is now
 // and that period's notes in priority order, in one request per course and period. The rules
 // are the system text; the notes and the course are user content only, so nothing a file says
-// can become an instruction. The reply must be the change set's JSON, or it is a failure with
-// the reason shown.
+// can become an instruction. A course the project has not got yet, or a block it has no unit
+// in, is sent as an empty course (task 178), so the units come from the notes alone. The reply
+// must be the change set's JSON, or it is a failure with the reason shown.
 //
 // Cost: one request reads a period's notes (a few thousand to a few tens of thousands of
 // tokens) and writes a change set of facts. At the default model's prices ($3 / $15 per
@@ -13,6 +14,7 @@ import { basename } from "node:path";
 
 import type { Failure } from "../shared/api.ts";
 import type { CurriculumModel, FileRow } from "../shared/model.ts";
+import { emptyCourse } from "../shared/model.ts";
 import { cost } from "../shared/notes.ts";
 import {
 	changeEstimate,
@@ -86,9 +88,11 @@ function requestInput(
 	model: CurriculumModel,
 	target: Target,
 	rows: readonly FileRow[],
-): { first: string; text: string; notes: number } | null {
-	const course = targetCourse(model, target);
-	if (course === null) return null;
+): { first: string; text: string; notes: number } {
+	// A course the project has not got yet, or a block it has no unit in, is an empty course:
+	// the model writes that period's units from the notes alone (task 178).
+	const course =
+		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
 	const notes = periodNotes(root, rows, target);
 	return {
 		...changeInput({
@@ -128,9 +132,8 @@ export async function planChangeSet(
 	rules: string,
 	modelName: string,
 	fetchImpl?: typeof fetch,
-): Promise<ChangePlan | null> {
+): Promise<ChangePlan> {
 	const input = requestInput(root, model, target, rows);
-	if (input === null) return null;
 	const size = sizeOf(model, target);
 	const estimate = changeEstimate(
 		unitsSystem(rules),
@@ -204,7 +207,6 @@ export async function writeChangeSet(
 		input.target,
 		input.rows,
 	);
-	if (request === null) return { ok: false, code: "missing" };
 	const size = sizeOf(input.model, input.target);
 	const plan = changeEstimate(
 		unitsSystem(input.rules),

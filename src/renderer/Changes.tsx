@@ -1228,6 +1228,12 @@ export function Changes({
 								{target.pending && (
 									<span className="chip">{say("changes.pending")}</span>
 								)}
+								{target.newCourse && (
+									<span className="chip">{say("changes.newCourse")}</span>
+								)}
+								{target.newBlock && (
+									<span className="chip">{say("changes.newBlock")}</span>
+								)}
 								<button
 									type="button"
 									className="btn btn-quiet"
@@ -1328,6 +1334,9 @@ export function Changes({
 								)}
 								{target.pending && (
 									<span className="chip">{say("changes.pending")}</span>
+								)}
+								{target.newCourse && (
+									<span className="chip">{say("changes.newCourse")}</span>
 								)}
 								<button
 									type="button"

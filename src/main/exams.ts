@@ -1,8 +1,9 @@
 // One exam change set written with the author's key (task 177): the exam rules, the course's
 // exams as they are now, and the notes of its exam papers and mark schemes in priority order,
 // in one request per course. The rules are the system text; the notes and the course are user
-// content only, so nothing a file says can become an instruction. The reply must be the exam
-// change set's JSON, or it is a failure with the reason shown.
+// content only, so nothing a file says can become an instruction. A course the project has not
+// got yet is sent empty (task 178), so its papers come from the notes alone. The reply must be
+// the exam change set's JSON, or it is a failure with the reason shown.
 //
 // One request reads the newest three academic years' notes and writes a course's whole exams
 // list. The plan is shown before anything is sent, and the author's limit stops a request that
@@ -27,6 +28,7 @@ import {
 import type { BundleExam } from "../shared/format/bundle.ts";
 import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
+import { emptyCourse } from "../shared/model.ts";
 import { cost, estimateTokens, gradeText } from "../shared/notes.ts";
 import { MAX_CHANGE_BYTES } from "../shared/targets.ts";
 import { readExamStored, saveExamChangeSet, targetCourse } from "./changes.ts";
@@ -255,15 +257,16 @@ type ExamRequest = {
 	notes: ExamNotes;
 };
 
-/** What a request for one course carries, or null when the model has no such course. */
+/** What a request for one course carries. A course the project has not got yet is empty, so
+ * its papers come from the notes alone (task 178). */
 function requestInput(
 	root: string,
 	model: CurriculumModel,
 	rows: readonly FileRow[],
 	target: ExamTarget,
-): ExamRequest | null {
-	const course = targetCourse(model, target);
-	if (course === null) return null;
+): ExamRequest {
+	const course =
+		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
 	const notes = examNotes(root, rows, target);
 	return {
 		course,
@@ -286,9 +289,8 @@ export async function planExamSet(
 	rules: string,
 	modelName: string,
 	fetchImpl?: typeof fetch,
-): Promise<ExamPlan | null> {
+): Promise<ExamPlan> {
 	const request = requestInput(root, model, rows, target);
-	if (request === null) return null;
 	const size = sizeOf(request.course);
 	const estimate = examEstimate(
 		changeSystem(rules),
@@ -349,7 +351,6 @@ export async function writeExamSet(
 		input.rows,
 		input.target,
 	);
-	if (request === null) return { ok: false, code: "missing" };
 	const size = sizeOf(request.course);
 	const plan = examEstimate(
 		changeSystem(input.rules),
@@ -460,9 +461,11 @@ export function prepareExamsJob(
 ): ExamsJobMade | Failure {
 	const noted = input.noted ?? noteIds(input.root);
 	const courses = input.targets.flatMap((target) => {
-		const course = targetCourse(input.model, target);
+		const course =
+			targetCourse(input.model, target) ??
+			emptyCourse(target.grade, target.subject);
 		const folder = examName(target.grade, target.subject);
-		if (course === null || folder === null) return [];
+		if (folder === null) return [];
 		const notes = examNotes(input.root, input.rows, target, noted).notes;
 		return notes.length === 0 ? [] : [{ folder, course, notes }];
 	});
@@ -586,11 +589,9 @@ export function collectExamsJob(
 			outcome.refused.push({ name: entry, code: "invalid" });
 			continue;
 		}
-		const course = targetCourse(input.model, target);
-		if (course === null) {
-			outcome.refused.push({ name: entry, code: "unknown" });
-			continue;
-		}
+		const course =
+			targetCourse(input.model, target) ??
+			emptyCourse(target.grade, target.subject);
 		const given: ExamGiven = {
 			target,
 			periods: [...periodIds(input.model.curriculum.periods)],

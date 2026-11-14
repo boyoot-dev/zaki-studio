@@ -95,6 +95,11 @@ export type Given = {
 	target: Target;
 	/** The period's units as the model has them now. */
 	units: readonly ModelUnit[];
+	/** True when this set may write new units for the period: it was made before the period
+	 * had any, so accepting one unit must not refuse the rest of its own set (task 178). */
+	allowNewUnits?: boolean;
+	/** Every unit number the course has, in any period, so a new unit can't take one. */
+	taken?: ReadonlySet<number>;
 	/** The register rows, so a source names a known file and one of its pages. */
 	files: readonly FileRow[];
 	/** One page's text, from .studio/text; "" when the file has no such page. */
@@ -319,11 +324,23 @@ function parseUnit(
 		return null;
 	}
 	const now = given.units.find((unit) => unit.number === number);
-	if (now === undefined || now.period !== given.target.period) {
+	// A period with no unit yet (a new course, or a block the course has none in) has nothing
+	// to match: the set writes its units from the notes alone (task 178). A set made that way
+	// may still add the rest after the author has accepted one of its units. Anywhere else a
+	// unit must already sit in this period, so a set can never invent one (task 158).
+	if (
+		now === undefined &&
+		given.units.length > 0 &&
+		given.allowNewUnits !== true
+	) {
 		add(
 			`${at}.number`,
 			`unit ${number} is not a unit of ${given.target.period}`,
 		);
+		return null;
+	}
+	if (now === undefined && given.taken?.has(number) === true) {
+		add(`${at}.number`, `unit ${number} is already a unit of another period`);
 		return null;
 	}
 	if (number < 0 || number > BUNDLE_LIMITS.numberMax) {
@@ -626,41 +643,65 @@ export function accepted(
 	return list.includes(`${choice.unit}.${choice.lesson}`);
 }
 
-/** The course with one choice of a change set merged in; nothing else is touched. */
+/**
+ * The course with one choice of a change set merged in; nothing else is touched. An existing
+ * unit is updated as before; a proposed unit the course does not have joins it (task 178), the
+ * way a proposed lesson does, so a new course or an empty block gets its first units.
+ */
 export function mergeCourse(
 	course: ModelCourse,
 	set: CleanSet,
 	choice: AcceptChoice,
 ): ModelCourse {
-	return {
-		...course,
-		units: course.units.map((unit) => {
-			const proposed = set.units.find(
-				(entry) => entry.number === unit.number && unit.period === set.period,
-			);
-			if (proposed === undefined) return unit;
-			if (choice.kind === "unit" && choice.unit !== unit.number) return unit;
-			if (choice.kind === "lesson") {
-				if (choice.unit !== unit.number) return unit;
-				return {
-					...unit,
-					lessons: mergeLessons(
-						unit.lessons,
-						proposed.lessons.filter(
-							(lesson) => lesson.number === choice.lesson,
-						),
-					),
-				};
-			}
+	const merged = course.units.map((unit) => {
+		const proposed = set.units.find(
+			(entry) => entry.number === unit.number && unit.period === set.period,
+		);
+		if (proposed === undefined) return unit;
+		if (choice.kind === "unit" && choice.unit !== unit.number) return unit;
+		if (choice.kind === "lesson") {
+			if (choice.unit !== unit.number) return unit;
 			return {
 				...unit,
-				title: proposed.title,
-				source: proposed.source,
-				keywords: [...proposed.keywords],
-				evidence: [...proposed.evidence],
-				lessons: mergeLessons(unit.lessons, proposed.lessons),
+				lessons: mergeLessons(
+					unit.lessons,
+					proposed.lessons.filter((lesson) => lesson.number === choice.lesson),
+				),
 			};
-		}),
+		}
+		return {
+			...unit,
+			title: proposed.title,
+			source: proposed.source,
+			keywords: [...proposed.keywords],
+			evidence: [...proposed.evidence],
+			lessons: mergeLessons(unit.lessons, proposed.lessons),
+		};
+	});
+	const added = set.units
+		.filter(
+			(entry) => !course.units.some((unit) => unit.number === entry.number),
+		)
+		.filter((entry) => choice.kind === "all" || choice.unit === entry.number)
+		.map(
+			(entry): ModelUnit => ({
+				number: entry.number,
+				period: set.period,
+				title: entry.title,
+				source: entry.source,
+				keywords: [...entry.keywords],
+				evidence: [...entry.evidence],
+				lessons: mergeLessons(
+					[],
+					choice.kind === "lesson"
+						? entry.lessons.filter((lesson) => lesson.number === choice.lesson)
+						: entry.lessons,
+				),
+			}),
+		);
+	return {
+		...course,
+		units: [...merged, ...added].sort((a, b) => a.number - b.number),
 	};
 }
 

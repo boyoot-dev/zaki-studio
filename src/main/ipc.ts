@@ -57,11 +57,11 @@ import type {
 	UnitsPlanView,
 } from "../shared/api.ts";
 import type { ExamTarget } from "../shared/exam-changes.ts";
-import { examTargetOf } from "../shared/exam-changes.ts";
 import type { JobTool } from "../shared/job.ts";
 import { reportMeta } from "../shared/lists.ts";
 import type { CurriculumModel, FileRow } from "../shared/model.ts";
 import { notingOrder } from "../shared/notes.ts";
+import { ALL_NOTES, notesFilterOf } from "../shared/notes-filter.ts";
 import { rememberRecent } from "../shared/recent.ts";
 import { currentAcademicYear } from "../shared/register.ts";
 import {
@@ -75,11 +75,13 @@ import { adoptMaterial } from "./adopt.ts";
 import {
 	acceptChange,
 	acceptExamChange,
+	allowedExamTarget,
+	allowedTarget,
+	blockPeriods,
 	collectUnitsJob,
 	deleteChange,
 	deleteExamChange,
 	examKey,
-	knownTarget,
 	prepareUnitsJob,
 	readChangeSets,
 	readUnitsSettings,
@@ -114,7 +116,13 @@ import {
 	savePastedImage,
 } from "./files.ts";
 import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
-import { invalidateItems, notesItems, notesPage, reportPage } from "./items.ts";
+import {
+	invalidateItems,
+	notesFacetsOf,
+	notesItems,
+	notesPage,
+	reportPage,
+} from "./items.ts";
 import { collectJob, deleteJob, listJobs, prepareJob } from "./job.ts";
 import {
 	clearKey,
@@ -385,6 +393,9 @@ async function pickFolder(options: {
 	return result.filePaths[0] ?? null;
 }
 
+/** The subjects Mr. Zaki knows, as the export and every target check take them. */
+const SUBJECT_IDS = subjects.map((subject) => subject.id);
+
 /** The model, the register and the target one change-set call is about. */
 function changeContext(
 	where: string,
@@ -394,7 +405,13 @@ function changeContext(
 ): { model: CurriculumModel; rows: FileRow[]; target: Target } | Failure {
 	const model = readModel(where);
 	if (!model.ok) return model;
-	const target = knownTarget(model.model, grade, subject, period);
+	const target = allowedTarget(
+		model.model,
+		grade,
+		subject,
+		period,
+		SUBJECT_IDS,
+	);
 	if (target === null)
 		return { ok: false, code: "missing", detail: "no such course and period" };
 	const files = readFiles(where);
@@ -410,8 +427,8 @@ function examContext(
 ): { model: CurriculumModel; rows: FileRow[]; target: ExamTarget } | Failure {
 	const model = readModel(where);
 	if (!model.ok) return model;
-	const target = examTargetOf(grade, subject);
-	if (target === null || targetCourse(model.model, target) === null)
+	const target = allowedExamTarget(model.model, grade, subject, SUBJECT_IDS);
+	if (target === null)
 		return { ok: false, code: "missing", detail: "no such course" };
 	const files = readFiles(where);
 	if (!files.ok) return files;
@@ -906,7 +923,13 @@ export function registerIpc(): void {
 
 	ipcMain.handle(
 		"studio:notesRows",
-		(event, root: unknown, offset: unknown, limit: unknown) => {
+		(
+			event,
+			root: unknown,
+			offset: unknown,
+			limit: unknown,
+			filter: unknown,
+		) => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
 			const at =
@@ -915,7 +938,10 @@ export function registerIpc(): void {
 				typeof limit === "number" && Number.isFinite(limit)
 					? Math.min(400, Math.max(1, Math.floor(limit)))
 					: 200;
-			return { ok: true as const, ...notesPage(where, at, take) };
+			return {
+				ok: true as const,
+				...notesPage(where, at, take, notesFilterOf(filter)),
+			};
 		},
 	);
 
@@ -969,9 +995,11 @@ export function registerIpc(): void {
 		const files = readFiles(where);
 		if (!files.ok) return files;
 		const settings = readNoteSettings(userData());
-		const items = notesItems(where);
-		let missing = 0;
-		for (const item of items) if (item.kind === "row") missing += 1;
+		// The count is the whole list without a note: the panel's filter only hides rows.
+		const missing = notesItems(where, ALL_NOTES).reduce(
+			(total, item) => total + (item.kind === "row" ? 1 : 0),
+			0,
+		);
 		return {
 			ok: true,
 			total: files.files.length,
@@ -979,6 +1007,7 @@ export function registerIpc(): void {
 			settings,
 			keySet: readKeyState(userData(), secrets).set,
 			jobs: listJobs(where),
+			facets: notesFacetsOf(where),
 		};
 	});
 
@@ -1222,64 +1251,107 @@ export function registerIpc(): void {
 			}
 			const targets: ChangeTargetView[] = [];
 			const examTargets: ExamTargetView[] = [];
+			// The targets come from the register as well as the model (task 178): a grade or
+			// subject with notes but no course yet, or a block the course has no unit in, must
+			// still be offered, so its units can be built. A course's own periods stay listed
+			// even with no note, as before.
+			const unitTargets = new Map<string, Target>();
 			for (const course of model.model.courses) {
-				const courseRows =
-					byCourse.get(`${course.grade}|${course.subject}`) ?? [];
-				const examTarget = {
-					grade: course.grade,
-					subject: course.subject,
-				};
-				const examRowsNow = examRows(courseRows, examTarget);
-				if (examRowsNow.length > 0) {
-					const years = examYears(courseRows, examTarget, noted);
-					examTargets.push({
-						...examTarget,
-						exams: course.exams.length,
-						files: examRowsNow.length,
-						notes: examRowsNow.reduce(
-							(total, row) => total + (noted.has(row.id) ? 1 : 0),
-							0,
-						),
-						yearsLeftOut: years.leftOut,
-						pending: sets.sets.some(
-							(set) =>
-								set.key === examKey(course.grade, course.subject) &&
-								set.state === "pending",
-						),
-					});
-				}
-				const periods = [
-					...new Set(course.units.map((unit) => unit.period)),
-				].sort();
-				for (const period of periods) {
+				for (const period of new Set(course.units.map((unit) => unit.period))) {
 					const target: Target = {
 						grade: course.grade,
 						subject: course.subject,
 						period,
 					};
-					const units = periodUnits(course, period);
-					const rows = targetRows(courseRows, target);
 					const key = changeName(target);
-					targets.push({
-						...target,
-						units: units.length,
-						lessons: units.reduce(
-							(total, unit) => total + unit.lessons.length,
-							0,
-						),
-						files: rows.length,
-						// The count of files the period has a note for: order does not matter here.
-						notes: rows.reduce(
-							(total, row) => total + (noted.has(row.id) ? 1 : 0),
-							0,
-						),
-						pending:
-							key !== null &&
-							sets.sets.some(
-								(set) => set.key === key && set.state === "pending",
-							),
-					});
+					if (key !== null) unitTargets.set(key, target);
 				}
+			}
+			for (const row of files.files) {
+				if (row.grade === null || !noted.has(row.id)) continue;
+				for (const period of blockPeriods(row.block)) {
+					const known = allowedTarget(
+						model.model,
+						row.grade,
+						row.subject,
+						period,
+						SUBJECT_IDS,
+					);
+					const key = known === null ? null : changeName(known);
+					if (known !== null && key !== null && !unitTargets.has(key))
+						unitTargets.set(key, known);
+				}
+			}
+			for (const target of unitTargets.values()) {
+				const course = targetCourse(model.model, target);
+				const courseRows =
+					byCourse.get(`${target.grade}|${target.subject}`) ?? [];
+				const units = course === null ? [] : periodUnits(course, target.period);
+				const rows = targetRows(courseRows, target);
+				const key = changeName(target);
+				targets.push({
+					...target,
+					units: units.length,
+					lessons: units.reduce(
+						(total, unit) => total + unit.lessons.length,
+						0,
+					),
+					files: rows.length,
+					// The count of files the period has a note for: order does not matter here.
+					notes: rows.reduce(
+						(total, row) => total + (noted.has(row.id) ? 1 : 0),
+						0,
+					),
+					pending:
+						key !== null &&
+						sets.sets.some((set) => set.key === key && set.state === "pending"),
+					newCourse: course === null,
+					newBlock: course !== null && units.length === 0,
+				});
+			}
+
+			const examTargetsNow = new Map<string, ExamTarget>();
+			for (const course of model.model.courses) {
+				examTargetsNow.set(`${course.grade}|${course.subject}`, {
+					grade: course.grade,
+					subject: course.subject,
+				});
+			}
+			for (const row of files.files) {
+				if (row.grade === null || !noted.has(row.id)) continue;
+				if (row.kind !== "exam" && row.kind !== "mark-scheme") continue;
+				const known = allowedExamTarget(
+					model.model,
+					row.grade,
+					row.subject,
+					SUBJECT_IDS,
+				);
+				if (known !== null)
+					examTargetsNow.set(`${known.grade}|${known.subject}`, known);
+			}
+			for (const examTarget of examTargetsNow.values()) {
+				const courseRows =
+					byCourse.get(`${examTarget.grade}|${examTarget.subject}`) ?? [];
+				const examRowsNow = examRows(courseRows, examTarget);
+				if (examRowsNow.length === 0) continue;
+				const years = examYears(courseRows, examTarget, noted);
+				const course = targetCourse(model.model, examTarget);
+				examTargets.push({
+					...examTarget,
+					exams: course?.exams.length ?? 0,
+					files: examRowsNow.length,
+					notes: examRowsNow.reduce(
+						(total, row) => total + (noted.has(row.id) ? 1 : 0),
+						0,
+					),
+					yearsLeftOut: years.leftOut,
+					pending: sets.sets.some(
+						(set) =>
+							set.key === examKey(examTarget.grade, examTarget.subject) &&
+							set.state === "pending",
+					),
+					newCourse: course === null,
+				});
 			}
 			targets.sort(
 				(a, b) =>
@@ -1328,7 +1400,6 @@ export function registerIpc(): void {
 				rules,
 				settings.model,
 			);
-			if (plan === null) return failure("missing");
 			return {
 				ok: true,
 				plan,
@@ -1396,11 +1467,12 @@ export function registerIpc(): void {
 			for (const item of wanted) {
 				if (typeof item !== "object" || item === null) continue;
 				const raw = item as Record<string, unknown>;
-				const target = knownTarget(
+				const target = allowedTarget(
 					model.model,
 					raw.grade,
 					raw.subject,
 					raw.period,
+					SUBJECT_IDS,
 				);
 				const key = target === null ? null : changeName(target);
 				if (target !== null && key !== null && !chosen.has(key))
@@ -1591,7 +1663,6 @@ export function registerIpc(): void {
 				rules,
 				settings.model,
 			);
-			if (plan === null) return failure("missing");
 			return {
 				ok: true,
 				plan,
@@ -1658,15 +1729,15 @@ export function registerIpc(): void {
 			for (const item of wanted) {
 				if (typeof item !== "object" || item === null) continue;
 				const raw = item as Record<string, unknown>;
-				const target = examTargetOf(raw.grade, raw.subject);
+				const target = allowedExamTarget(
+					model.model,
+					raw.grade,
+					raw.subject,
+					SUBJECT_IDS,
+				);
 				const key =
 					target === null ? null : examKey(target.grade, target.subject);
-				if (
-					target !== null &&
-					key !== null &&
-					targetCourse(model.model, target) !== null &&
-					!chosen.has(key)
-				)
+				if (target !== null && key !== null && !chosen.has(key))
 					chosen.set(key, target);
 			}
 			if (chosen.size === 0) return failure("missing");

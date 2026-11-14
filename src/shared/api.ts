@@ -16,6 +16,7 @@ import type {
 	ModelCurriculum,
 	ModelSummary,
 } from "./model.ts";
+import type { NotesFacets, NotesFilter } from "./notes-filter.ts";
 import type { Project } from "./project.ts";
 
 /** One row of the tree: a folder of the project, or a file in it. */
@@ -200,6 +201,8 @@ export type NotesState =
 			/** The page only ever learns whether a key is set, never the key. */
 			keySet: boolean;
 			jobs: JobSummary[];
+			/** The grades, subjects and blocks the Notes list's selects offer (task 178). */
+			facets: NotesFacets;
 	  }
 	| Failure;
 
@@ -242,6 +245,10 @@ export type ChangeTargetView = {
 	notes: number;
 	/** True when a change set for it waits for review. */
 	pending: boolean;
+	/** True when the project has no course for this grade and subject yet (task 178). */
+	newCourse: boolean;
+	/** True when the course exists but has no unit in this period yet (task 178). */
+	newBlock: boolean;
 };
 
 /** One course of the model, as the Changes tab lists its exams (task 177). */
@@ -256,6 +263,8 @@ export type ExamTargetView = {
 	yearsLeftOut: string[];
 	/** True when an exam change set for it waits for review. */
 	pending: boolean;
+	/** True when the project has no course for this grade and subject yet (task 178). */
+	newCourse: boolean;
 };
 
 /** The units model and the spending limit; never the key. */
@@ -455,6 +464,7 @@ export type StudioApi = {
 		root: string,
 		offset: number,
 		limit: number,
+		filter?: NotesFilter,
 	): Promise<({ ok: true } & ItemsPage<NotesListItem>) | Failure>;
 	/** One file's note, as plain text. */
 	noteText(root: string, id: string): Promise<NoteText>;

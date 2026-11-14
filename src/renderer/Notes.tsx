@@ -1,9 +1,11 @@
 // The Notes tab (task 157): the files that have no note yet, the author's key and model, the
 // cost of a run before it starts, and the job folders for an AI tool the author runs himself.
 // Nothing here ever sees the key: the page saves it once and is told only whether one is set.
-// The list of files without a note comes in pages and draws only what is on screen
-// (task 168), so a first scan of a huge project stays quick.
+// The list of files comes in pages and draws only what is on screen (task 168), so a first
+// scan of a huge project stays quick; three selects and one box narrow it (task 178), and a
+// chosen file the filter hides stays chosen.
 
+import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
@@ -15,6 +17,11 @@ import type {
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { JobSummary, JobTool } from "../shared/job.ts";
 import type { NotesListItem } from "../shared/lists.ts";
+import {
+	ALL_NOTES,
+	type NotesFacets,
+	type NotesFilter,
+} from "../shared/notes-filter.ts";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
 import { WindowedList } from "./WindowedList";
@@ -43,12 +50,23 @@ export function Notes({
 }) {
 	const say = useSay();
 	const lang = useLang();
-	// The flattened list of files without a note, page by page as the window reaches it.
+	// The flattened list of files, page by page as the window reaches it, under the filter.
 	const [items, setItems] = useState<Map<number, NotesListItem>>(
 		() => new Map(),
 	);
 	const [total, setTotal] = useState(0);
 	const [totalMissing, setTotalMissing] = useState(0);
+	// The filter is kept for this project for the session, and never written to it.
+	const [filter, setFilter] = useState<NotesFilter>(ALL_NOTES);
+	const [facets, setFacets] = useState<NotesFacets>({
+		grades: [],
+		subjects: [],
+		blocks: [],
+		anyNoBlock: false,
+	});
+	const [loaded, setLoaded] = useState(false);
+	const filterRef = useRef(filter);
+	filterRef.current = filter;
 	const requested = useRef(new Set<number>());
 
 	const [keySet, setKeySet] = useState(false);
@@ -60,6 +78,12 @@ export function Notes({
 	const [modelInput, setModelInput] = useState("");
 	const [writing, setWriting] = useState(false);
 	const [progress, setProgress] = useState<NotesProgress | null>(null);
+	// True when the list is narrowed at all, so the chosen count can say a hidden file counts.
+	const filtering =
+		filter.grade !== null ||
+		filter.subject !== null ||
+		filter.block !== null ||
+		!filter.onlyMissing;
 	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
 	const [collected, setCollected] = useState<JobCollected | null>(null);
@@ -69,8 +93,9 @@ export function Notes({
 
 	/** One page of the flattened list, into the map the rows read from. */
 	const loadPage = useCallback(
-		async (offset: number) => {
-			const result = await window.studio.notesRows(root, offset, PAGE);
+		async (offset: number, current: NotesFilter) => {
+			const result = await window.studio.notesRows(root, offset, PAGE, current);
+			setLoaded(true);
 			if (!result.ok) {
 				onNotify(failureText(lang, result));
 				return;
@@ -86,7 +111,7 @@ export function Notes({
 		[lang, onNotify, root],
 	);
 
-	/** Fetches the pages the visible window needs. */
+	/** Fetches the pages the visible window needs, under the filter as it is now. */
 	const ensureRange = useCallback(
 		(start: number, end: number) => {
 			const first = Math.floor(Math.max(0, start) / PAGE);
@@ -94,13 +119,13 @@ export function Notes({
 			for (let page = first; page <= last; page += 1) {
 				if (requested.current.has(page)) continue;
 				requested.current.add(page);
-				void loadPage(page * PAGE);
+				void loadPage(page * PAGE, filterRef.current);
 			}
 		},
 		[loadPage],
 	);
 
-	/** Reads the counts, the settings and the jobs; the list loads page by page. */
+	/** Reads the counts, the values the selects offer, the settings and the jobs. */
 	const load = useCallback(async () => {
 		const state = await window.studio.notesState(root);
 		if (!state.ok) {
@@ -108,6 +133,7 @@ export function Notes({
 			return;
 		}
 		setTotalMissing(state.missing);
+		setFacets(state.facets);
 		setLimit(state.settings.limit);
 		setModelInput(state.settings.model);
 		setKeySet(state.keySet);
@@ -115,14 +141,30 @@ export function Notes({
 		// The list's order changes only when a note lands or a file is corrected.
 		setItems(new Map());
 		setTotal(0);
+		setLoaded(false);
 		requested.current = new Set();
-		void loadPage(0);
+		void loadPage(0, filterRef.current);
 	}, [lang, loadPage, onNotify, root]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
 	useEffect(() => {
 		void load();
 	}, [load, reloadKey]);
+
+	// A narrower list is a different list: the pages fetched under the old filter go. The
+	// first run is left to load above, which reads the project as well.
+	const firstFilter = useRef(true);
+	useEffect(() => {
+		if (firstFilter.current) {
+			firstFilter.current = false;
+			return;
+		}
+		setItems(new Map());
+		setTotal(0);
+		setLoaded(false);
+		requested.current = new Set();
+		void loadPage(0, filter);
+	}, [filter, loadPage]);
 
 	// The cost is worked out after a short pause, so ticking several boxes sends one ask.
 	useEffect(() => {
@@ -426,22 +468,116 @@ export function Notes({
 			</section>
 
 			<section>
-				<h3>{say("notes.without")}</h3>
-				{totalMissing === 0 ? (
-					<p className="muted">{say("notes.none")}</p>
-				) : (
-					<>
-						<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
-						<WindowedList
-							count={total}
-							rowHeight={ROW}
-							className="notes-list"
-							itemClassName="notes-item"
-							onRangeChange={ensureRange}
+				<h3>{say("notes.files")}</h3>
+				<div className="notes-row">
+					<label className="field">
+						<span className="field-label">{say("notes.filterGrade")}</span>
+						<select
+							value={filter.grade === null ? "all" : String(filter.grade)}
+							onChange={(event) =>
+								setFilter({
+									...filter,
+									grade:
+										event.target.value === "all"
+											? null
+											: Number(event.target.value),
+								})
+							}
 						>
-							{renderRow}
-						</WindowedList>
-					</>
+							<option value="all">{say("notes.allGrades")}</option>
+							{facets.grades.map((grade) => (
+								<option key={grade} value={grade}>
+									{gradeLabel(lang, grade)}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="field">
+						<span className="field-label">{say("notes.filterSubject")}</span>
+						<select
+							value={filter.subject ?? "all"}
+							onChange={(event) =>
+								setFilter({
+									...filter,
+									subject:
+										event.target.value === "all" ? null : event.target.value,
+								})
+							}
+						>
+							<option value="all">{say("notes.allSubjects")}</option>
+							{facets.subjects.map((subject) => (
+								<option key={subject} value={subject}>
+									{subjectName(subject, lang)}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="field">
+						<span className="field-label">{say("notes.filterBlock")}</span>
+						<select
+							value={
+								filter.block === null
+									? "all"
+									: filter.block === ""
+										? "none"
+										: filter.block
+							}
+							onChange={(event) =>
+								setFilter({
+									...filter,
+									block:
+										event.target.value === "all"
+											? null
+											: event.target.value === "none"
+												? ""
+												: event.target.value,
+								})
+							}
+						>
+							<option value="all">{say("notes.allBlocks")}</option>
+							{facets.anyNoBlock && (
+								<option value="none">{say("new.noBlock")}</option>
+							)}
+							{facets.blocks.map((block) => (
+								<option key={block} value={block}>
+									{say("new.block", { block })}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="check">
+						<input
+							type="checkbox"
+							checked={filter.onlyMissing}
+							onChange={(event) =>
+								setFilter({ ...filter, onlyMissing: event.target.checked })
+							}
+						/>
+						<span>{say("notes.onlyMissing")}</span>
+					</label>
+				</div>
+				<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
+				{selected.size > 0 && filtering && (
+					<p className="muted">{say("notes.chosenHint")}</p>
+				)}
+				{!loaded ? (
+					<p className="muted">{say("curriculum.loading")}</p>
+				) : total === 0 ? (
+					<p className="muted">
+						{filter.onlyMissing && totalMissing === 0
+							? say("notes.none")
+							: say("notes.noneMatch")}
+					</p>
+				) : (
+					<WindowedList
+						count={total}
+						rowHeight={ROW}
+						className="notes-list"
+						itemClassName="notes-item"
+						onRangeChange={ensureRange}
+					>
+						{renderRow}
+					</WindowedList>
 				)}
 
 				{selected.size > 0 && (
@@ -622,6 +758,13 @@ function groupTitle(
 			? say("new.noBlock")
 			: say("new.block", { block: group.block }),
 	].join(" · ");
+}
+
+/** The subject's own name, in the window's language, for the filter's options. */
+function subjectName(id: string, lang: Lang): string {
+	const subject = studioSubjects.find((entry) => entry.id === id);
+	if (subject === undefined) return id;
+	return lang === "ar" ? subject.nameAr : subject.nameEn;
 }
 
 /** A file's own name, as the list shows it. */
