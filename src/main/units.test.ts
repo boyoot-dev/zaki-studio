@@ -342,7 +342,7 @@ describe("the plan before it starts", () => {
 		expect(plan?.estimateUsd).toBeGreaterThan(0);
 	});
 
-	it("is null when the model has no such course and period", async () => {
+	it("prices a new course from its notes alone, with no unit yet", async () => {
 		const plan = await planChangeSet(
 			project,
 			model(),
@@ -352,6 +352,9 @@ describe("the plan before it starts", () => {
 			"anthropic/claude-sonnet-5.5",
 			(async () => new Response(JSON.stringify(MODELS))) as typeof fetch,
 		);
-		expect(plan).toBeNull();
+		// The course is not in the model, so there are no units; the notes of a grade
+		// other than the row's name none here.
+		expect(plan).toMatchObject({ units: 0, lessons: 0, notes: 0 });
+		expect(plan.in).toBeGreaterThan(0);
 	});
 });

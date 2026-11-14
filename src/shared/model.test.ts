@@ -10,6 +10,7 @@ import {
 	type CurriculumModel,
 	checkBundle,
 	courseFile,
+	emptyCourse,
 	exportCopy,
 	fileLabel,
 	type ModelCourse,
@@ -251,6 +252,17 @@ describe("the model's files", () => {
 			expect(
 				parsed.model.courses[0]?.exams[0]?.papers[0]?.parts[0]?.marks,
 			).toBe(null);
+	});
+
+	it("reads an empty course back as an empty course", () => {
+		// The Studio starts a new grade or subject from this (task 178): the model's writer
+		// leaves its empty lists out, so the reader must give them back as empty ones.
+		const empty = emptyCourse(8, "arabic");
+		const parsed = parseModelText(modelFileText(model().curriculum), [
+			{ name: courseFile(8, "arabic"), text: modelFileText(empty) },
+		]);
+		expect(parsed.ok).toBe(true);
+		if (parsed.ok) expect(parsed.model.courses).toEqual([empty]);
 	});
 
 	it("names a damaged fact's place instead of throwing", () => {

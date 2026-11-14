@@ -78,8 +78,8 @@ const api: StudioApi = {
 	},
 	copyText: (value) => ipcRenderer.invoke("studio:copyText", value),
 	notesState: (root) => ipcRenderer.invoke("studio:notesState", root),
-	notesRows: (root, offset, limit) =>
-		ipcRenderer.invoke("studio:notesRows", root, offset, limit),
+	notesRows: (root, offset, limit, filter) =>
+		ipcRenderer.invoke("studio:notesRows", root, offset, limit, filter),
 	noteText: (root, id) => ipcRenderer.invoke("studio:noteText", root, id),
 	notesPlan: (root, ids, redo) =>
 		ipcRenderer.invoke("studio:notesPlan", root, ids, redo),

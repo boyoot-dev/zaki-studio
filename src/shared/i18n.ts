@@ -217,7 +217,16 @@ const en = {
 		"This model cannot read pictures, so image pages are sent as OCR text only.",
 	"notes.unknownModel":
 		"OpenRouter's list does not know this model id, so its price is not known.",
-	"notes.without": "Files without a note",
+	"notes.files": "Files",
+	"notes.onlyMissing": "Only files without a note",
+	"notes.filterGrade": "Grade",
+	"notes.filterSubject": "Subject",
+	"notes.filterBlock": "Block",
+	"notes.allGrades": "All grades",
+	"notes.allSubjects": "All subjects",
+	"notes.allBlocks": "All blocks",
+	"notes.noneMatch": "No file matches this filter.",
+	"notes.chosenHint": "The count includes any file the filter hides.",
 	"notes.none": "Every file has a note.",
 	"notes.chosen": "{n} chosen",
 	"notes.pages": "{n} pages",
@@ -367,6 +376,10 @@ const en = {
 	"changes.removed": "removed",
 	"changes.acceptPaper": "Accept this paper",
 	"changes.sources": "Read from",
+
+	// A new course or a block with no unit yet (task 178).
+	"changes.newCourse": "new course",
+	"changes.newBlock": "new block",
 
 	// A file's details: what the register guessed, and the author may correct.
 	"detail.title": "The file's details",
@@ -641,7 +654,16 @@ const ar: Record<TextKey, string> = {
 		"هذا النموذج لا يقرأ الصور، لذلك تُرسل الصفحات المصوّرة نصًّا من التعرّف الضوئي فقط.",
 	"notes.unknownModel":
 		"قائمة OpenRouter لا تعرف هذا النموذج، وسعره غير معروف.",
-	"notes.without": "ملفات بلا ملاحظة",
+	"notes.files": "الملفات",
+	"notes.onlyMissing": "الملفات التي بلا ملاحظة فقط",
+	"notes.filterGrade": "الصف",
+	"notes.filterSubject": "المادة",
+	"notes.filterBlock": "المرحلة",
+	"notes.allGrades": "كل الصفوف",
+	"notes.allSubjects": "كل المواد",
+	"notes.allBlocks": "كل المراحل",
+	"notes.noneMatch": "لا يوجد ملف يطابق هذا التصفية.",
+	"notes.chosenHint": "يشمل العدد كل ملف يخفيه التصفية.",
 	"notes.none": "لكل ملف ملاحظة.",
 	"notes.chosen": "اخترت {n}",
 	"notes.pages": "{n} صفحة",
@@ -788,6 +810,10 @@ const ar: Record<TextKey, string> = {
 	"changes.removed": "محذوف",
 	"changes.acceptPaper": "اقبل هذه الورقة",
 	"changes.sources": "مقروء من",
+
+	// مقرر جديد أو مرحلة بلا وحدة بعد (مهمة 178).
+	"changes.newCourse": "مقرر جديد",
+	"changes.newBlock": "مرحلة جديدة",
 
 	"detail.title": "بيانات الملف",
 	"detail.hint": "ما تغيّره هنا يبقى عند فحص المشروع مرة أخرى.",

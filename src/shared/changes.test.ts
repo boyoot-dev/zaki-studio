@@ -18,6 +18,7 @@ import {
 	words,
 } from "./changes.ts";
 import type { FileRow, ModelCourse, ModelFact } from "./model.ts";
+import { emptyCourse } from "./model.ts";
 
 const ID = "9a010f4b4816";
 const OTHER = "abcdef012345";
@@ -300,7 +301,10 @@ describe("one bad value", () => {
 });
 
 /** One unit of a change set, with a fact that cites one source. */
-function changeSetUnit(number: number, source = `${ID}#p6`): unknown {
+function changeSetUnit(
+	number: number,
+	source = `${ID}#p6`,
+): Record<string, unknown> {
 	return {
 		number,
 		title: "Breathing",
@@ -318,6 +322,97 @@ function changeSetUnit(number: number, source = `${ID}#p6`): unknown {
 		],
 	};
 }
+
+describe("a period with no unit yet", () => {
+	/** The good set, rewritten for a block the course has no unit in. */
+	function newBlockSet(): Record<string, unknown> {
+		return {
+			...changeSet(),
+			period: "block-1",
+			units: [
+				{
+					...changeSetUnit(1),
+					title: "Handwriting",
+					lessons: [
+						{
+							number: 1,
+							title: "The pencil",
+							activity: null,
+							skills: [{ code: null, text: "hold the pencil" }],
+							facts: [
+								{
+									text: "A pencil is held between the thumb and two fingers.",
+									sources: [`${ID}#p6`],
+								},
+							],
+						},
+					],
+				},
+				{
+					...changeSetUnit(2),
+					title: "Reading",
+					lessons: [
+						{
+							number: 1,
+							title: "First words",
+							activity: null,
+							skills: [{ code: null, text: "read a short word" }],
+							facts: [
+								{
+									text: "A word is read from right to left in Arabic.",
+									sources: [`${ID}#p6`],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+	}
+
+	it("reads the units the model wrote from the notes alone", () => {
+		const parsed = parseChangeSet(newBlockSet(), {
+			...given(),
+			target: { grade: 7, subject: "science", period: "block-1" },
+			units: [],
+		});
+		if (!parsed.ok) throw new Error(parsed.issue);
+		expect(parsed.set.units.map((unit) => unit.number)).toEqual([1, 2]);
+	});
+
+	it("adds the proposed units to an empty course, as one choice asks", () => {
+		const parsed = parseChangeSet(newBlockSet(), {
+			...given(),
+			target: { grade: 7, subject: "science", period: "block-1" },
+			units: [],
+		});
+		if (!parsed.ok) throw new Error(parsed.issue);
+
+		const all = mergeCourse(emptyCourse(7, "science"), parsed.set, {
+			kind: "all",
+		});
+		expect(all.units.map((unit) => unit.number)).toEqual([1, 2]);
+		expect(all.units[0]?.period).toBe("block-1");
+		expect(all.units[0]?.lessons[0]?.facts[0]).toMatchObject({
+			status: "draft",
+			own: false,
+		});
+
+		// One unit's choice adds that unit only, and one lesson's choice the one lesson.
+		const one = mergeCourse(emptyCourse(7, "science"), parsed.set, {
+			kind: "unit",
+			unit: 2,
+		});
+		expect(one.units.map((unit) => unit.number)).toEqual([2]);
+		const lesson = mergeCourse(emptyCourse(7, "science"), parsed.set, {
+			kind: "lesson",
+			unit: 1,
+			lesson: 1,
+		});
+		expect(lesson.units.map((unit) => unit.number)).toEqual([1]);
+		expect(lesson.units[0]?.lessons.map((entry) => entry.number)).toEqual([1]);
+	});
+});
 
 describe("the two checks", () => {
 	it("shows a fact whose page does not hold its words, without refusing it", () => {

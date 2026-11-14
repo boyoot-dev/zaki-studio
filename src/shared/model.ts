@@ -79,6 +79,15 @@ export type ModelCourse = {
 	units: ModelUnit[];
 };
 
+/**
+ * A course the project has no units for yet (task 178): a new grade or subject, or a block an
+ * existing course has never had a unit in. The change and exam steps start from it, so the
+ * model writes from the notes alone, and accepting the set adds the course to the project.
+ */
+export function emptyCourse(grade: number, subject: string): ModelCourse {
+	return { grade, subject, examStyle: null, exams: [], units: [] };
+}
+
 /** `.studio/model/curriculum.json`: what a bundle's header says, before it is exported. */
 export type ModelCurriculum = {
 	nameEn: string;

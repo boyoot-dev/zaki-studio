@@ -18,7 +18,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { BundleExam } from "../shared/format/bundle.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
-import { acceptExamChange, readChangeSets, readExamStored } from "./changes.ts";
+import {
+	acceptExamChange,
+	readChangeSets,
+	readExamStored,
+	saveExamChangeSet,
+	targetCourse,
+} from "./changes.ts";
 import {
 	collectExamsJob,
 	examNotes,
@@ -26,7 +32,7 @@ import {
 	prepareExamsJob,
 	writeExamSet,
 } from "./exams.ts";
-import { writeFiles, writeModel, writeTextFile } from "./model.ts";
+import { readModel, writeFiles, writeModel, writeTextFile } from "./model.ts";
 import { saveNote } from "./notes.ts";
 import type { NoteReply, NoteRequest } from "./openrouter.ts";
 
@@ -390,17 +396,25 @@ describe("the plan before it starts", () => {
 		expect(plan?.estimateUsd).toBeGreaterThan(0);
 	});
 
-	it("is null when the model has no such course", async () => {
+	it("prices a course the model has not got yet, from its exam notes", async () => {
+		const rows = YEARS.map((year) =>
+			row(IDS[year] ?? "", year, { grade: 8, subject: "french" }),
+		);
 		const plan = await planExamSet(
 			project,
 			model(),
-			[],
-			{ grade: 8, subject: "arabic" },
+			rows,
+			{ grade: 8, subject: "french" },
 			RULES,
 			"anthropic/claude-sonnet-5.5",
 			(async () => new Response(JSON.stringify(MODELS))) as typeof fetch,
 		);
-		expect(plan).toBeNull();
+		expect(plan).toMatchObject({
+			exams: 0,
+			parts: 0,
+			notes: 3,
+			yearsLeftOut: ["2023"],
+		});
 	});
 });
 
@@ -505,5 +519,64 @@ describe("the exams job folder", () => {
 		});
 		expect(accepted).toEqual({ ok: true, left: 0 });
 		expect(readExamStored(project, 9, "arabic")).toBeNull();
+	});
+});
+
+describe("a new course's exams (task 178)", () => {
+	const EIGHT = { grade: 8, subject: "french" };
+	const ID8 = "abcdef012345";
+
+	/** A register row of the new course's made-up paper. */
+	function frenchRow(): FileRow {
+		return row(ID8, "2026", { grade: 8, subject: "french" });
+	}
+
+	/** The good set, rewritten for the course the model has not got. */
+	function newCourseBody(): Record<string, unknown> {
+		const body = JSON.parse(goodBody()) as Record<string, unknown>;
+		body.grade = 8;
+		body.subject = "french";
+		body.sources = { "ar9-w1": [ID8] };
+		return body;
+	}
+
+	it("keeps the set for review and gives the model a new course on accept", () => {
+		const files = [frenchRow()];
+		const saved = saveExamChangeSet(
+			project,
+			model(),
+			files,
+			EIGHT,
+			newCourseBody(),
+			"key",
+			"anthropic/claude-sonnet-5.5",
+			TODAY,
+		);
+		expect(saved).toEqual({ ok: true });
+		expect(targetCourse(model(), EIGHT)).toBeNull();
+
+		const sets = readChangeSets(project, model(), files);
+		if (!sets.ok) throw new Error("the sets were not read");
+		expect(sets.sets.find((set) => set.key === "8-french")).toMatchObject({
+			kind: "exams",
+			state: "pending",
+			grade: 8,
+			subject: "french",
+		});
+
+		const accepted = acceptExamChange({
+			root: project,
+			model: model(),
+			files,
+			target: EIGHT,
+			choice: { kind: "all" },
+		});
+		if (!accepted.ok) throw new Error(`accepting failed: ${accepted.code}`);
+		const read = readModel(project);
+		if (!read.ok) throw new Error("the model was not read");
+		const course = targetCourse(read.model, EIGHT);
+		expect(course?.exams).toHaveLength(1);
+		expect(course?.exams[0]?.papers[0]?.name).toBe("Writing");
+		expect(course?.units).toEqual([]);
 	});
 });
