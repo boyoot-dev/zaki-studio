@@ -67,6 +67,8 @@ export function Notes({
 		subjects: [],
 		blocks: [],
 		anyNoBlock: false,
+		years: [],
+		anyNoYear: false,
 	});
 	const [loaded, setLoaded] = useState(false);
 	const filterRef = useRef(filter);
@@ -88,7 +90,8 @@ export function Notes({
 	const filtering =
 		filter.grade !== null ||
 		filter.subject !== null ||
-		filter.block !== null ||
+		filter.blocks.length > 0 ||
+		filter.years.length > 0 ||
 		!filter.onlyMissing;
 	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
@@ -214,6 +217,10 @@ export function Notes({
 			return next;
 		});
 	};
+
+	/** One box of the filter turned on or off; no box in a row means every value of it. */
+	const toggleValue = (field: "blocks" | "years", value: string) =>
+		setFilter({ ...filter, [field]: switched(filter[field], value) });
 
 	/** Saves the model and the limit, so the next plan uses them. */
 	const saveSettings = async () => {
@@ -524,39 +531,6 @@ export function Notes({
 							))}
 						</select>
 					</label>
-					<label className="field">
-						<span className="field-label">{say("notes.filterBlock")}</span>
-						<select
-							value={
-								filter.block === null
-									? "all"
-									: filter.block === ""
-										? "none"
-										: filter.block
-							}
-							onChange={(event) =>
-								setFilter({
-									...filter,
-									block:
-										event.target.value === "all"
-											? null
-											: event.target.value === "none"
-												? ""
-												: event.target.value,
-								})
-							}
-						>
-							<option value="all">{say("notes.allBlocks")}</option>
-							{facets.anyNoBlock && (
-								<option value="none">{say("new.noBlock")}</option>
-							)}
-							{facets.blocks.map((block) => (
-								<option key={block} value={block}>
-									{say("new.block", { block })}
-								</option>
-							))}
-						</select>
-					</label>
 					<label className="check">
 						<input
 							type="checkbox"
@@ -567,6 +541,64 @@ export function Notes({
 						/>
 						<span>{say("notes.onlyMissing")}</span>
 					</label>
+				</div>
+				{/* A few boxes per row, one row of blocks and one of years: a box ticked is a
+				    value to show, and no box ticked is every value (task 181). */}
+				<div className="notes-row">
+					{(facets.blocks.length > 0 || facets.anyNoBlock) && (
+						<div className="field">
+							<span className="field-label">{say("notes.filterBlock")}</span>
+							<div className="notes-checks">
+								{facets.blocks.map((block) => (
+									<label className="check" key={block}>
+										<input
+											type="checkbox"
+											checked={filter.blocks.includes(block)}
+											onChange={() => toggleValue("blocks", block)}
+										/>
+										<span>{say("new.block", { block })}</span>
+									</label>
+								))}
+								{facets.anyNoBlock && (
+									<label className="check">
+										<input
+											type="checkbox"
+											checked={filter.blocks.includes("")}
+											onChange={() => toggleValue("blocks", "")}
+										/>
+										<span>{say("new.noBlock")}</span>
+									</label>
+								)}
+							</div>
+						</div>
+					)}
+					{(facets.years.length > 0 || facets.anyNoYear) && (
+						<div className="field">
+							<span className="field-label">{say("notes.filterYear")}</span>
+							<div className="notes-checks">
+								{facets.years.map((year) => (
+									<label className="check" key={year}>
+										<input
+											type="checkbox"
+											checked={filter.years.includes(year)}
+											onChange={() => toggleValue("years", year)}
+										/>
+										<span dir="ltr">{year}</span>
+									</label>
+								))}
+								{facets.anyNoYear && (
+									<label className="check">
+										<input
+											type="checkbox"
+											checked={filter.years.includes("")}
+											onChange={() => toggleValue("years", "")}
+										/>
+										<span>{say("new.year.none")}</span>
+									</label>
+								)}
+							</div>
+						</div>
+					)}
 				</div>
 				<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
 				{selected.size > 0 && filtering && (
@@ -770,6 +802,13 @@ function groupTitle(
 			? say("new.noBlock")
 			: say("new.block", { block: group.block }),
 	].join(" · ");
+}
+
+/** The same list with one value turned on or off, for a box of the filter's rows. */
+function switched(values: readonly string[], value: string): string[] {
+	return values.includes(value)
+		? values.filter((entry) => entry !== value)
+		: [...values, value];
 }
 
 /** The subject's own name, in the window's language, for the filter's options. */

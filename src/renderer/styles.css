@@ -1244,6 +1244,20 @@ body.pane-dragging {
 	font: inherit;
 }
 
+/* The notes filter's blocks and years: a short row of boxes, wrapping when the window is
+   narrow (task 181). */
+.notes-checks {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px 14px;
+	min-height: 36px;
+}
+
+.notes-checks .check {
+	margin-top: 0;
+}
+
 .notes-group {
 	margin-bottom: 12px;
 }
