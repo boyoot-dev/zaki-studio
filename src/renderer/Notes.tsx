@@ -2,8 +2,12 @@
 // cost of a run before it starts, and the job folders for an AI tool the author runs himself.
 // Nothing here ever sees the key: the page saves it once and is told only whether one is set.
 // The list of files comes in pages and draws only what is on screen (task 168), so a first
-// scan of a huge project stays quick; three selects and one box narrow it (task 178), and a
-// chosen file the filter hides stays chosen.
+// scan of a huge project stays quick; the filter narrows it (task 178, blocks and years from
+// task 181), and a chosen file the filter hides stays chosen.
+//
+// The window keeps its place (task 181): ticking a box never reloads the list, and a real
+// reload fetches the pages under the rows already on screen, so nothing is unmounted. Only a
+// changed filter empties the list and starts again at the top.
 
 import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -68,6 +72,8 @@ export function Notes({
 	const filterRef = useRef(filter);
 	filterRef.current = filter;
 	const requested = useRef(new Set<number>());
+	// The range of rows the window last asked for, so a reload can fetch those pages again.
+	const wanted = useRef({ start: 0, end: 0 });
 
 	const [keySet, setKeySet] = useState(false);
 	const [jobs, setJobs] = useState<JobSummary[]>([]);
@@ -95,6 +101,9 @@ export function Notes({
 	const loadPage = useCallback(
 		async (offset: number, current: NotesFilter) => {
 			const result = await window.studio.notesRows(root, offset, PAGE, current);
+			// A page asked for under a filter that has since changed is dropped, or its rows
+			// would land in the new list.
+			if (current !== filterRef.current) return;
 			setLoaded(true);
 			if (!result.ok) {
 				onNotify(failureText(lang, result));
@@ -114,6 +123,7 @@ export function Notes({
 	/** Fetches the pages the visible window needs, under the filter as it is now. */
 	const ensureRange = useCallback(
 		(start: number, end: number) => {
+			wanted.current = { start, end };
 			const first = Math.floor(Math.max(0, start) / PAGE);
 			const last = Math.floor(Math.max(0, end - 1) / PAGE);
 			for (let page = first; page <= last; page += 1) {
@@ -125,7 +135,8 @@ export function Notes({
 		[loadPage],
 	);
 
-	/** Reads the counts, the values the selects offer, the settings and the jobs. */
+	/** Reads the counts, the values the selects offer, the settings and the jobs, and fetches
+	 * the pages the window shows again; the list keeps what it has until they arrive. */
 	const load = useCallback(async () => {
 		const state = await window.studio.notesState(root);
 		if (!state.ok) {
@@ -138,21 +149,21 @@ export function Notes({
 		setModelInput(state.settings.model);
 		setKeySet(state.keySet);
 		setJobs(state.jobs);
-		// The list's order changes only when a note lands or a file is corrected.
-		setItems(new Map());
-		setTotal(0);
-		setLoaded(false);
+		// A note landing moves the rows, so every page is fetched again when the window reaches
+		// it. The pages on screen are fetched now, over the rows already drawn: the window is
+		// never unmounted for a reload, and so keeps its scroll (task 181).
 		requested.current = new Set();
-		void loadPage(0, filterRef.current);
-	}, [lang, loadPage, onNotify, root]);
+		ensureRange(wanted.current.start, wanted.current.end);
+	}, [ensureRange, lang, onNotify, root]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
 	useEffect(() => {
 		void load();
 	}, [load, reloadKey]);
 
-	// A narrower list is a different list: the pages fetched under the old filter go. The
-	// first run is left to load above, which reads the project as well.
+	// A narrower list is a different list: the pages fetched under the old filter go, and the
+	// window starts again at the top (task 181). The first run is left to load above, which
+	// reads the project as well.
 	const firstFilter = useRef(true);
 	useEffect(() => {
 		if (firstFilter.current) {
@@ -163,6 +174,7 @@ export function Notes({
 		setTotal(0);
 		setLoaded(false);
 		requested.current = new Set();
+		wanted.current = { start: 0, end: 0 };
 		void loadPage(0, filter);
 	}, [filter, loadPage]);
 
