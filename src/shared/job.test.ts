@@ -3,7 +3,8 @@
 // material is data. The made-up file below keeps school material out of the repository.
 
 import { describe, expect, it } from "vitest";
-import { EXAM_FORMAT } from "./exam-changes.ts";
+import { EXAM_FORMAT, examPeriodList } from "./exam-changes.ts";
+import type { BundlePeriod } from "./format/bundle.ts";
 import {
 	EXAMS_DATA_RULE,
 	examsPrompt,
@@ -359,6 +360,31 @@ describe("the exams job's prompt and README", () => {
 			notes: 6,
 		},
 	];
+	const PERIODS: BundlePeriod[] = [
+		{
+			id: "term-1",
+			nameEn: "Term 1",
+			nameAr: "الفصل 1",
+			wholeYear: false,
+			periods: [
+				{
+					id: "term-1-mid",
+					nameEn: "Mid-term",
+					nameAr: "نصف الفصل",
+					wholeYear: false,
+					periods: [],
+				},
+			],
+		},
+		{
+			id: "final",
+			nameEn: "Final",
+			nameAr: "النهائي",
+			wholeYear: true,
+			periods: [],
+		},
+	];
+	const PERIOD_TEXT = examPeriodList(PERIODS);
 
 	it("is exactly the task's prompt, with the folder's real path", () => {
 		expect(
@@ -397,8 +423,14 @@ the number of change sets written.`);
 		expect(examsPrompt(FOLDER, "other")).toContain(EXAMS_DATA_RULE);
 	});
 
-	it("lists every course folder with what it holds, and the JSON shape", () => {
-		const readme = examsReadme("claude-code", "kestrel", COURSES, EXAM_FORMAT);
+	it("lists every course folder with what it holds, the JSON shape and the periods", () => {
+		const readme = examsReadme(
+			"claude-code",
+			"kestrel",
+			COURSES,
+			EXAM_FORMAT,
+			PERIOD_TEXT,
+		);
 		expect(readme).toContain("# Exams job — kestrel");
 		expect(readme).toContain("Read rules.md first");
 		expect(readme).toContain(
@@ -408,10 +440,15 @@ the number of change sets written.`);
 		expect(readme).toContain(
 			"- `9-arabic` — Grade 9 · arabic · 2 exams · 6 notes",
 		);
+		// The periods are listed as id (English name), nested periods included.
+		expect(readme).toContain(
+			"term-1 (Term 1), term-1-mid (Mid-term), final (Final)",
+		);
+		expect(readme).toContain('covers the whole year leaves "period" out.');
 		for (const line of EXAM_FORMAT.split("\n"))
 			expect(readme).toContain(`  ${line}`);
-		expect(examsReadme("other", "kestrel", COURSES, EXAM_FORMAT)).toContain(
-			"Do the folders one at a time.",
-		);
+		expect(
+			examsReadme("other", "kestrel", COURSES, EXAM_FORMAT, PERIOD_TEXT),
+		).toContain("Do the folders one at a time.");
 	});
 });

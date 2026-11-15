@@ -332,6 +332,19 @@ describe("the request one exam change set makes", () => {
 		expect(request.images).toEqual([]);
 	});
 
+	it("names the curriculum's periods, so the model never has to guess one", async () => {
+		await write(async (request) => {
+			requests.push(request);
+			return reply(goodBody());
+		});
+		const request = requests[0];
+		if (request === undefined) throw new Error("no request");
+		expect(request.text).toContain(
+			"The curriculum's periods, by id (English name): term-1 (Term 1).",
+		);
+		expect(request.text).toContain('leaves out "period"');
+	});
+
 	it("saves the answer for review, and never merges it by itself", async () => {
 		const got = await write(async () => reply(goodBody()));
 		if (!got.ok) throw new Error(got.code);

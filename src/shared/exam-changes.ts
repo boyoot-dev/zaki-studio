@@ -128,6 +128,22 @@ export function periodIds(periods: readonly BundlePeriod[]): Set<string> {
 	return found;
 }
 
+/**
+ * The year's periods as the prompt and the README list them: `id (English name)`, nested
+ * periods included and in the curriculum's order (task 182).
+ */
+export function examPeriodList(periods: readonly BundlePeriod[]): string {
+	const out: string[] = [];
+	const walk = (list: readonly BundlePeriod[]) => {
+		for (const period of list) {
+			out.push(`${period.id} (${period.nameEn})`);
+			walk(period.periods);
+		}
+	};
+	walk(periods);
+	return out.join(", ");
+}
+
 /** The course's exams as the model gets them: grade, subject and the exams as they are now. */
 export function examCourseNow(course: {
 	grade: number;

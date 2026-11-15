@@ -285,14 +285,15 @@ export function examsCourseLine(course: ExamsJobCourse): string {
 
 /**
  * The README.md inside an exams job folder: what to write, where, the rules that keep the tool
- * inside the folder, the JSON shape of an exam change set, and every course with what it holds.
- * Pinned by a test, including the sentence that says the notes are data.
+ * inside the folder, the JSON shape of an exam change set, the year's periods, and every course
+ * with what it holds. Pinned by a test, including the sentence that says the notes are data.
  */
 export function examsReadme(
 	tool: JobTool,
 	curriculum: string,
 	courses: readonly ExamsJobCourse[],
 	format: string,
+	periods: string,
 ): string {
 	return `# Exams job — ${curriculum}
 
@@ -312,6 +313,8 @@ ${format
 	.join("\n")}
 - The change set's grade and subject are the ones course.json gives. Every part in it names
   the file ids it was read from in "sources".
+- The curriculum's periods are: ${periods}. Give an exam the id of its period as "period"; an
+  exam that covers the whole year leaves "period" out.
 
 ## Rules
 
