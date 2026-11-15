@@ -8,12 +8,23 @@ import { describe, expect, it } from "vitest";
 
 import {
 	type CleanExamSet,
+	EXAM_FORMAT,
+	EXAM_FORMAT_NOTE,
 	type ExamGiven,
 	mergeExams,
 	parseExamChangeSet,
 	reviewExams,
 } from "./exam-changes.ts";
-import type { BundleExam, BundlePart } from "./format/bundle.ts";
+import {
+	type BundleExam,
+	type BundlePart,
+	EXAM_LANGUAGES,
+	EXAM_LAYOUTS,
+	EXAM_MATERIAL_KINDS,
+	EXAM_QUESTION_TYPES,
+	EXAM_SKILLS,
+	EXAM_TOPICS,
+} from "./format/bundle.ts";
 import type { FileRow, ModelCourse } from "./model.ts";
 
 const ID = "9a010f4b4816";
@@ -217,6 +228,77 @@ describe("an exam change set that passes", () => {
 			const outcome = parseExamChangeSet(changeSet(over), given());
 			expect(outcome.ok).toBe(false);
 		}
+	});
+});
+
+describe("the format the model gets", () => {
+	it("lists every value the bundle's constants allow", () => {
+		const lists = [
+			EXAM_SKILLS,
+			EXAM_LANGUAGES,
+			EXAM_MATERIAL_KINDS,
+			EXAM_QUESTION_TYPES,
+			EXAM_LAYOUTS,
+			EXAM_TOPICS,
+		];
+		for (const list of lists)
+			for (const value of list) expect(EXAM_FORMAT).toContain(value);
+	});
+
+	it("says what to write when a required field has no number in the notes", () => {
+		expect(EXAM_FORMAT_NOTE).toContain("required fields are always written");
+		expect(EXAM_FORMAT_NOTE).toContain("never write null");
+		expect(EXAM_FORMAT_NOTE).toContain('"material": { "kind": "none" }');
+	});
+
+	it("parses a change set with only the required fields", () => {
+		const set = parsed({
+			grade: 9,
+			subject: "arabic",
+			exams: [
+				{
+					name: "Term 1",
+					papers: [
+						{
+							name: "Writing",
+							skill: "writing",
+							parts: [
+								{
+									id: "ar9-w1",
+									name: "Writing task",
+									material: { kind: "none" },
+									questions: { count: 1, types: { essay: 1 } },
+								},
+							],
+						},
+					],
+				},
+			],
+			sources: { "ar9-w1": [ID] },
+		});
+		expect(set.exams[0]?.period).toBeNull();
+		expect(set.exams[0]?.papers[0]?.parts[0]?.material.kind).toBe("none");
+	});
+
+	it("still refuses a question type the parser does not know", () => {
+		const bad = partJson(part());
+		(bad.questions as Record<string, unknown>).types = {
+			"multiple-choice": 1,
+		};
+		const outcome = parseExamChangeSet(
+			changeSet({
+				exams: [
+					{
+						name: "Term 1",
+						papers: [{ name: "Writing", skill: "writing", parts: [bad] }],
+					},
+				],
+			}),
+			given(),
+		);
+		expect(outcome.ok).toBe(false);
+		if (outcome.ok) return;
+		expect(outcome.issue).toContain('unknown field "multiple-choice"');
 	});
 });
 

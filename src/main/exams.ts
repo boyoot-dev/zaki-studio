@@ -21,11 +21,12 @@ import {
 	type ExamTarget,
 	examCourseNow,
 	examName,
+	examPeriodList,
 	examTargetOf,
 	parseExamChangeSet,
 	periodIds,
 } from "../shared/exam-changes.ts";
-import type { BundleExam } from "../shared/format/bundle.ts";
+import type { BundleExam, BundlePeriod } from "../shared/format/bundle.ts";
 import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
 import { emptyCourse } from "../shared/model.ts";
@@ -175,6 +176,8 @@ export function examInput(input: {
 		subject: string;
 		exams: readonly BundleExam[];
 	};
+	/** The year's periods, so the model names one of them instead of guessing (task 182). */
+	periods: readonly BundlePeriod[];
 	notes: readonly ExamNote[];
 	leftOut: readonly string[];
 }): { first: string; text: string } {
@@ -195,7 +198,7 @@ export function examInput(input: {
 			: `\n\nNotes from these older academic years are left out: ${input.leftOut.join(", ")}.`;
 	return {
 		first,
-		text: `Write one JSON object in exactly this shape:\n\n${EXAM_FORMAT}\n\n${EXAM_FORMAT_NOTE}\n\nThe course's exams now:\n\n${courseJson(course)}\n\nIts exam notes, newest academic year first:\n\n${notes}${leftOut}`,
+		text: `Write one JSON object in exactly this shape:\n\n${EXAM_FORMAT}\n\n${EXAM_FORMAT_NOTE}\n\nThe course's exams now:\n\n${courseJson(course)}\n\nThe curriculum's periods, by id (English name): ${examPeriodList(input.periods)}. An exam that covers the whole year leaves out "period".\n\nIts exam notes, newest academic year first:\n\n${notes}${leftOut}`,
 	};
 }
 
@@ -273,6 +276,7 @@ function requestInput(
 		input: examInput({
 			curriculum: basename(root),
 			course,
+			periods: model.curriculum.periods,
 			notes: notes.notes,
 			leftOut: notes.leftOut,
 		}),
@@ -481,6 +485,7 @@ export function prepareExamsJob(
 		rules: input.rules,
 		tool: input.tool,
 		now: input.now,
+		periods: input.model.curriculum.periods,
 		courses,
 	});
 	if (!written.ok) return { ok: false, code: written.code };

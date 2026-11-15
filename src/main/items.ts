@@ -5,10 +5,10 @@
 // a note lands or a file is corrected, so the memo's key is the stat of the things it
 // reads: the register's file, and the notes folder.
 //
-// The Notes list can be narrowed by grade, subject, blocks and years (task 178, 181): the rows
-// are read once, each saying whether it already has a note, and the filter hides rows before the
-// list is grouped and paged, so a hidden row can never reach the page. The same filtered rows
-// give the ids the panel's "all shown" buttons need, loaded page or not.
+// The Notes list can be narrowed by grade, subject, blocks, years and file types (task 178,
+// 181, 182): the rows are read once, each saying whether it already has a note, and the filter
+// hides rows before the list is grouped and paged, so a hidden row can never reach the page. The
+// same filtered rows give the ids the panel's "all shown" buttons need, loaded page or not.
 
 import { statSync } from "node:fs";
 import { join } from "node:path";
@@ -53,8 +53,8 @@ const KEEP = 4;
 
 /** One project's flattened lists, kept until its inputs change. */
 type Memo = {
-	/** The rows every filter reads, and the values its selects offer. */
-	base: { key: string; rows: ListedRow[]; facets: NotesFacets } | null;
+	/** The rows every filter reads. */
+	base: { key: string; rows: ListedRow[] } | null;
 	/** The pages of one filter, kept until the filter changes. */
 	notes: { key: string; items: NotesListItem[] } | null;
 	report: { key: string; items: ReportListItem[] } | null;
@@ -87,7 +87,6 @@ function slot(root: string): Memo {
 function listedRows(root: string): {
 	key: string;
 	rows: ListedRow[];
-	facets: NotesFacets;
 } {
 	const today = currentAcademicYear(new Date());
 	const holder = slot(root);
@@ -104,13 +103,17 @@ function listedRows(root: string): {
 		new Set(rows.map((row) => row.id)),
 	);
 	const listed = all.map((row) => ({ ...row, noted: noted.has(row.id) }));
-	holder.base = { key, rows: listed, facets: notesFacets(listed) };
+	holder.base = { key, rows: listed };
 	return holder.base;
 }
 
-/** The values the Notes tab's three selects are filled from. */
-export function notesFacetsOf(root: string): NotesFacets {
-	return listedRows(root).facets;
+/** The values the Notes tab's boxes are filled from; the types follow the chosen grade and
+ * subject (task 182). */
+export function notesFacetsOf(
+	root: string,
+	filter: NotesFilter = ALL_NOTES,
+): NotesFacets {
+	return notesFacets(listedRows(root).rows, filter);
 }
 
 /** The rows the Notes tab lists with this filter, in their panel order. */

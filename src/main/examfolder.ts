@@ -12,7 +12,9 @@ import {
 	EXAM_FORMAT,
 	EXAM_FORMAT_NOTE,
 	examCourseJson,
+	examPeriodList,
 } from "../shared/exam-changes.ts";
+import type { BundlePeriod } from "../shared/format/bundle.ts";
 import {
 	type ExamsJobCourse,
 	examsPrompt,
@@ -42,6 +44,8 @@ export type ExamsFolderInput = {
 	rules: string;
 	tool: JobTool;
 	now: Date;
+	/** The year's periods, which the README lists by id (task 182). */
+	periods: readonly BundlePeriod[];
 	courses: readonly ExamsFolderCourse[];
 };
 
@@ -126,6 +130,7 @@ export function writeExamsFolder(input: ExamsFolderInput): ExamsFolderResult {
 				input.curriculum,
 				lines,
 				`${EXAM_FORMAT}\n\n${EXAM_FORMAT_NOTE}`,
+				examPeriodList(input.periods),
 			),
 			"utf8",
 		);

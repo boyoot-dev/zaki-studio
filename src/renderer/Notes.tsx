@@ -3,7 +3,7 @@
 // Nothing here ever sees the key: the page saves it once and is told only whether one is set.
 // The list of files comes in pages and draws only what is on screen (task 168), so a first
 // scan of a huge project stays quick; the filter narrows it (task 178, blocks and years from
-// task 181), and a chosen file the filter hides stays chosen.
+// task 181, types from task 182), and a chosen file the filter hides stays chosen.
 //
 // The window keeps its place (task 181): ticking a box never reloads the list, and a real
 // reload fetches the pages under the rows already on screen, so nothing is unmounted. Only a
@@ -26,6 +26,7 @@ import {
 	type NotesFacets,
 	type NotesFilter,
 } from "../shared/notes-filter.ts";
+import { KINDS } from "../shared/register.ts";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
 import { WindowedList } from "./WindowedList";
@@ -69,6 +70,7 @@ export function Notes({
 		anyNoBlock: false,
 		years: [],
 		anyNoYear: false,
+		kinds: [],
 	});
 	const [loaded, setLoaded] = useState(false);
 	// The ids every file the filter shows, loaded page or not, for the two buttons below.
@@ -94,6 +96,7 @@ export function Notes({
 		filter.subject !== null ||
 		filter.blocks.length > 0 ||
 		filter.years.length > 0 ||
+		filter.kinds.length > 0 ||
 		!filter.onlyMissing;
 	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
@@ -154,7 +157,7 @@ export function Notes({
 	/** Reads the counts, the values the selects offer, the settings and the jobs, and fetches
 	 * the pages the window shows again; the list keeps what it has until they arrive. */
 	const load = useCallback(async () => {
-		const state = await window.studio.notesState(root);
+		const state = await window.studio.notesState(root, filterRef.current);
 		if (!state.ok) {
 			onNotify(failureText(lang, state));
 			return;
@@ -197,6 +200,19 @@ export function Notes({
 		void loadShown(filter);
 	}, [filter, loadPage, loadShown]);
 
+	// The type boxes follow the grade and subject chosen, so they are read again when either
+	// changes; everything else the state gave is left as it is (task 182).
+	const facetsKey = `${filter.grade ?? ""}|${filter.subject ?? ""}`;
+	const facetsFor = useRef(facetsKey);
+	useEffect(() => {
+		if (facetsFor.current === facetsKey) return;
+		facetsFor.current = facetsKey;
+		void (async () => {
+			const state = await window.studio.notesState(root, filterRef.current);
+			if (state.ok) setFacets(state.facets);
+		})();
+	}, [facetsKey, root]);
+
 	// The cost is worked out after a short pause, so ticking several boxes sends one ask.
 	useEffect(() => {
 		if (selected.size === 0) {
@@ -235,7 +251,7 @@ export function Notes({
 	};
 
 	/** One box of the filter turned on or off; no box in a row means every value of it. */
-	const toggleValue = (field: "blocks" | "years", value: string) =>
+	const toggleValue = (field: "blocks" | "years" | "kinds", value: string) =>
 		setFilter({ ...filter, [field]: switched(filter[field], value) });
 
 	/** Ticks every file the filter shows, loaded page or not (task 181). */
@@ -523,6 +539,8 @@ export function Notes({
 							onChange={(event) =>
 								setFilter({
 									...filter,
+									// The types are the new grade's, so the old ones are let go.
+									kinds: [],
 									grade:
 										event.target.value === "all"
 											? null
@@ -545,6 +563,8 @@ export function Notes({
 							onChange={(event) =>
 								setFilter({
 									...filter,
+									// The types are the new subject's, so the old ones are let go.
+									kinds: [],
 									subject:
 										event.target.value === "all" ? null : event.target.value,
 								})
@@ -569,8 +589,8 @@ export function Notes({
 						<span>{say("notes.onlyMissing")}</span>
 					</label>
 				</div>
-				{/* A few boxes per row, one row of blocks and one of years: a box ticked is a
-				    value to show, and no box ticked is every value (task 181). */}
+				{/* A few boxes per row, one row of blocks, one of years and one of types: a box
+				    ticked is a value to show, and no box ticked is every value (task 181, 182). */}
 				<div className="notes-row">
 					{(facets.blocks.length > 0 || facets.anyNoBlock) && (
 						<div className="field">
@@ -627,6 +647,25 @@ export function Notes({
 						</div>
 					)}
 				</div>
+				{facets.kinds.length > 0 && (
+					<div className="notes-row">
+						<div className="field">
+							<span className="field-label">{say("notes.filterKind")}</span>
+							<div className="notes-checks">
+								{facets.kinds.map((kind) => (
+									<label className="check" key={kind}>
+										<input
+											type="checkbox"
+											checked={filter.kinds.includes(kind)}
+											onChange={() => toggleValue("kinds", kind)}
+										/>
+										<span>{kindName(kind, say)}</span>
+									</label>
+								))}
+							</div>
+						</div>
+					</div>
+				)}
 				<div className="notes-row">
 					<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
 					<button
@@ -854,6 +893,14 @@ function switched(values: readonly string[], value: string): string[] {
 	return values.includes(value)
 		? values.filter((entry) => entry !== value)
 		: [...values, value];
+}
+
+/** A file type's own name, in the window's language; a kind the register does not know is shown
+ * as it is written. */
+function kindName(kind: string, say: Say): string {
+	return KINDS.includes(kind as (typeof KINDS)[number])
+		? say(`kind.${kind}` as TextKey)
+		: kind;
 }
 
 /** The subject's own name, in the window's language, for the filter's options. */

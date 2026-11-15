@@ -461,7 +461,7 @@ export type StudioApi = {
 	/** Puts text on the clipboard, for the job prompt's Copy button. */
 	copyText(text: string): Promise<Done>;
 	/** How many files lack a note, the notes settings and the job folders (task 168). */
-	notesState(root: string): Promise<NotesState>;
+	notesState(root: string, filter?: NotesFilter): Promise<NotesState>;
 	/** One page of the files without a note, grouped and flattened (task 168). */
 	notesRows(
 		root: string,
