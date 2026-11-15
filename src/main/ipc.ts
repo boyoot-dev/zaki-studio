@@ -1002,27 +1002,31 @@ export function registerIpc(): void {
 
 	// The notes tab (task 157). Every call here takes only a project path the author opened,
 	// file ids and a job name; none of them carries or returns the key.
-	ipcMain.handle("studio:notesState", (event, root: unknown): NotesState => {
-		const where = text(root, 400);
-		if (!allowed(event, where)) return notOpen();
-		const files = readFiles(where);
-		if (!files.ok) return files;
-		const settings = readNoteSettings(userData());
-		// The count is the whole list without a note: the panel's filter only hides rows.
-		const missing = notesItems(where, ALL_NOTES).reduce(
-			(total, item) => total + (item.kind === "row" ? 1 : 0),
-			0,
-		);
-		return {
-			ok: true,
-			total: files.files.length,
-			missing,
-			settings,
-			keySet: readKeyState(userData(), secrets).set,
-			jobs: listJobs(where),
-			facets: notesFacetsOf(where),
-		};
-	});
+	ipcMain.handle(
+		"studio:notesState",
+		(event, root: unknown, filter: unknown): NotesState => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const settings = readNoteSettings(userData());
+			// The count is the whole list without a note: the panel's filter only hides rows.
+			const missing = notesItems(where, ALL_NOTES).reduce(
+				(total, item) => total + (item.kind === "row" ? 1 : 0),
+				0,
+			);
+			return {
+				ok: true,
+				total: files.files.length,
+				missing,
+				settings,
+				keySet: readKeyState(userData(), secrets).set,
+				jobs: listJobs(where),
+				// The type boxes are read under the grade and subject the page chose (task 182).
+				facets: notesFacetsOf(where, notesFilterOf(filter)),
+			};
+		},
+	);
 
 	ipcMain.handle(
 		"studio:noteText",
