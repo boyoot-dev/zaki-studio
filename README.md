@@ -210,11 +210,15 @@ way the pipeline writes them (`src/shared/notes.ts`). The note is
 curriculum, and who wrote it), then the model's body. It is shown beside the file as plain
 text, never as HTML. A note is never rewritten unless the author says "Write again".
 
-The list of files can be narrowed with three selects — grade, subject, and block (or "no
-block") — and "only files without a note", which is on at first. The selects offer only the
-values the files have, and the choice is kept for the session, never written to the project.
+The list of files can be narrowed by grade, by subject, and by blocks and academic years, with
+any number of boxes ticked in either of the last two rows (the boxes of a row are ORed, and the
+rows are ANDed), plus "only files without a note", which is on at first. The boxes offer only
+the values the files have, and the choice is kept for the session, never written to the project.
 The filter only hides rows: a file chosen and then hidden stays chosen, and the count of
 chosen files includes it. The group checkbox ticks only the rows the filter leaves visible.
+"Tick all shown (N)" ticks every file the filter shows, loaded page or not — with no filter,
+every file — and "Untick all shown" clears them. Ticking a box never reloads the list, and a
+reload after a note lands or a file changes keeps the list's place.
 
 Two ways, and the author chooses:
 

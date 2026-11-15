@@ -5,9 +5,10 @@
 // a note lands or a file is corrected, so the memo's key is the stat of the things it
 // reads: the register's file, and the notes folder.
 //
-// The Notes list can be narrowed by grade, subject and block (task 178): the rows are read
-// once, each saying whether it already has a note, and the filter hides rows before the list
-// is grouped and paged, so a hidden row can never reach the page.
+// The Notes list can be narrowed by grade, subject, blocks and years (task 178, 181): the rows
+// are read once, each saying whether it already has a note, and the filter hides rows before the
+// list is grouped and paged, so a hidden row can never reach the page. The same filtered rows
+// give the ids the panel's "all shown" buttons need, loaded page or not.
 
 import { statSync } from "node:fs";
 import { join } from "node:path";
@@ -135,6 +136,18 @@ export function notesPage(
 	filter: NotesFilter = ALL_NOTES,
 ): ItemsPage<NotesListItem> {
 	return pageSlice(notesItems(root, filter), offset, limit);
+}
+
+/**
+ * The ids of the files the Notes tab shows with this filter, in their panel order: every one of
+ * them, whether its page has been drawn or not (task 181). The rows come from the same memo the
+ * pages are built from.
+ */
+export function notesIds(
+	root: string,
+	filter: NotesFilter = ALL_NOTES,
+): string[] {
+	return filterRows(listedRows(root).rows, filter).map((row) => row.id);
 }
 
 /** The last scan's report as a flattened list, or an empty list when there is none. */

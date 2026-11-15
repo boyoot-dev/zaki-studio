@@ -2,8 +2,12 @@
 // cost of a run before it starts, and the job folders for an AI tool the author runs himself.
 // Nothing here ever sees the key: the page saves it once and is told only whether one is set.
 // The list of files comes in pages and draws only what is on screen (task 168), so a first
-// scan of a huge project stays quick; three selects and one box narrow it (task 178), and a
-// chosen file the filter hides stays chosen.
+// scan of a huge project stays quick; the filter narrows it (task 178, blocks and years from
+// task 181), and a chosen file the filter hides stays chosen.
+//
+// The window keeps its place (task 181): ticking a box never reloads the list, and a real
+// reload fetches the pages under the rows already on screen, so nothing is unmounted. Only a
+// changed filter empties the list and starts again at the top.
 
 import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -63,11 +67,17 @@ export function Notes({
 		subjects: [],
 		blocks: [],
 		anyNoBlock: false,
+		years: [],
+		anyNoYear: false,
 	});
 	const [loaded, setLoaded] = useState(false);
+	// The ids every file the filter shows, loaded page or not, for the two buttons below.
+	const [shown, setShown] = useState<string[]>([]);
 	const filterRef = useRef(filter);
 	filterRef.current = filter;
 	const requested = useRef(new Set<number>());
+	// The range of rows the window last asked for, so a reload can fetch those pages again.
+	const wanted = useRef({ start: 0, end: 0 });
 
 	const [keySet, setKeySet] = useState(false);
 	const [jobs, setJobs] = useState<JobSummary[]>([]);
@@ -82,7 +92,8 @@ export function Notes({
 	const filtering =
 		filter.grade !== null ||
 		filter.subject !== null ||
-		filter.block !== null ||
+		filter.blocks.length > 0 ||
+		filter.years.length > 0 ||
 		!filter.onlyMissing;
 	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
@@ -95,6 +106,9 @@ export function Notes({
 	const loadPage = useCallback(
 		async (offset: number, current: NotesFilter) => {
 			const result = await window.studio.notesRows(root, offset, PAGE, current);
+			// A page asked for under a filter that has since changed is dropped, or its rows
+			// would land in the new list.
+			if (current !== filterRef.current) return;
 			setLoaded(true);
 			if (!result.ok) {
 				onNotify(failureText(lang, result));
@@ -114,6 +128,7 @@ export function Notes({
 	/** Fetches the pages the visible window needs, under the filter as it is now. */
 	const ensureRange = useCallback(
 		(start: number, end: number) => {
+			wanted.current = { start, end };
 			const first = Math.floor(Math.max(0, start) / PAGE);
 			const last = Math.floor(Math.max(0, end - 1) / PAGE);
 			for (let page = first; page <= last; page += 1) {
@@ -125,7 +140,19 @@ export function Notes({
 		[loadPage],
 	);
 
-	/** Reads the counts, the values the selects offer, the settings and the jobs. */
+	/** The files the filter shows, so the two "all shown" buttons know every one of them. */
+	const loadShown = useCallback(
+		async (current: NotesFilter) => {
+			const answer = await window.studio.notesIds(root, current);
+			// A list asked for under an older filter would tick files the author no longer sees.
+			if (current !== filterRef.current || !answer.ok) return;
+			setShown(answer.ids);
+		},
+		[root],
+	);
+
+	/** Reads the counts, the values the selects offer, the settings and the jobs, and fetches
+	 * the pages the window shows again; the list keeps what it has until they arrive. */
 	const load = useCallback(async () => {
 		const state = await window.studio.notesState(root);
 		if (!state.ok) {
@@ -138,21 +165,22 @@ export function Notes({
 		setModelInput(state.settings.model);
 		setKeySet(state.keySet);
 		setJobs(state.jobs);
-		// The list's order changes only when a note lands or a file is corrected.
-		setItems(new Map());
-		setTotal(0);
-		setLoaded(false);
+		// A note landing moves the rows, so every page is fetched again when the window reaches
+		// it. The pages on screen are fetched now, over the rows already drawn: the window is
+		// never unmounted for a reload, and so keeps its scroll (task 181).
 		requested.current = new Set();
-		void loadPage(0, filterRef.current);
-	}, [lang, loadPage, onNotify, root]);
+		ensureRange(wanted.current.start, wanted.current.end);
+		void loadShown(filterRef.current);
+	}, [ensureRange, lang, loadShown, onNotify, root]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
 	useEffect(() => {
 		void load();
 	}, [load, reloadKey]);
 
-	// A narrower list is a different list: the pages fetched under the old filter go. The
-	// first run is left to load above, which reads the project as well.
+	// A narrower list is a different list: the pages fetched under the old filter go, and the
+	// window starts again at the top (task 181). The first run is left to load above, which
+	// reads the project as well.
 	const firstFilter = useRef(true);
 	useEffect(() => {
 		if (firstFilter.current) {
@@ -162,9 +190,12 @@ export function Notes({
 		setItems(new Map());
 		setTotal(0);
 		setLoaded(false);
+		setShown([]);
 		requested.current = new Set();
+		wanted.current = { start: 0, end: 0 };
 		void loadPage(0, filter);
-	}, [filter, loadPage]);
+		void loadShown(filter);
+	}, [filter, loadPage, loadShown]);
 
 	// The cost is worked out after a short pause, so ticking several boxes sends one ask.
 	useEffect(() => {
@@ -202,6 +233,21 @@ export function Notes({
 			return next;
 		});
 	};
+
+	/** One box of the filter turned on or off; no box in a row means every value of it. */
+	const toggleValue = (field: "blocks" | "years", value: string) =>
+		setFilter({ ...filter, [field]: switched(filter[field], value) });
+
+	/** Ticks every file the filter shows, loaded page or not (task 181). */
+	const tickShown = () => setSelected((now) => new Set([...now, ...shown]));
+
+	/** Unticks every file the filter shows; a file the filter hides stays chosen. */
+	const untickShown = () =>
+		setSelected((now) => {
+			const next = new Set(now);
+			for (const id of shown) next.delete(id);
+			return next;
+		});
 
 	/** Saves the model and the limit, so the next plan uses them. */
 	const saveSettings = async () => {
@@ -512,39 +558,6 @@ export function Notes({
 							))}
 						</select>
 					</label>
-					<label className="field">
-						<span className="field-label">{say("notes.filterBlock")}</span>
-						<select
-							value={
-								filter.block === null
-									? "all"
-									: filter.block === ""
-										? "none"
-										: filter.block
-							}
-							onChange={(event) =>
-								setFilter({
-									...filter,
-									block:
-										event.target.value === "all"
-											? null
-											: event.target.value === "none"
-												? ""
-												: event.target.value,
-								})
-							}
-						>
-							<option value="all">{say("notes.allBlocks")}</option>
-							{facets.anyNoBlock && (
-								<option value="none">{say("new.noBlock")}</option>
-							)}
-							{facets.blocks.map((block) => (
-								<option key={block} value={block}>
-									{say("new.block", { block })}
-								</option>
-							))}
-						</select>
-					</label>
 					<label className="check">
 						<input
 							type="checkbox"
@@ -556,7 +569,83 @@ export function Notes({
 						<span>{say("notes.onlyMissing")}</span>
 					</label>
 				</div>
-				<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
+				{/* A few boxes per row, one row of blocks and one of years: a box ticked is a
+				    value to show, and no box ticked is every value (task 181). */}
+				<div className="notes-row">
+					{(facets.blocks.length > 0 || facets.anyNoBlock) && (
+						<div className="field">
+							<span className="field-label">{say("notes.filterBlock")}</span>
+							<div className="notes-checks">
+								{facets.blocks.map((block) => (
+									<label className="check" key={block}>
+										<input
+											type="checkbox"
+											checked={filter.blocks.includes(block)}
+											onChange={() => toggleValue("blocks", block)}
+										/>
+										<span>{say("new.block", { block })}</span>
+									</label>
+								))}
+								{facets.anyNoBlock && (
+									<label className="check">
+										<input
+											type="checkbox"
+											checked={filter.blocks.includes("")}
+											onChange={() => toggleValue("blocks", "")}
+										/>
+										<span>{say("new.noBlock")}</span>
+									</label>
+								)}
+							</div>
+						</div>
+					)}
+					{(facets.years.length > 0 || facets.anyNoYear) && (
+						<div className="field">
+							<span className="field-label">{say("notes.filterYear")}</span>
+							<div className="notes-checks">
+								{facets.years.map((year) => (
+									<label className="check" key={year}>
+										<input
+											type="checkbox"
+											checked={filter.years.includes(year)}
+											onChange={() => toggleValue("years", year)}
+										/>
+										<span dir="ltr">{year}</span>
+									</label>
+								))}
+								{facets.anyNoYear && (
+									<label className="check">
+										<input
+											type="checkbox"
+											checked={filter.years.includes("")}
+											onChange={() => toggleValue("years", "")}
+										/>
+										<span>{say("new.year.none")}</span>
+									</label>
+								)}
+							</div>
+						</div>
+					)}
+				</div>
+				<div className="notes-row">
+					<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
+					<button
+						type="button"
+						className="btn btn-quiet"
+						disabled={shown.length === 0}
+						onClick={tickShown}
+					>
+						{say("notes.tickShown", { n: shown.length })}
+					</button>
+					<button
+						type="button"
+						className="btn btn-quiet"
+						disabled={shown.length === 0 || selected.size === 0}
+						onClick={untickShown}
+					>
+						{say("notes.untickShown")}
+					</button>
+				</div>
 				{selected.size > 0 && filtering && (
 					<p className="muted">{say("notes.chosenHint")}</p>
 				)}
@@ -758,6 +847,13 @@ function groupTitle(
 			? say("new.noBlock")
 			: say("new.block", { block: group.block }),
 	].join(" · ");
+}
+
+/** The same list with one value turned on or off, for a box of the filter's rows. */
+function switched(values: readonly string[], value: string): string[] {
+	return values.includes(value)
+		? values.filter((entry) => entry !== value)
+		: [...values, value];
 }
 
 /** The subject's own name, in the window's language, for the filter's options. */

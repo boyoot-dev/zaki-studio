@@ -1,12 +1,14 @@
-// Narrowing the Notes list (task 178): a grade, a subject, a block or no block, and whether
-// only the files without a note are shown. The rows here are made up; the filter only hides,
-// so the author's selection is not something it ever sees.
+// Narrowing the Notes list (task 178): a grade, a subject, the blocks and years shown, and
+// whether only the files without a note are shown. Several blocks or years may be chosen at
+// once (task 181): the boxes of one row are ORed and the rows are ANDed. The rows here are made
+// up; the filter only hides, so the author's selection is not something it ever sees.
 
 import { describe, expect, it } from "vitest";
 
 import {
 	ALL_NOTES,
 	filterRows,
+	type NotesFilter,
 	type NotesFilterRow,
 	notesFacets,
 	notesFilterOf,
@@ -22,6 +24,7 @@ function row(
 		grade: 7,
 		subject: "science",
 		block: "1",
+		academicYear: "2026-27",
 		noted: false,
 		...over,
 	};
@@ -34,72 +37,112 @@ const ROWS = [
 	row("d", { grade: 8 }),
 	row("e", { block: "" }),
 	row("f", { noted: true }),
+	row("g", { academicYear: "2024-25" }),
+	row("h", { academicYear: "" }),
+	row("i", { block: "", academicYear: "" }),
 ];
+
+/** The ids a filter keeps, as the tests compare them. */
+function kept(filter: NotesFilter): string[] {
+	return filterRows(ROWS, filter).map((row) => row.id);
+}
 
 describe("the rows a filter keeps", () => {
 	it("narrows by grade, by subject and by block", () => {
-		expect(
-			filterRows(ROWS, { ...ALL_NOTES, grade: 8 }).map((row) => row.id),
-		).toEqual(["d"]);
-		expect(
-			filterRows(ROWS, { ...ALL_NOTES, subject: "math" }).map((row) => row.id),
-		).toEqual(["c"]);
-		expect(
-			filterRows(ROWS, { ...ALL_NOTES, block: "2" }).map((row) => row.id),
-		).toEqual(["b"]);
+		expect(kept({ ...ALL_NOTES, grade: 8 })).toEqual(["d"]);
+		expect(kept({ ...ALL_NOTES, subject: "math" })).toEqual(["c"]);
+		expect(kept({ ...ALL_NOTES, blocks: ["2"] })).toEqual(["b"]);
 		// The three narrow together.
 		expect(
-			filterRows(ROWS, {
-				...ALL_NOTES,
-				grade: 7,
-				subject: "science",
-				block: "1",
-			}).map((row) => row.id),
-		).toEqual(["a"]);
+			kept({ ...ALL_NOTES, grade: 7, subject: "science", blocks: ["1"] }),
+		).toEqual(["a", "g", "h"]);
 	});
 
-	it("shows only the rows with no block when that choice is made", () => {
-		expect(
-			filterRows(ROWS, { ...ALL_NOTES, block: "" }).map((row) => row.id),
-		).toEqual(["e"]);
+	it("keeps either of two blocks when both are ticked", () => {
+		expect(kept({ ...ALL_NOTES, blocks: ["1", "2"] })).toEqual([
+			"a",
+			"b",
+			"c",
+			"d",
+			"g",
+			"h",
+		]);
 	});
 
-	it("shows only the files without a note when the box is on", () => {
-		expect(filterRows(ROWS, ALL_NOTES).map((row) => row.id)).toEqual([
+	it("shows only the rows with no block when that box is ticked", () => {
+		expect(kept({ ...ALL_NOTES, blocks: [""] })).toEqual(["e", "i"]);
+		// "no block" is one choice among several, not an exclusive one.
+		expect(kept({ ...ALL_NOTES, blocks: ["", "2"] })).toEqual(["b", "e", "i"]);
+	});
+
+	it("narrows by year, newest or several at once", () => {
+		expect(kept({ ...ALL_NOTES, years: ["2024-25"] })).toEqual(["g"]);
+		expect(kept({ ...ALL_NOTES, years: ["2026-27", "2024-25"] })).toEqual([
 			"a",
 			"b",
 			"c",
 			"d",
 			"e",
+			"g",
 		]);
+		expect(kept({ ...ALL_NOTES, years: [""] })).toEqual(["h", "i"]);
+	});
+
+	it("narrows by blocks and years together, one row each", () => {
+		// Blocks 1 and 2, of 2024-25 and 2025-26: the file must be in either block AND either
+		// year, so the 2026-27 files of those blocks stay out.
 		expect(
-			filterRows(ROWS, { ...ALL_NOTES, onlyMissing: false }).map(
-				(row) => row.id,
-			),
-		).toEqual(["a", "b", "c", "d", "e", "f"]);
+			kept({
+				...ALL_NOTES,
+				blocks: ["1", "2"],
+				years: ["2024-25", "2025-26"],
+			}),
+		).toEqual(["g"]);
+		// The same with "no block" and "no year": each is a value like any other.
+		expect(kept({ ...ALL_NOTES, blocks: [""], years: [""] })).toEqual(["i"]);
+	});
+
+	it("shows only the files without a note when the box is on", () => {
+		expect(kept(ALL_NOTES)).toEqual(["a", "b", "c", "d", "e", "g", "h", "i"]);
+		expect(kept({ ...ALL_NOTES, onlyMissing: false })).toEqual([
+			"a",
+			"b",
+			"c",
+			"d",
+			"e",
+			"f",
+			"g",
+			"h",
+			"i",
+		]);
 	});
 
 	it("never touches the author's selection", () => {
 		const chosen = new Set(["f"]);
-		const kept = filterRows(ROWS, { ...ALL_NOTES, grade: 8 });
+		const left = filterRows(ROWS, { ...ALL_NOTES, grade: 8 });
 		// "f" is hidden, and still chosen: the filter only ever hides rows.
-		expect(kept.map((row) => row.id)).toEqual(["d"]);
+		expect(left.map((row) => row.id)).toEqual(["d"]);
 		expect([...chosen]).toEqual(["f"]);
 	});
 });
 
-describe("the selects' values", () => {
+describe("the values the filter offers", () => {
 	it("are read from the rows that are there", () => {
 		expect(notesFacets(ROWS)).toEqual({
 			grades: [7, 8],
 			subjects: ["math", "science"],
 			blocks: ["1", "2"],
 			anyNoBlock: true,
+			years: ["2026-27", "2024-25"],
+			anyNoYear: true,
 		});
 	});
 
-	it("offer no block only when a row has none", () => {
-		expect(notesFacets([row("a")]).anyNoBlock).toBe(false);
+	it("offer no block or no year only when a row has none", () => {
+		const facets = notesFacets([row("a")]);
+		expect(facets.anyNoBlock).toBe(false);
+		expect(facets.anyNoYear).toBe(false);
+		expect(facets.years).toEqual(["2026-27"]);
 	});
 });
 
@@ -109,13 +152,35 @@ describe("a filter as the page sent it", () => {
 			notesFilterOf({
 				grade: 8,
 				subject: "math",
-				block: "",
+				blocks: ["1", "", "2"],
+				years: ["2024-25"],
 				onlyMissing: false,
 			}),
-		).toEqual({ grade: 8, subject: "math", block: "", onlyMissing: false });
+		).toEqual({
+			grade: 8,
+			subject: "math",
+			blocks: ["1", "", "2"],
+			years: ["2024-25"],
+			onlyMissing: false,
+		});
 		expect(
-			notesFilterOf({ grade: 15, subject: "", block: 7, onlyMissing: "no" }),
-		).toEqual({ grade: null, subject: null, block: null, onlyMissing: true });
+			notesFilterOf({
+				grade: 15,
+				subject: "",
+				blocks: 7,
+				years: {},
+				onlyMissing: "no",
+			}),
+		).toEqual(ALL_NOTES);
 		expect(notesFilterOf(null)).toEqual(ALL_NOTES);
+	});
+
+	it("keeps only strings, once each, from a list a row may send", () => {
+		expect(
+			notesFilterOf({
+				blocks: ["1", "1", 7, "", "a block name that is far too long"],
+				years: ["2026-27", "2026-27"],
+			}),
+		).toMatchObject({ blocks: ["1", ""], years: ["2026-27"] });
 	});
 });

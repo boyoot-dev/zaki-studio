@@ -209,6 +209,7 @@ describe("the key on the IPC surface", () => {
 			"studio:noteText",
 			"studio:notesPlan",
 			"studio:notesRows",
+			"studio:notesIds",
 			"studio:scanState",
 			"studio:reportRows",
 			"studio:model",
@@ -379,6 +380,41 @@ describe("the list channels (task 168)", () => {
 				? (rows as { items: unknown[] }).items.length
 				: 10_000,
 		).toBeLessThanOrEqual(400);
+	});
+
+	it("names every file a filter shows, loaded page or not (task 181)", async () => {
+		// A file with pages, which is what the notes list holds: a file with none is skipped.
+		const paper = {
+			...row(),
+			id: "abcdef012346",
+			path: "Grade 3/Math/paper.pdf",
+			block: "2",
+			academicYear: "2024-25",
+			pages: 2,
+		};
+		writeFileSync(
+			join(project, ".studio", "files.json"),
+			`${JSON.stringify([row(), paper], null, "\t")}\n`,
+		);
+
+		expect(await ask("studio:notesIds", project)).toEqual({
+			ok: true,
+			ids: ["abcdef012346"],
+		});
+		expect(await ask("studio:notesIds", project, { blocks: ["2"] })).toEqual({
+			ok: true,
+			ids: ["abcdef012346"],
+		});
+		expect(await ask("studio:notesIds", project, { blocks: ["1"] })).toEqual({
+			ok: true,
+			ids: [],
+		});
+		expect(
+			await ask("studio:notesIds", project, { years: ["2024-25"] }),
+		).toEqual({ ok: true, ids: ["abcdef012346"] });
+		expect(
+			await ask("studio:notesIds", project, { years: ["2026-27"] }),
+		).toEqual({ ok: true, ids: [] });
 	});
 
 	it("lists one level of the tree, with every row's folder count", async () => {
