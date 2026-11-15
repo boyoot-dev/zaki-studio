@@ -190,6 +190,7 @@ export function Notes({
 		setItems(new Map());
 		setTotal(0);
 		setLoaded(false);
+		setShown([]);
 		requested.current = new Set();
 		wanted.current = { start: 0, end: 0 };
 		void loadPage(0, filter);
