@@ -46,6 +46,7 @@ import type {
 	Made,
 	ModelOverview,
 	NoteSettings,
+	NotesIds,
 	NotesPlanView,
 	NotesState,
 	NotesWritten,
@@ -119,6 +120,7 @@ import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
 import {
 	invalidateItems,
 	notesFacetsOf,
+	notesIds,
 	notesItems,
 	notesPage,
 	reportPage,
@@ -942,6 +944,17 @@ export function registerIpc(): void {
 				ok: true as const,
 				...notesPage(where, at, take, notesFilterOf(filter)),
 			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:notesIds",
+		(event, root: unknown, filter: unknown): NotesIds => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			// Every file the filter shows, whether its page has been drawn or not: the panel's
+			// "tick all shown" ticks these (task 181).
+			return { ok: true, ids: notesIds(where, notesFilterOf(filter)) };
 		},
 	);
 

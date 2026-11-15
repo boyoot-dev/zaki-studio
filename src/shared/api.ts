@@ -211,6 +211,9 @@ export type NotesPlanView =
 	| { ok: true; plan: NotesPlan; limit: number; keySet: boolean }
 	| Failure;
 
+/** Every file a filter shows, by id, whether its page has been drawn or not (task 181). */
+export type NotesIds = { ok: true; ids: string[] } | Failure;
+
 /** One note as plain text (Markdown is never rendered as HTML). */
 export type NoteText = { ok: true; text: string } | Failure;
 
@@ -466,6 +469,8 @@ export type StudioApi = {
 		limit: number,
 		filter?: NotesFilter,
 	): Promise<({ ok: true } & ItemsPage<NotesListItem>) | Failure>;
+	/** Every id a filter shows, loaded page or not, for "tick all shown" (task 181). */
+	notesIds(root: string, filter?: NotesFilter): Promise<NotesIds>;
 	/** One file's note, as plain text. */
 	noteText(root: string, id: string): Promise<NoteText>;
 	/** What a run would do, its cost and its limit; nothing is sent. */

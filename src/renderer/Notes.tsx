@@ -71,6 +71,8 @@ export function Notes({
 		anyNoYear: false,
 	});
 	const [loaded, setLoaded] = useState(false);
+	// The ids every file the filter shows, loaded page or not, for the two buttons below.
+	const [shown, setShown] = useState<string[]>([]);
 	const filterRef = useRef(filter);
 	filterRef.current = filter;
 	const requested = useRef(new Set<number>());
@@ -138,6 +140,17 @@ export function Notes({
 		[loadPage],
 	);
 
+	/** The files the filter shows, so the two "all shown" buttons know every one of them. */
+	const loadShown = useCallback(
+		async (current: NotesFilter) => {
+			const answer = await window.studio.notesIds(root, current);
+			// A list asked for under an older filter would tick files the author no longer sees.
+			if (current !== filterRef.current || !answer.ok) return;
+			setShown(answer.ids);
+		},
+		[root],
+	);
+
 	/** Reads the counts, the values the selects offer, the settings and the jobs, and fetches
 	 * the pages the window shows again; the list keeps what it has until they arrive. */
 	const load = useCallback(async () => {
@@ -157,7 +170,8 @@ export function Notes({
 		// never unmounted for a reload, and so keeps its scroll (task 181).
 		requested.current = new Set();
 		ensureRange(wanted.current.start, wanted.current.end);
-	}, [ensureRange, lang, onNotify, root]);
+		void loadShown(filterRef.current);
+	}, [ensureRange, lang, loadShown, onNotify, root]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
 	useEffect(() => {
@@ -179,7 +193,8 @@ export function Notes({
 		requested.current = new Set();
 		wanted.current = { start: 0, end: 0 };
 		void loadPage(0, filter);
-	}, [filter, loadPage]);
+		void loadShown(filter);
+	}, [filter, loadPage, loadShown]);
 
 	// The cost is worked out after a short pause, so ticking several boxes sends one ask.
 	useEffect(() => {
@@ -221,6 +236,17 @@ export function Notes({
 	/** One box of the filter turned on or off; no box in a row means every value of it. */
 	const toggleValue = (field: "blocks" | "years", value: string) =>
 		setFilter({ ...filter, [field]: switched(filter[field], value) });
+
+	/** Ticks every file the filter shows, loaded page or not (task 181). */
+	const tickShown = () => setSelected((now) => new Set([...now, ...shown]));
+
+	/** Unticks every file the filter shows; a file the filter hides stays chosen. */
+	const untickShown = () =>
+		setSelected((now) => {
+			const next = new Set(now);
+			for (const id of shown) next.delete(id);
+			return next;
+		});
 
 	/** Saves the model and the limit, so the next plan uses them. */
 	const saveSettings = async () => {
@@ -600,7 +626,25 @@ export function Notes({
 						</div>
 					)}
 				</div>
-				<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
+				<div className="notes-row">
+					<p className="muted">{say("notes.chosen", { n: selected.size })}</p>
+					<button
+						type="button"
+						className="btn btn-quiet"
+						disabled={shown.length === 0}
+						onClick={tickShown}
+					>
+						{say("notes.tickShown", { n: shown.length })}
+					</button>
+					<button
+						type="button"
+						className="btn btn-quiet"
+						disabled={shown.length === 0 || selected.size === 0}
+						onClick={untickShown}
+					>
+						{say("notes.untickShown")}
+					</button>
+				</div>
 				{selected.size > 0 && filtering && (
 					<p className="muted">{say("notes.chosenHint")}</p>
 				)}
