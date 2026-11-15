@@ -14,5 +14,7 @@
 	{ "id": "math-ar", "nameEn": "Mathematics (in Arabic)", "icon": "➗", "color": "#2f6fde", "nameAr": "الرياضيات", "contentLanguage": "ar", "chatLanguages": ["ar"] },
 	{ "id": "physics-ar", "nameEn": "Physics (in Arabic)", "icon": "⚛️", "color": "#6a4fd8", "nameAr": "الفيزياء", "contentLanguage": "ar", "chatLanguages": ["ar"] },
 	{ "id": "chemistry-ar", "nameEn": "Chemistry (in Arabic)", "icon": "🧪", "color": "#0e9aa7", "nameAr": "الكيمياء", "contentLanguage": "ar", "chatLanguages": ["ar"] },
+	{ "id": "science-ar", "nameEn": "Science (in Arabic)", "icon": "🔬", "color": "#16a36b", "nameAr": "العلوم", "contentLanguage": "ar", "chatLanguages": ["ar"] },
+	{ "id": "biology-ar", "nameEn": "Biology (in Arabic)", "icon": "🧬", "color": "#3a9d3a", "nameAr": "الأحياء", "contentLanguage": "ar", "chatLanguages": ["ar"] },
 	{ "id": "french", "nameEn": "French", "icon": "🥐", "color": "#ef7d22", "nameAr": "اللغة الفرنسية", "contentLanguage": "fr", "chatLanguages": ["fr"], "languageSubject": true }
 ]
