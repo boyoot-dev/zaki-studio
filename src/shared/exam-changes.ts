@@ -17,6 +17,12 @@ import {
 	type BundlePaper,
 	type BundlePart,
 	type BundlePeriod,
+	EXAM_LANGUAGES,
+	EXAM_LAYOUTS,
+	EXAM_MATERIAL_KINDS,
+	EXAM_QUESTION_TYPES,
+	EXAM_SKILLS,
+	EXAM_TOPICS,
 	examPeriodIssues,
 	parseCourseExams,
 } from "./format/bundle.ts";
@@ -51,15 +57,29 @@ export type ExamParseOutcome =
 	| { ok: true; set: CleanExamSet; refused: ChangeRefusal[] }
 	| { ok: false; issue: string; refused: ChangeRefusal[] };
 
-/** The JSON shape every answer must have, in the user content and the job's README. */
+/** One allowed list as the JSON shape writes it: `"talk" | "dialogue"`. */
+function oneOf(values: readonly string[]): string {
+	return values.map((value) => `"${value}"`).join(" | ");
+}
+
+/** The same values as a plain list, for the lines that say what a field may hold. */
+function anyOf(values: readonly string[]): string {
+	return values.join(", ");
+}
+
+/**
+ * The JSON shape every answer must have, in the user content and the job's README. Every allowed
+ * value is read from the bundle's own constants, so the format can never name a value the parser
+ * refuses, or forget one it takes (task 182).
+ */
 export const EXAM_FORMAT = `{
   "grade": <number>, "subject": "<id>",
   "exams": [
     { "period": "<id>", "name": "<text>",
       "papers": [
         { "name": "<text>",
-          "skill": "listening" | "reading" | "writing" | "speaking" | "written",
-          "language": "<en>" | "<ar>" | "<fr>",
+          "skill": ${oneOf(EXAM_SKILLS)},
+          "language": ${oneOf(EXAM_LANGUAGES)},
           "minutes": <number>, "marks": <number>,
           "parts": [
             { "id": "<lowercase id>", "name": "<text>",
@@ -68,7 +88,7 @@ export const EXAM_FORMAT = `{
               "marks": <number>, "minutes": <number>,
               "material": { "kind": "<kind>", "description": "<text>",
                 "words": [<shortest>, <longest>], "speakers": <number>,
-                "topic": "units" | "outside-units",
+                "topic": ${oneOf(EXAM_TOPICS)},
                 "layout": ["<layout>"],
                 "timing": { "readingSeconds": <number>, "plays": <number>,
                   "repeat": "segment" | "whole", "pauseSeconds": <number>,
@@ -82,12 +102,18 @@ export const EXAM_FORMAT = `{
               "notes": "<text>", "marking": "<text>" } ] } ] } ],
   "sources": { "<part id>": ["<file id>"] },
   "open": ["<text>"]
-}`;
+}
 
-/** How to read the shape above: a field the notes do not give is left out, not written as
- * null (the bundle reader treats an absent field as absent). */
+"kind" is one of: ${anyOf(EXAM_MATERIAL_KINDS)}. "none" is a part with no text to read or hear, such as a writing task or a set of maths questions; "other" needs a "description" that says what it is.
+
+"layout" is any of: ${anyOf(EXAM_LAYOUTS)}, in a short list, and a part with no layout leaves it out.
+
+A question type in "types" and "marksByType" is one of: ${anyOf(EXAM_QUESTION_TYPES)}. A question that doesn't fit goes under "other".`;
+
+/** How to read the shape above: the fields the parser always needs, and the optional ones the
+ * notes may not give. An absent field is left out, never written as null. */
 export const EXAM_FORMAT_NOTE =
-	'Leave out every field the notes do not give; never write null. An exam that covers the whole year leaves out "period".';
+	'The required fields are always written: "grade", "subject" and "exams" (one or more, each with "name" and one or more "papers"); every paper\'s "name", "skill" and one or more "parts"; each part\'s "id", "name", "material" and "questions"; "material.kind" and "questions.count" with "questions.types". Leave out an optional field the notes do not give; never write null. When the notes give no number a required field needs, write "material": { "kind": "none" } for a part with no text to read or hear, and put the whole count on one type in "types" (or on "other") when the split is not given. Every part names its files in "sources". An exam that covers the whole year leaves out "period".';
 
 /** Every period id of the year, at any depth, as a set. */
 export function periodIds(periods: readonly BundlePeriod[]): Set<string> {
