@@ -309,7 +309,7 @@ Read rules.md first: it is the exam change set's rules.
 - Save each change set as out/<the folder's name>.json, one JSON object:
 ${format
 	.split("\n")
-	.map((line) => `  ${line}`)
+	.map((line) => (line === "" ? "" : `  ${line}`))
 	.join("\n")}
 - The change set's grade and subject are the ones course.json gives. Every part in it names
   the file ids it was read from in "sources".

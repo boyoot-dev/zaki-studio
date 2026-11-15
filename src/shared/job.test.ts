@@ -446,7 +446,7 @@ the number of change sets written.`);
 		);
 		expect(readme).toContain('covers the whole year leaves "period" out.');
 		for (const line of EXAM_FORMAT.split("\n"))
-			expect(readme).toContain(`  ${line}`);
+			if (line !== "") expect(readme).toContain(`  ${line}`);
 		expect(
 			examsReadme("other", "kestrel", COURSES, EXAM_FORMAT, PERIOD_TEXT),
 		).toContain("Do the folders one at a time.");
