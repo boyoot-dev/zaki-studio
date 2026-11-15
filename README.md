@@ -210,10 +210,12 @@ way the pipeline writes them (`src/shared/notes.ts`). The note is
 curriculum, and who wrote it), then the model's body. It is shown beside the file as plain
 text, never as HTML. A note is never rewritten unless the author says "Write again".
 
-The list of files can be narrowed by grade, by subject, and by blocks and academic years, with
-any number of boxes ticked in either of the last two rows (the boxes of a row are ORed, and the
-rows are ANDed), plus "only files without a note", which is on at first. The boxes offer only
-the values the files have, and the choice is kept for the session, never written to the project.
+The list of files can be narrowed by grade, by subject, and by blocks, academic years and file
+types, with any number of boxes ticked in any of the last three rows (the boxes of a row are ORed,
+and the rows are ANDed), plus "only files without a note", which is on at first. The boxes offer
+only the values the files have, and the type boxes are labelled with the register's kinds (exam,
+mark scheme, …) and offer only the types the chosen grade and subject have. The choice is kept for
+the session, never written to the project.
 The filter only hides rows: a file chosen and then hidden stays chosen, and the count of
 chosen files includes it. The group checkbox ticks only the rows the filter leaves visible.
 "Tick all shown (N)" ticks every file the filter shows, loaded page or not — with no filter,
@@ -314,6 +316,12 @@ of that course, not a worksheet. The rules are `resources/rules/exam-rules.md`, 
 test: describe the format, never copy a passage or question, the newest year decides, and a
 writing task's printed length (`"من ٣٠٠ إلى ٤٠٠ كلمة"`) becomes `questions.answerWords` `[300,
 400]`.
+
+The JSON shape in the request and the job's README names every value `parseCourseExams` takes
+(skills, languages, material kinds, question types, layouts, topics), built from the bundle's
+own constants, says which fields are required, and tells the model what to write when the notes
+give no number for one; both also list the curriculum's period ids as `id (English name)`, so the
+model never has to guess `"term-1"` or `"final"`.
 
 "Changes to review" shows an exam set beside the course's papers, paper by paper and part by
 part, with the fields that changed (`minutes 70 → 75`, `answerWords — → 300–400`) highlighted
