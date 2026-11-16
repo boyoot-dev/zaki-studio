@@ -387,8 +387,7 @@ const en = {
 	// The numbers an exam states about the same thing (task 192).
 	"examNumbers.summary": "{n} numbers don't add up.",
 	"examNumbers.fix": "Fix",
-	"examNumbers.count-types":
-		"count {count} is not the sum of the types ({sum})",
+	"examNumbers.count-types": "{sum} typed questions, but the count is {count}",
 	"examNumbers.total-each":
 		"marksEach {each} × {count} is not totalMarks {total}",
 	"examNumbers.total-by-type":
@@ -847,7 +846,7 @@ const ar: Record<TextKey, string> = {
 	// أرقام الامتحان التي تصف الشيء نفسه (مهمة 192).
 	"examNumbers.summary": "{n} رقمًا لا يتطابق.",
 	"examNumbers.fix": "صحِّح",
-	"examNumbers.count-types": "العدد {count} ليس مجموع الأنواع ({sum})",
+	"examNumbers.count-types": "الأسئلة المحددة الأنواع {sum}، لكن العدد {count}",
 	"examNumbers.total-each":
 		"marksEach {each} × {count} لا يساوي totalMarks {total}",
 	"examNumbers.total-by-type": "الأنواع تساوي {sum}، لا totalMarks {total}",

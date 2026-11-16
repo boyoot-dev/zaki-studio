@@ -112,11 +112,14 @@ function partWarnings(
 	const questions = part.questions;
 	const questionsAt = `${at}.questions`;
 	const sum = typeSum(questions.types);
-	if (sum !== null && !same(questions.count, sum))
+	// The types are the kinds a paper must have, not necessarily every question (Mr. Zaki
+	// task 193): fewer typed questions than the count is normal. Only more typed than the
+	// count is a mismatch, and then the types decide.
+	if (sum !== null && sum > questions.count && !same(questions.count, sum))
 		out.push({
 			path: questionsAt,
 			code: "count-types",
-			message: `count ${questions.count} is not the sum of types (${sum})`,
+			message: `${sum} typed questions, but count is ${questions.count}`,
 			vars: { count: questions.count, sum },
 			fix: { path: `${questionsAt}.count`, value: sum },
 		});

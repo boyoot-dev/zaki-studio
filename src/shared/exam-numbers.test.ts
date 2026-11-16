@@ -86,12 +86,18 @@ function codes(value: BundleExam): ExamNumberCode[] {
 }
 
 describe("the numbers of one exam", () => {
+	it("keeps count-types silent when fewer questions are typed than the count", () => {
+		expect(codes(examOf({ count: 3, marksEach: null }))).not.toContain(
+			"count-types",
+		);
+	});
+
 	it("says nothing when they agree", () => {
 		expect(examNumberWarnings(exam())).toEqual([]);
 	});
 
-	it("fires count-types when count is not the sum of types", () => {
-		const warnings = examNumberWarnings(examOf({ count: 3, marksEach: null }));
+	it("fires count-types when more questions are typed than the count", () => {
+		const warnings = examNumberWarnings(examOf({ count: 1, marksEach: null }));
 		expect(warnings.map((warning) => warning.code)).toEqual(["count-types"]);
 		expect(warnings[0]?.path).toBe("papers[0].parts[0].questions");
 		expect(warnings[0]?.fix).toEqual({
@@ -244,7 +250,7 @@ describe("the half-mark tolerance", () => {
 describe("a whole course", () => {
 	it("counts the warnings of its accepted exams, and leaves a clean course out", () => {
 		const graded = exam({
-			papers: [paper({ parts: [part({ count: 3, marksEach: null })] })],
+			papers: [paper({ parts: [part({ count: 1, marksEach: null })] })],
 		});
 		expect(
 			courseNumberWarnings([
@@ -270,7 +276,7 @@ describe("a safe fix", () => {
 	}
 
 	it("sets count, and the numbers then agree", () => {
-		const next = fixed(examOf({ count: 3 }));
+		const next = fixed(examOf({ count: 1 }));
 		expect(next.papers[0]?.parts[0]?.questions.count).toBe(2);
 		expect(examNumberWarnings(next)).toEqual([]);
 	});
