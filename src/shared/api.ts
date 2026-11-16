@@ -3,6 +3,7 @@
 // path stays inside it, so the page never gets a file system, a shell or a network door. The
 // renderer and the preload share these types; nothing here runs.
 
+import type { CourseNumberWarnings } from "./exam-numbers.ts";
 import type { JobSummary, JobTool } from "./job.ts";
 import type {
 	ItemsPage,
@@ -162,6 +163,8 @@ export type ExportCheck =
 			needsAuthor: boolean;
 			author: string;
 			rights: string;
+			/** The accepted exams whose numbers don't add up, per course; the export still works. */
+			examWarnings: CourseNumberWarnings[];
 	  }
 	| Failure;
 

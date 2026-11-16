@@ -3,8 +3,11 @@
 // The main process checks the bundle with the shared parser; anything it finds is shown here
 // and no file is written.
 
+import studioSubjects from "virtual:subjects";
 import { useState } from "react";
 
+import type { CourseNumberWarnings } from "../shared/exam-numbers";
+import { gradeLabel, type Lang } from "../shared/i18n";
 import type { ModelSummary } from "../shared/model";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
@@ -15,17 +18,29 @@ export type ExportSpec = {
 	needsAuthor: boolean;
 	author: string;
 	rights: string;
+	/** The accepted exams whose numbers don't add up, per course; the export still works. */
+	examWarnings: CourseNumberWarnings[];
 };
+
+/** The subject's own name, in the window's language. */
+function subjectName(id: string, lang: Lang): string {
+	const subject = studioSubjects.find((entry) => entry.id === id);
+	if (subject === undefined) return id;
+	return lang === "ar" ? subject.nameAr : subject.nameEn;
+}
 
 export function ExportDialog({
 	root,
 	spec,
 	onClose,
+	onOpenCourse,
 	onNotify,
 }: {
 	root: string;
 	spec: ExportSpec;
 	onClose: () => void;
+	/** Opens the Curriculum tab at a course whose exam numbers don't add up. */
+	onOpenCourse: (course: { grade: number; subject: string }) => void;
 	onNotify: (text: string) => void;
 }) {
 	const say = useSay();
@@ -89,6 +104,41 @@ export function ExportDialog({
 						</li>
 					))}
 				</ul>
+
+				{spec.examWarnings.length > 0 && (
+					<div>
+						<p className="exam-warn-summary">
+							{say("export.examWarnings", {
+								n: spec.examWarnings.reduce(
+									(total, entry) => total + entry.warnings,
+									0,
+								),
+							})}
+						</p>
+						<ul className="exam-warn">
+							{spec.examWarnings.map((entry) => (
+								<li key={`${entry.grade}|${entry.subject}`}>
+									<span>
+										{say("export.examWarningCourse", {
+											course: `${gradeLabel(lang, entry.grade)} · ${subjectName(entry.subject, lang)}`,
+											n: entry.warnings,
+										})}
+									</span>
+									<button
+										type="button"
+										className="btn btn-quiet"
+										onClick={() => {
+											onClose();
+											onOpenCourse(entry);
+										}}
+									>
+										{say("export.openExamCourse")}
+									</button>
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
 
 				{(spec.needsAuthor || author !== "" || rights !== "") && (
 					<div className="form">

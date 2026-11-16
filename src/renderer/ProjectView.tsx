@@ -95,6 +95,12 @@ export function ProjectView({
 			current.has(next) ? current : new Set([...current, next]),
 		);
 	}, []);
+	// The course the export's exam warning line opens, bumped so a second click goes there too.
+	const [coursePick, setCoursePick] = useState<{
+		grade: number;
+		subject: string;
+		key: number;
+	} | null>(null);
 	const [exportSpec, setExportSpec] = useState<ExportSpec | null>(null);
 	// The register's row for the chosen file, and the last scan's report header.
 	const [row, setRow] = useState<FileRow | null>(null);
@@ -205,8 +211,15 @@ export function ProjectView({
 				needsAuthor: result.needsAuthor,
 				author: result.author,
 				rights: result.rights,
+				examWarnings: result.examWarnings,
 			});
 		})();
+	};
+
+	/** Opens the Curriculum tab at one course, from the export's exam warning line. */
+	const openCourse = (course: { grade: number; subject: string }) => {
+		setCoursePick({ ...course, key: Date.now() });
+		setTab("curriculum");
 	};
 
 	/** Copies files or folders dropped from Explorer into a folder of the project. */
@@ -465,6 +478,7 @@ export function ProjectView({
 						project={project}
 						onNotify={onNotify}
 						reloadKey={reloadKey}
+						openCourse={coursePick}
 					/>
 				</div>
 			)}
@@ -638,6 +652,7 @@ export function ProjectView({
 					root={root}
 					spec={exportSpec}
 					onClose={() => setExportSpec(null)}
+					onOpenCourse={openCourse}
 					onNotify={onNotify}
 				/>
 			)}
