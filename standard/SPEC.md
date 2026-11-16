@@ -33,7 +33,9 @@ links to outside material.
 - A bundle file is **JSON**, encoded as **UTF-8**.
 - The file is at most **20,000,000 characters** of decoded text. A reader
   **MUST** check the size before parsing and **MUST** refuse a file that is
-  larger.
+  larger. The limit counts **decoded** characters. A reader **MAY** refuse
+  early on the file's bytes — 20,000,000 characters are at most 80,000,000
+  bytes of UTF-8 — and then count characters after decoding.
 - The top level is one JSON object. A file that is not valid JSON — including
   one that is not UTF-8, or starts with a byte-order mark — is not a bundle.
   A reader **MUST** refuse it.
@@ -53,8 +55,11 @@ Every text in a bundle is a plain string. There are two kinds:
 Every text in a bundle obeys all of these rules:
 
 1. The text is normalised to **Unicode NFC** and **trimmed** (leading and
-   trailing white space removed). Two texts that differ only in normalisation
-   form are the same text. A reader **SHOULD** normalise before comparing.
+   trailing white space removed) **before it is checked**. A reader **MUST**
+   normalise first, then check: `" The Moon "` is valid and is read as
+   `"The Moon"`. Two texts that differ only in normalisation form or in
+   leading or trailing white space are the same text. A writer **MUST** write
+   text that is already normalised and trimmed.
 2. The text is **non-empty** after trimming.
 3. The text is at most its limit **in characters** (the limits are listed per
    field in §6).
@@ -123,14 +128,18 @@ Updates work because of two rules for authors:
    keeps its `number`, and a skill keeps its position within the lesson, for
    as long as the curriculum lives. Rows are matched by unit number, lesson
    number and skill position. Renumbering moves a student's progress to the
-   wrong lesson.
+   wrong lesson. A skill is matched by its **position** in the lesson, so
+   inserting one in the middle shifts every later skill and moves progress to
+   the wrong skill. New skills are added **at the end** of a lesson.
 2. The `id` is stable. A file with a new `id` is a new curriculum, whatever
    its `version` says.
 
 What a newer version means for a reader: more units, fewer units, corrected
-facts, exams reworked. Anything that used to be there and is gone in the new
-file is gone. The file is the whole truth; nothing carries over except what
-the reader keeps for itself (progress, and any practice it generated).
+facts, exams reworked. A unit, a lesson or a skill that the newer version no
+longer has is deleted, and the progress on it is deleted with it. Progress on
+rows that stay is kept. The file is the whole truth; nothing carries over
+except what the reader keeps for itself (progress, and any practice it
+generated).
 
 ## 5. Untrusted input
 
@@ -214,13 +223,20 @@ or no period at all (the whole year).
 A course is one grade and one subject. The same grade and subject may not
 appear twice in a file.
 
+A course's **teaching language** comes from the reader's subject list, not from
+the file: `math-ar` is taught in Arabic, `science` in English.
+
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
 | `grade` | integer | yes | −1 to 12 | The grade. −1 is the first kindergarten year, 0 is the second; 1 to 12 are school grades. |
-| `subject` | string | yes | non-empty | A subject id from the reader's own subject list (for example `science`). The format does not fix the list; the reader knows its own subjects and **MUST** refuse an unknown one. |
+| `subject` | string | yes | no limit beyond the file's | A subject id from the reader's own subject list (for example `science`). The format does not fix the list; the reader knows its own subjects and **MUST** refuse an unknown one. |
 | `examStyle` | string | no | 1–8,000 characters, may be multi-line | How exams in this course are set, in the author's words, for what the structured `exams` cannot say. |
-| `exams` | array of exam | no | at most 12; absent means no exams | How the exams are set (§6.4). Absent is the same as no key. |
+| `exams` | array of exam | no | 1–12; absent means no exams | How the exams are set (§6.4). Absent is the same as no key. An empty list is refused. |
 | `units` | array of unit | yes | at least 1, at most 60 | The units of this course (§6.5). |
+
+A writer **MUST** check the target reader's subject list, because a bundle valid
+for one reader can be refused by another. `src/shared/format/subjects.json` in
+this repository is the list the Mr. Zaki reader uses.
 
 ### 6.4 Exams
 
@@ -246,6 +262,8 @@ A paper is one sitting of one skill.
 | `marks` | marks | no | 0–200 in halves | What the paper is worth. |
 | `parts` | array of part | yes | at least 1, at most 8 | The parts of the paper (§6.4.2), in order. |
 
+A paper without `language` is in the course's teaching language (§6.3).
+
 #### 6.4.2 Parts
 
 A part is what is read or heard, and what is asked about it.
@@ -254,7 +272,7 @@ A part is what is read or heard, and what is asked about it.
 |---|---|---|---|---|
 | `id` | string | no | 1–40 characters, `^[a-z0-9-]+$`; unique in the course | A stable key. Practice made for a part is stored against this key, so an update that keeps the key keeps the practice. |
 | `name` | string | yes | 1–300 characters | The part's name, in the paper's language. |
-| `nameEn` | string | no | 1–300 characters | The same name in English, for the line under an Arabic or French title. |
+| `nameEn` | string | no | 1–300 characters | The same name in English, for the line under a title in the teaching language, when that language is not English. |
 | `instruction` | string | no | 1–300 characters | The instruction, paraphrased, in the paper's language. |
 | `instructionEn` | string | no | 1–300 characters | The instruction in English. |
 | `marks` | marks | no | 0–200 in halves | What the part is worth. |
@@ -324,6 +342,13 @@ Question types: `choice`, `truefalse`, `gap`, `short`, `form`, `yesno`,
 `match`, `picture`, `multi`, `truefalse-justify`, `extract`, `essay`,
 `calculation`, `labelling`, `ordering`, `other`.
 
+The numbers here are the paper's own statement, and the format does not check
+that they add up. A reader **MUST NOT** assume that `count` equals the sum of
+`types`, that `marksEach` × `count` equals `totalMarks`, that the parts' marks
+add up to the paper's `marks`, that `choiceOptions` comes with a choice
+question, or that `maxWords` and `answerWords` agree. None of these sums is
+checked today.
+
 ### 6.5 Units
 
 | Field | Type | Required | Limits | Meaning |
@@ -363,12 +388,16 @@ Absent means an empty list; an empty list is fine.
 ## 7. What a valid bundle is
 
 A **valid bundle** is a file that passes every check in this document and in
-the JSON Schema:
+the JSON Schema. `src/shared/format/bundle.ts` in this repository is the
+reference reader: a working reader that follows this text. Where it and this
+text disagree, this text is meant to win, and the disagreement is a bug to
+report. `examples/EXPECTED.md` lists what the reference reader says about each
+example.
 
 1. §2: the file is UTF-8 JSON, at most 20,000,000 characters, top level one
    object.
-2. §3: every text is normalised, trimmed, non-empty, within its limit, and
-   free of forbidden characters and web addresses.
+2. §3: every text, once normalised to NFC and trimmed, is non-empty, within
+   its limit, and free of forbidden characters and web addresses.
 3. Unknown fields are refused, everywhere. In objects whose keys are fixed
    (the header, a period, a course, …) every key must be a defined field; in
    `types` and `marksByType` every key must be a known question type.
@@ -390,7 +419,9 @@ and a conforming reader **MUST** enforce them:
 - The **character rules** (§3.1): the refused categories and the allowed
   exceptions. The schema can bound a string's length, not its characters.
 - The **web-address rule** (§3.2): no text may contain one.
-- **Normalisation**: NFC and trimming, before length and content checks.
+- **Normalisation**: every text is normalised to NFC and trimmed **before**
+  the length and content checks, so a padded text is valid and is read trimmed
+  (§3).
 - **Cross-references**:
   - A unit's `period` is a **leaf** period of this bundle.
   - An exam's `period`, when present, is **some period of this bundle, at any
@@ -403,6 +434,10 @@ and a conforming reader **MUST** enforce them:
 - `answerWords`, when present, holds exactly two integers, and the first is no
   larger than the second (§6.4.4).
 - A multi-line text may contain `\n`; a single-line text may not (§3).
+- **Exam numbers**: `count`, `types`, `marksEach`, `totalMarks`, the parts'
+  marks, `choiceOptions`, `maxWords` and `answerWords` are separate statements.
+  The format does not check that they add up, and a reader **MUST NOT** assume
+  that they do (§6.4.4).
 - An absent `nameAr` on the header or a period defaults to the matching
   `nameEn`; an absent `source` defaults to `sheet`; an absent `wholeYear`
   defaults to `false`; absent `exams`, `facts`, `keywords`, `evidence` default
@@ -416,6 +451,8 @@ refused by the rules above; `invalid-web-address.json` passes the JSON Schema
 (it breaks a rule beyond the schema), `invalid-unknown-field.json` fails the
 JSON Schema as well, and `invalid-answer-words-v1.json` carries a version 2
 field in a version 1 file and fails the version 1 JSON Schema too.
+`examples/EXPECTED.md` lists every example, its verdict, and the path and
+message the reference reader reports for it.
 
 ## 8. Conformance
 
@@ -426,8 +463,9 @@ A reader is any program that reads bundles. A conforming reader:
 - **MUST** check the file size before parsing (§2).
 - **MUST** refuse a file that is not valid JSON, or whose top level is not one
   object.
-- **MUST** apply §3 to every text: normalise, trim, check non-empty, check
-  the limit, check the characters, check for web addresses.
+- **MUST** normalise every text to NFC and trim it **before** the other
+  checks, then check non-empty, the limit, the characters, and the web
+  addresses (§3).
 - **MUST** validate the file against the JSON Schema and against every rule in
   §7.
 - **MUST** refuse the whole bundle when any check fails. It **MUST NOT** use
@@ -452,6 +490,7 @@ A writer is any program that produces bundles. A conforming writer:
 - **MUST** bump `version` on every export.
 - **MUST NOT** renumber units, lessons or skills (§4).
 - **MUST NOT** put a web address, or a forbidden character, in any text.
+- **MUST** write every text already normalised to NFC and trimmed (§3).
 - **SHOULD** check its own output with a validating reader before export.
 
 A file both accept is version 1 or version 2. A reader and a writer that both
