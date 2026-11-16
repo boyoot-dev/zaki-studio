@@ -30,5 +30,12 @@ school's material.
   `courses[0].exams[0].papers[0].parts[0].questions.answerWords`. This one fails
   the version 1 JSON Schema too.
 
+`EXPECTED.md` lists every file here with its verdict — valid or refused — and,
+for a refused one, the path and message the reference reader reports. A test
+beside the reader (`src/shared/standard-expected.test.ts`) runs the reader over
+every file and checks each row, so the list cannot drift.
+
 The refused examples are refused so an implementation can check its own
-refusals against them.
+refusals against them. The reference reader is `src/shared/format/bundle.ts` in
+this repository. Where it and `SPEC.md` disagree, the text is meant to win, and
+the disagreement is a bug to report.
