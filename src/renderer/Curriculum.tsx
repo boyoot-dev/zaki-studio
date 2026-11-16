@@ -8,8 +8,9 @@
 import studioSubjects from "virtual:subjects";
 import { useEffect, useState } from "react";
 import type { CourseHead, CourseOpen, ModelOverview } from "../shared/api.ts";
+import { examNumberWarnings } from "../shared/exam-numbers.ts";
 import type { BundlePeriod } from "../shared/format/bundle.ts";
-import { gradeLabel, type Lang } from "../shared/i18n";
+import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
 import { fileLabel, parseSource } from "../shared/model.ts";
 import { failureText } from "./App";
@@ -112,12 +113,15 @@ export function Curriculum({
 	project,
 	onNotify,
 	reloadKey,
+	openCourse,
 }: {
 	root: string;
 	project: { periods: BundlePeriod[] };
 	onNotify: (text: string) => void;
 	/** Bumped when the project changed (accepted changes, a scan): the tab stays open now. */
 	reloadKey: number;
+	/** A course the export's exam warning line asked for; `key` bumps on every click. */
+	openCourse?: { grade: number; subject: string; key: number } | null;
 }) {
 	const say = useSay();
 	const lang = useLang();
@@ -158,6 +162,12 @@ export function Curriculum({
 	const courses = loaded.kind === "ready" ? loaded.courses : [];
 	const chosenCourse =
 		courses.find((entry) => courseKey(entry) === chosen) ?? courses[0] ?? null;
+
+	// The export's link to a course: choose it when the link is used, even if it was chosen before.
+	useEffect(() => {
+		if (openCourse === null || openCourse === undefined) return;
+		setChosen(courseKey(openCourse));
+	}, [openCourse]);
 
 	// The chosen course in full, read when it changes; kept per course for this session.
 	useEffect(() => {
@@ -319,18 +329,35 @@ export function Curriculum({
 							<section className="course-exams">
 								<h3>{say("curriculum.exams")}</h3>
 								<ul>
-									{course.exams.map((exam) => (
-										<li
-											key={`${exam.period ?? "year"}-${exam.name}`}
-											dir="auto"
-										>
-											{exam.name}
-											<span className="muted">
-												{" — "}
-												{exam.papers.map((paper) => paper.name).join("، ")}
-											</span>
-										</li>
-									))}
+									{course.exams.map((exam) => {
+										const warnings = examNumberWarnings(exam);
+										return (
+											<li
+												key={`${exam.period ?? "year"}-${exam.name}`}
+												dir="auto"
+											>
+												{exam.name}
+												<span className="muted">
+													{" — "}
+													{exam.papers.map((paper) => paper.name).join("، ")}
+												</span>
+												{warnings.length > 0 && (
+													<ul className="exam-warn">
+														{warnings.map((warning) => (
+															<li key={`${warning.path}-${warning.code}`}>
+																<span dir="auto">
+																	{say(
+																		`examNumbers.${warning.code}` as TextKey,
+																		warning.vars,
+																	)}
+																</span>
+															</li>
+														))}
+													</ul>
+												)}
+											</li>
+										);
+									})}
 								</ul>
 							</section>
 						)}

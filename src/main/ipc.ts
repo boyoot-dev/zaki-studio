@@ -83,6 +83,7 @@ import {
 	deleteChange,
 	deleteExamChange,
 	examKey,
+	fixExamChange,
 	prepareUnitsJob,
 	readChangeSets,
 	readUnitsSettings,
@@ -1862,6 +1863,41 @@ export function registerIpc(): void {
 			});
 			if (!accepted.ok) return accepted;
 			return { ok: true };
+		},
+	);
+
+	ipcMain.handle(
+		"studio:fixExams",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			path: unknown,
+			value: unknown,
+		): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const context = examContext(where, grade, subject);
+			if ("ok" in context) return context;
+			const wantedPath = text(path, 200);
+			if (!/^exams\[\d{1,3}\]\./.test(wantedPath))
+				return failure("invalidName");
+			const wantedValue =
+				value === null
+					? null
+					: typeof value === "number" && Number.isFinite(value)
+						? value
+						: undefined;
+			if (wantedValue === undefined) return failure("invalidName");
+			return fixExamChange({
+				root: where,
+				model: context.model,
+				files: context.rows,
+				target: context.target,
+				path: wantedPath,
+				value: wantedValue,
+			});
 		},
 	);
 

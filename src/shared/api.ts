@@ -3,6 +3,7 @@
 // path stays inside it, so the page never gets a file system, a shell or a network door. The
 // renderer and the preload share these types; nothing here runs.
 
+import type { CourseNumberWarnings } from "./exam-numbers.ts";
 import type { JobSummary, JobTool } from "./job.ts";
 import type {
 	ItemsPage,
@@ -162,6 +163,8 @@ export type ExportCheck =
 			needsAuthor: boolean;
 			author: string;
 			rights: string;
+			/** The accepted exams whose numbers don't add up, per course; the export still works. */
+			examWarnings: CourseNumberWarnings[];
 	  }
 	| Failure;
 
@@ -565,6 +568,14 @@ export type StudioApi = {
 	): Promise<Done>;
 	/** Marks an exam change set as rejected, keeping it until it is deleted. */
 	rejectExams(root: string, grade: number, subject: string): Promise<Done>;
+	/** Applies one safe number fix to a pending exam change set, then checks the set again. */
+	fixExams(
+		root: string,
+		grade: number,
+		subject: string,
+		path: string,
+		value: number | null,
+	): Promise<Done>;
 	/** Deletes a rejected exam change set's file. */
 	deleteExams(root: string, grade: number, subject: string): Promise<Done>;
 	/** Merges a whole set, one unit, or one lesson into the model; the page sends no path. */

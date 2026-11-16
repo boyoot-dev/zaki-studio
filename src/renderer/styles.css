@@ -1323,6 +1323,33 @@ body.pane-dragging {
 	font-size: 0.78rem;
 }
 
+.exam-warn {
+	margin: 4px 0;
+	padding: 0;
+	list-style: none;
+}
+
+.exam-warn li {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 2px 0;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: var(--warn, #fdf0d5);
+	color: var(--ink);
+	font-size: 0.82rem;
+}
+
+.exam-warn-summary {
+	margin: 4px 0 0;
+	color: #8a5a00;
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
 mark {
 	background: #ffe9a8;
 	color: inherit;

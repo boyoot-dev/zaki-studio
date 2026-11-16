@@ -8,6 +8,7 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { BrowserWindow, dialog } from "electron";
 import type { ExportCheck, Exported, Failure } from "../shared/api.ts";
+import { courseNumberWarnings } from "../shared/exam-numbers.ts";
 import {
 	bundleText,
 	exportFileName,
@@ -42,6 +43,7 @@ export function summaryFor(root: string): ExportCheck {
 		ok: true,
 		version: nextVersion(exportNames(root)),
 		summary,
+		examWarnings: courseNumberWarnings(model.model.courses),
 		needsAuthor:
 			model.model.curriculum.author.trim() === "" ||
 			model.model.curriculum.rights.trim() === "",
