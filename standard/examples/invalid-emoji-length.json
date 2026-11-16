@@ -1,0 +1,42 @@
+{
+	"format": "mr-zaki-curriculum",
+	"formatVersion": 1,
+	"id": "8c4d7a2f-51e6-4b93-8f0a-6e2c9d1b4a75",
+	"version": 1,
+	"nameEn": "Starlight Astronomy",
+	"nameAr": "علم الفلك",
+	"author": "R. Farouk",
+	"rights": "Written from common-knowledge astronomy texts, for anyone to use and share.",
+	"periods": [
+		{
+			"id": "year",
+			"nameEn": "The school year",
+			"nameAr": "العام الدراسي",
+			"wholeYear": true
+		}
+	],
+	"courses": [
+		{
+			"grade": 8,
+			"subject": "science",
+			"units": [
+				{
+					"number": 1,
+					"period": "year",
+					"title": "The Moon",
+					"keywords": ["moon", "phases"],
+					"lessons": [
+						{
+							"number": 1,
+							"title": "Why the Moon changes shape",
+							"skills": ["Describe how the Moon's phases work"],
+							"facts": [
+								"The Moon's phases repeat about every 29 and a half days: new moon, waxing crescent, first quarter, waxing gibbous, full moon, waning gibbous, last quarter and waning crescent. The cycle takes about one month, and many languages use the same eight names for the phases. People have watched these changes for thousands of years, and given each phase its own name, and its place in the year's calendar.🌑"
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}

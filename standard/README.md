@@ -24,7 +24,7 @@ so that anyone can implement it without the original code.
   required fields and limits. **[schema/bundle-v1.schema.json](schema/bundle-v1.schema.json)**
   stays for version 1 files.
 - **[examples/](examples/)** — three valid bundles (two version 1 and one
-  version 2) and three refused examples, each with the reason it is refused.
+  version 2) and four refused examples, each with the reason it is refused.
   **[examples/EXPECTED.md](examples/EXPECTED.md)** lists every example, its
   verdict, and the path and message the reference reader reports for it.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed between versions of the

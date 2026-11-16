@@ -1,7 +1,7 @@
 # Examples
 
-Six bundles, all around the same invented subject ("Starlight Astronomy", grade 8
-and grade 9 science). The content is written from common-knowledge astronomy
+Seven bundles, all around the same invented subject ("Starlight Astronomy", grade
+8 and grade 9 science). The content is written from common-knowledge astronomy
 texts, names no school, curriculum or country's exam, and is copied from no
 school's material.
 
@@ -29,6 +29,12 @@ school's material.
   reader reports `unknown field "answerWords"` at
   `courses[0].exams[0].papers[0].parts[0].questions.answerWords`. This one fails
   the version 1 JSON Schema too.
+- `invalid-emoji-length.json`: **refused**. A fact is 400 characters long and
+  ends with an emoji, and a text's limit is counted in UTF-16 code units, so the
+  fact is 401 units and one over the 400 limit: the reader reports `at most 400
+  characters` at `courses[0].units[0].lessons[0].facts[0]`. A reader that counted
+  code points would read the same fact as 400 and accept it. This one passes the
+  JSON Schema, which counts characters and not code units.
 
 `EXPECTED.md` lists every file here with its verdict — valid or refused — and,
 for a refused one, the path and message the reference reader reports. A test

@@ -446,11 +446,14 @@ and a conforming reader **MUST** enforce them:
 
 ### Invalid examples
 
-The `examples/` folder carries three refused files and says why. All are
+The `examples/` folder carries four refused files and says why. All are
 refused by the rules above; `invalid-web-address.json` passes the JSON Schema
 (it breaks a rule beyond the schema), `invalid-unknown-field.json` fails the
-JSON Schema as well, and `invalid-answer-words-v1.json` carries a version 2
-field in a version 1 file and fails the version 1 JSON Schema too.
+JSON Schema as well, `invalid-answer-words-v1.json` carries a version 2 field in
+a version 1 file and fails the version 1 JSON Schema too, and
+`invalid-emoji-length.json` passes the JSON Schema and is still refused,
+because a text's limit is counted in UTF-16 code units (§3.3) and the schema
+counts characters.
 `examples/EXPECTED.md` lists every example, its verdict, and the path and
 message the reference reader reports for it.
 
