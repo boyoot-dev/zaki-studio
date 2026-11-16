@@ -18,3 +18,4 @@ the reader.
 | `invalid-web-address.json` | refused | `courses[0].units[0].lessons[0].facts[1]` | remove the web address |
 | `invalid-unknown-field.json` | refused | `courses[0].units[0].summary` | unknown field "summary" |
 | `invalid-answer-words-v1.json` | refused | `courses[0].exams[0].papers[0].parts[0].questions.answerWords` | unknown field "answerWords" |
+| `invalid-emoji-length.json` | refused | `courses[0].units[0].lessons[0].facts[0]` | at most 400 characters |
