@@ -201,10 +201,10 @@ function paperWarnings(
 	at: string,
 	out: ExamNumberWarning[],
 ): void {
-	if (paper.marks === null) return;
+	if (!isNumber(paper.marks)) return;
 	let sum = 0;
 	for (const part of paper.parts) {
-		if (part.marks === null) return;
+		if (!isNumber(part.marks)) return;
 		sum += part.marks;
 	}
 	if (same(paper.marks, sum)) return;
