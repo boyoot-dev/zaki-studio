@@ -328,7 +328,12 @@ part, with the fields that changed (`minutes 70 → 75`, `answerWords — → 30
 and the open questions listed. The choices are all of it, one paper, or reject. Accepting an
 exam set merges through the main process and writes `.studio/model/`, so the next export
 carries the new papers; a paper the author did not accept stays exactly as it was. A rejected
-set is kept as a file under `.studio/changes/` until it is deleted, as for units.
+set is kept as a file under `.studio/changes/` until it is deleted, as for units. The review
+also warns, without blocking, when the numbers in `src/shared/exam-numbers.ts` don't add up —
+`count` against the sum of `types`, `marksEach × count` and the per-type marks against
+`totalMarks`, a part's `marks` against `totalMarks`, a paper's `marks` against its parts — with
+a Fix button for the numbers that plainly follow; the Curriculum tab and the export show the
+same warnings.
 
 Two ways, as for the notes and units:
 
