@@ -140,6 +140,8 @@ const api: StudioApi = {
 		ipcRenderer.invoke("studio:acceptExams", root, grade, subject, exam, paper),
 	rejectExams: (root, grade, subject) =>
 		ipcRenderer.invoke("studio:rejectExams", root, grade, subject),
+	fixExams: (root, grade, subject, path, value) =>
+		ipcRenderer.invoke("studio:fixExams", root, grade, subject, path, value),
 	deleteExams: (root, grade, subject) =>
 		ipcRenderer.invoke("studio:deleteExams", root, grade, subject),
 	acceptChanges: (root, grade, subject, period, unit, lesson) =>

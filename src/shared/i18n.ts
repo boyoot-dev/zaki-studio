@@ -134,6 +134,10 @@ const en = {
 	"export.copy": "A copy is kept in this project.",
 	"export.problems": "Nothing was written. These problems stop the file:",
 	"export.working": "Checking the file…",
+	"export.examWarnings":
+		"{n} exam numbers don't add up. The export still works.",
+	"export.examWarningCourse": "{course} · {n}",
+	"export.openExamCourse": "Open the course",
 
 	// The viewers.
 	"viewer.page": "Page {n} of {total}",
@@ -380,6 +384,26 @@ const en = {
 	"changes.acceptPaper": "Accept this paper",
 	"changes.sources": "Read from",
 
+	// The numbers an exam states about the same thing (task 192).
+	"examNumbers.summary": "{n} numbers don't add up.",
+	"examNumbers.fix": "Fix",
+	"examNumbers.count-types":
+		"count {count} is not the sum of the types ({sum})",
+	"examNumbers.total-each":
+		"marksEach {each} × {count} is not totalMarks {total}",
+	"examNumbers.total-by-type":
+		"the types are worth {sum}, not totalMarks {total}",
+	"examNumbers.part-total":
+		"the part's marks {marks} are not its totalMarks {total}",
+	"examNumbers.paper-parts":
+		"the paper's marks {marks} are not the sum of its parts ({sum})",
+	"examNumbers.choice-options":
+		"choiceOptions are set, but no question is choice or multi",
+	"examNumbers.max-answer-words":
+		"maxWords {max} is under the shortest answer ({shortest})",
+	"examNumbers.both-mark-forms":
+		"marksEach {each} and marksByType {type} {marks} disagree",
+
 	// A new course or a block with no unit yet (task 178).
 	"changes.newCourse": "new course",
 	"changes.newBlock": "new block",
@@ -579,6 +603,9 @@ const ar: Record<TextKey, string> = {
 	"export.copy": "تُحفظ نسخة في هذا المشروع.",
 	"export.problems": "لم يُكتب شيء. هذه المشكلات تمنع الملف:",
 	"export.working": "جارٍ فحص الملف…",
+	"export.examWarnings": "{n} رقمًا في الامتحانات لا يتطابق. والتصدير يعمل.",
+	"export.examWarningCourse": "{course} · {n}",
+	"export.openExamCourse": "افتح المقرر",
 
 	"viewer.page": "الصفحة {n} من {total}",
 	"viewer.previous": "الصفحة السابقة",
@@ -816,6 +843,23 @@ const ar: Record<TextKey, string> = {
 	"changes.removed": "محذوف",
 	"changes.acceptPaper": "اقبل هذه الورقة",
 	"changes.sources": "مقروء من",
+
+	// أرقام الامتحان التي تصف الشيء نفسه (مهمة 192).
+	"examNumbers.summary": "{n} رقمًا لا يتطابق.",
+	"examNumbers.fix": "صحِّح",
+	"examNumbers.count-types": "العدد {count} ليس مجموع الأنواع ({sum})",
+	"examNumbers.total-each":
+		"marksEach {each} × {count} لا يساوي totalMarks {total}",
+	"examNumbers.total-by-type": "الأنواع تساوي {sum}، لا totalMarks {total}",
+	"examNumbers.part-total": "علامات الجزء {marks} لا تساوي totalMarks {total}",
+	"examNumbers.paper-parts":
+		"علامات الورقة {marks} لا تساوي مجموع أجزائها ({sum})",
+	"examNumbers.choice-options":
+		"خيارات الاختيار محدَّدة، ولا سؤال choice أو multi",
+	"examNumbers.max-answer-words":
+		"maxWords {max} أقل من أقصر إجابة ({shortest})",
+	"examNumbers.both-mark-forms":
+		"marksEach {each} و marksByType {type} {marks} لا يتفقان",
 
 	// مقرر جديد أو مرحلة بلا وحدة بعد (مهمة 178).
 	"changes.newCourse": "مقرر جديد",

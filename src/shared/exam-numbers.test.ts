@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	applyExamFix,
+	courseNumberWarnings,
 	type ExamNumberCode,
 	examNumberWarnings,
 } from "./exam-numbers.ts";
@@ -237,6 +238,20 @@ describe("the half-mark tolerance", () => {
 
 	it("still sees a whole half of a difference", () => {
 		expect(codes(half(2.5))).toEqual(["total-each"]);
+	});
+});
+
+describe("a whole course", () => {
+	it("counts the warnings of its accepted exams, and leaves a clean course out", () => {
+		const graded = exam({
+			papers: [paper({ parts: [part({ count: 3, marksEach: null })] })],
+		});
+		expect(
+			courseNumberWarnings([
+				{ grade: 9, subject: "arabic", exams: [graded] },
+				{ grade: 8, subject: "french", exams: [exam()] },
+			]),
+		).toEqual([{ grade: 9, subject: "arabic", warnings: 1 }]);
 	});
 });
 

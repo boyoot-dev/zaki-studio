@@ -28,6 +28,11 @@ import type {
 	ReviewPaper,
 	ReviewPart,
 } from "../shared/exam-changes";
+import {
+	type ExamNumberFix,
+	type ExamNumberWarning,
+	examNumberWarnings,
+} from "../shared/exam-numbers";
 import type { BundlePart, BundlePeriod } from "../shared/format/bundle";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { JobTool } from "../shared/job";
@@ -436,15 +441,55 @@ function ExamChanges({ part, say }: { part: ReviewPart; say: Say }) {
 	);
 }
 
+/** One exam number warning on a yellow line, with a Fix button when one plainly follows. */
+function ExamWarnings({
+	warnings,
+	say,
+	onFix,
+}: {
+	warnings: readonly ExamNumberWarning[];
+	say: Say;
+	onFix: (fix: ExamNumberFix) => void;
+}) {
+	if (warnings.length === 0) return null;
+	return (
+		<ul className="exam-warn">
+			{warnings.map((warning) => {
+				const fix = warning.fix;
+				return (
+					<li key={`${warning.path}-${warning.code}`}>
+						<span dir="auto">
+							{say(`examNumbers.${warning.code}` as TextKey, warning.vars)}
+						</span>
+						{fix !== undefined && (
+							<button
+								type="button"
+								className="btn btn-quiet"
+								onClick={() => onFix(fix)}
+							>
+								{say("examNumbers.fix")}
+							</button>
+						)}
+					</li>
+				);
+			})}
+		</ul>
+	);
+}
+
 /** One part, now beside proposed, with the files it was read from. */
 function PartPair({
 	part,
 	paths,
 	say,
+	warnings,
+	onFix,
 }: {
 	part: ReviewPart;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
+	warnings: readonly ExamNumberWarning[];
+	onFix: (fix: ExamNumberFix) => void;
 }) {
 	const name = part.proposed?.name ?? part.now?.name ?? part.key;
 	return (
@@ -469,6 +514,7 @@ function PartPair({
 				</div>
 			</div>
 			<ExamChanges part={part} say={say} />
+			<ExamWarnings warnings={warnings} say={say} onFix={onFix} />
 			{part.sources.length > 0 && (
 				<div className="chips">
 					<span className="muted">{say("changes.sources")}:</span>
@@ -491,6 +537,8 @@ function PaperPair({
 	reviewSet,
 	paths,
 	say,
+	warnings,
+	onFix,
 	onAccept,
 }: {
 	paper: ReviewPaper;
@@ -499,9 +547,14 @@ function PaperPair({
 	reviewSet: ChangeReview;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
+	warnings: readonly ExamNumberWarning[];
+	onFix: (fix: ExamNumberFix) => void;
 	onAccept: (exam: number, paper: number) => void;
 }) {
 	const accepted = reviewSet.accepted.includes(`${examIndex}.${paperIndex}`);
+	const own = warnings.filter(
+		(warning) => warning.path === `papers[${paperIndex}]`,
+	);
 	return (
 		<section className="unit">
 			<h4 dir="auto">{say("changes.paper", { name: paper.name })}</h4>
@@ -546,9 +599,24 @@ function PaperPair({
 					))}
 				</ul>
 			)}
-			{paper.parts.map((part) => (
-				<PartPair key={part.key} part={part} paths={paths} say={say} />
-			))}
+			<ExamWarnings warnings={own} say={say} onFix={onFix} />
+			{paper.parts.map((part, index) => {
+				const prefix = `papers[${paperIndex}].parts[${index}]`;
+				return (
+					<PartPair
+						key={part.key}
+						part={part}
+						paths={paths}
+						say={say}
+						warnings={warnings.filter(
+							(warning) =>
+								warning.path === prefix ||
+								warning.path.startsWith(`${prefix}.`),
+						)}
+						onFix={onFix}
+					/>
+				);
+			})}
 			{paper.proposed !== null && (
 				<button
 					type="button"
@@ -570,6 +638,7 @@ function ExamPair({
 	reviewSet,
 	paths,
 	say,
+	onFix,
 	onAccept,
 }: {
 	exam: ReviewExam;
@@ -577,8 +646,13 @@ function ExamPair({
 	reviewSet: ChangeReview;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
+	onFix: (fix: ExamNumberFix) => void;
 	onAccept: (exam: number, paper: number) => void;
 }) {
+	const warnings = useMemo(
+		() => (exam.proposed === null ? [] : examNumberWarnings(exam.proposed)),
+		[exam.proposed],
+	);
 	return (
 		<section>
 			<h4 dir="auto">
@@ -602,6 +676,8 @@ function ExamPair({
 					reviewSet={reviewSet}
 					paths={paths}
 					say={say}
+					warnings={warnings}
+					onFix={onFix}
 					onAccept={onAccept}
 				/>
 			))}
@@ -616,6 +692,7 @@ function ExamSet({
 	lang,
 	say,
 	onAccept,
+	onFix,
 	onReject,
 }: {
 	set: ChangeReview;
@@ -623,8 +700,21 @@ function ExamSet({
 	lang: Lang;
 	say: Say;
 	onAccept: (exam?: number, paper?: number) => void;
+	onFix: (exam: number, fix: ExamNumberFix) => void;
 	onReject: () => void;
 }) {
+	const warningCount = useMemo(
+		() =>
+			set.exams.reduce(
+				(total, exam) =>
+					total +
+					(exam.proposed === null
+						? 0
+						: examNumberWarnings(exam.proposed).length),
+				0,
+			),
+		[set.exams],
+	);
 	return (
 		<section className="notes-actions">
 			<header className="new-head">
@@ -639,6 +729,11 @@ function ExamSet({
 						)}{" "}
 						· {set.at} · {set.model}
 					</p>
+					{warningCount > 0 && (
+						<p className="exam-warn-summary">
+							{say("examNumbers.summary", { n: warningCount })}
+						</p>
+					)}
 				</div>
 				<div className="notes-row">
 					<button type="button" className="btn" onClick={() => onAccept()}>
@@ -661,6 +756,7 @@ function ExamSet({
 					reviewSet={set}
 					paths={paths}
 					say={say}
+					onFix={(fix) => onFix(index, fix)}
 					onAccept={(wantedExam, wantedPaper) =>
 						onAccept(wantedExam, wantedPaper)
 					}
@@ -1020,6 +1116,28 @@ export function Changes({
 		);
 		onNotify(answer.ok ? say("toast.saved") : failureText(lang, answer));
 		await load();
+	};
+
+	/** Applies one safe number fix to the waiting set, then reads the review again. */
+	const fixExam = async (
+		set: ChangeReview,
+		exam: number,
+		fix: ExamNumberFix,
+	) => {
+		const answer = await window.studio.fixExams(
+			root,
+			set.grade,
+			set.subject,
+			`exams[${exam}].${fix.path}`,
+			fix.value,
+		);
+		if (!answer.ok) {
+			onNotify(failureText(lang, answer));
+			return;
+		}
+		onNotify(say("toast.saved"));
+		await load();
+		onChanged();
 	};
 
 	const deleteExam = async (set: ChangeReview) => {
@@ -1633,6 +1751,7 @@ export function Changes({
 								lang={lang}
 								say={say}
 								onAccept={(exam, paper) => void acceptExam(set, exam, paper)}
+								onFix={(exam, fix) => void fixExam(set, exam, fix)}
 								onReject={() => void rejectExam(set)}
 							/>
 						) : (

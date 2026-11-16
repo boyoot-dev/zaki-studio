@@ -20,6 +20,7 @@ import type { BundleExam } from "../shared/format/bundle.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
 import {
 	acceptExamChange,
+	fixExamChange,
 	readChangeSets,
 	readExamStored,
 	saveExamChangeSet,
@@ -532,6 +533,85 @@ describe("the exams job folder", () => {
 		});
 		expect(accepted).toEqual({ ok: true, left: 0 });
 		expect(readExamStored(project, 9, "arabic")).toBeNull();
+	});
+});
+
+describe("a safe fix on the waiting set", () => {
+	const files = () => YEARS.map((year) => row(IDS[year] ?? "", year));
+
+	/** The good set with one field rewritten before it is saved. */
+	function bodyWith(
+		edit: (questions: Record<string, unknown>) => void,
+	): string {
+		const body = JSON.parse(goodBody()) as {
+			exams: {
+				papers: { parts: { questions: Record<string, unknown> }[] }[];
+			}[];
+		};
+		const questions = body.exams[0]?.papers[0]?.parts[0]?.questions;
+		if (questions === undefined) throw new Error("the body has no questions");
+		edit(questions);
+		return JSON.stringify(body);
+	}
+
+	it("sets the number the review names, and the set waits for review", async () => {
+		const got = await write(async () =>
+			reply(bodyWith((questions) => (questions.count = 3))),
+		);
+		if (!got.ok) throw new Error(got.code);
+		const fixed = fixExamChange({
+			root: project,
+			model: model(),
+			files: files(),
+			target: TARGET,
+			path: "exams[0].papers[0].parts[0].questions.count",
+			value: 1,
+		});
+		expect(fixed).toEqual({ ok: true });
+		const stored = readExamStored(project, 9, "arabic");
+		expect(stored).toMatchObject({ kind: "exams", state: "pending" });
+		expect(stored?.set).toMatchObject({
+			exams: [{ papers: [{ parts: [{ questions: { count: 1 } }] }] }],
+		});
+	});
+
+	it("removes a field the review names, and the set waits for review", async () => {
+		const got = await write(async () =>
+			reply(bodyWith((questions) => (questions.choiceOptions = 3))),
+		);
+		if (!got.ok) throw new Error(got.code);
+		const fixed = fixExamChange({
+			root: project,
+			model: model(),
+			files: files(),
+			target: TARGET,
+			path: "exams[0].papers[0].parts[0].questions.choiceOptions",
+			value: null,
+		});
+		expect(fixed).toEqual({ ok: true });
+		const questions = (
+			readExamStored(project, 9, "arabic")?.set as {
+				exams: { papers: { parts: { questions: object }[] }[] }[];
+			}
+		).exams[0]?.papers[0]?.parts[0]?.questions;
+		expect(questions).not.toHaveProperty("choiceOptions");
+	});
+
+	it("refuses a path that names no number, and changes nothing", async () => {
+		const got = await write(async () => reply(goodBody()));
+		if (!got.ok) throw new Error(got.code);
+		const fixed = fixExamChange({
+			root: project,
+			model: model(),
+			files: files(),
+			target: TARGET,
+			path: "exams[0].papers[0].name",
+			value: 1,
+		});
+		expect(fixed).toMatchObject({ ok: false, code: "refused" });
+		expect(readExamStored(project, 9, "arabic")?.set).toMatchObject({
+			exams: [{ papers: [{ name: "Writing" }] }],
+		});
 	});
 });
 

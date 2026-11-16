@@ -229,6 +229,36 @@ export function examNumberWarnings(exam: BundleExam): ExamNumberWarning[] {
 	return out;
 }
 
+/** One course with accepted exams whose numbers don't add up, for the export's line. */
+export type CourseNumberWarnings = {
+	grade: number;
+	subject: string;
+	warnings: number;
+};
+
+/** Each course whose accepted exams have warnings, with how many, in the model's order. */
+export function courseNumberWarnings(
+	courses: readonly {
+		grade: number;
+		subject: string;
+		exams: readonly BundleExam[];
+	}[],
+): CourseNumberWarnings[] {
+	const out: CourseNumberWarnings[] = [];
+	for (const course of courses) {
+		let warnings = 0;
+		for (const exam of course.exams)
+			warnings += examNumberWarnings(exam).length;
+		if (warnings > 0)
+			out.push({
+				grade: course.grade,
+				subject: course.subject,
+				warnings,
+			});
+	}
+	return out;
+}
+
 /** A fix path as its steps: "papers[0].parts[1].questions" → key and list index pairs. */
 const STEP = /^([A-Za-z][A-Za-z0-9]*)(?:\[(\d{1,3})\])?$/;
 

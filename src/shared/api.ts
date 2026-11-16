@@ -565,6 +565,14 @@ export type StudioApi = {
 	): Promise<Done>;
 	/** Marks an exam change set as rejected, keeping it until it is deleted. */
 	rejectExams(root: string, grade: number, subject: string): Promise<Done>;
+	/** Applies one safe number fix to a pending exam change set, then checks the set again. */
+	fixExams(
+		root: string,
+		grade: number,
+		subject: string,
+		path: string,
+		value: number | null,
+	): Promise<Done>;
 	/** Deletes a rejected exam change set's file. */
 	deleteExams(root: string, grade: number, subject: string): Promise<Done>;
 	/** Merges a whole set, one unit, or one lesson into the model; the page sends no path. */

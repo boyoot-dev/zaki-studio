@@ -47,6 +47,7 @@ import {
 	periodIds,
 	reviewExams,
 } from "../shared/exam-changes.ts";
+import { applyExamFix } from "../shared/exam-numbers.ts";
 import { GRADE_MAX, GRADE_MIN } from "../shared/format/grades.ts";
 import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
@@ -677,6 +678,45 @@ export function acceptExamChange(input: {
 		{ ...stored, accepted },
 	);
 	return kept.ok ? { ok: true, left } : kept;
+}
+
+/**
+ * Applies one safe fix the review offers to a pending exam change set: the number the warning
+ * named is set, or the field it named is removed. The set is checked again after, so a fix can
+ * never leave a set the review would refuse.
+ */
+export function fixExamChange(input: {
+	root: string;
+	model: CurriculumModel;
+	files: readonly FileRow[];
+	target: ExamTarget;
+	/** The field within the stored set, e.g. "exams[0].papers[0].parts[0].questions.count". */
+	path: string;
+	/** The number to set, or null to remove the field. */
+	value: number | null;
+}): Failure | { ok: true } {
+	const stored = readExamStored(
+		input.root,
+		input.target.grade,
+		input.target.subject,
+	);
+	if (stored === null || stored.state !== "pending" || stored.kind !== "exams")
+		return failure("missing", "no exam change set to fix");
+	const fixed = applyExamFix(stored.set, input.path, input.value);
+	if (fixed === null)
+		return failure(
+			"refused",
+			`no such field in this exam change set: ${input.path}`,
+		);
+	const parsed = parseExamChangeSet(
+		fixed,
+		examGivenFor(input.model, input.files, input.target),
+	);
+	if (!parsed.ok) return failure("refused", parsed.issue);
+	return saveExamStored(input.root, input.target.grade, input.target.subject, {
+		...stored,
+		set: fixed,
+	});
 }
 
 /** Keeps a rejected exam change set for reference until the author deletes it. */
