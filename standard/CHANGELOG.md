@@ -1,5 +1,32 @@
 # Changelog
 
+## Wording only: no format change
+
+An outside review of the standard (2026-11-16) found places where the text was
+silent or ambiguous, so two readers built from it could disagree. The wording
+now says what the reference reader (`src/shared/format/bundle.ts`) already
+does. No format change: every file that was valid is still valid, and every
+file that was refused is still refused. The points:
+
+- `src/shared/format/bundle.ts` is named as the reference reader, and
+  `examples/EXPECTED.md` lists what it says about every example, with a test
+  that checks each row.
+- A course's teaching language comes from the reader's subject list; a paper
+  without `language` is in that language; a part's `nameEn` is the English line
+  under a title in it.
+- A reader must not assume that the exam numbers add up.
+- A reader normalises to NFC and trims before it checks; a writer writes text
+  already normalised and trimmed.
+- A skill is matched by its position, so new skills go at the end of a lesson.
+- An update deletes a unit, a lesson or a skill it no longer has, and the
+  progress on it; progress on rows that stay is kept.
+- `exams`, when present, has 1 to 12 entries; an empty list is refused.
+- A writer checks the target reader's subject list, and
+  `src/shared/format/subjects.json` is the list the Mr. Zaki reader uses.
+- The file size is counted in decoded characters, checked early on the bytes.
+- `subject` has no limit beyond the file's.
+- Both schemas write `formatVersion` as a `const`.
+
 ## 2.0
 
 Version 2 is stable. Version 1 files remain valid, and a version 2 reader must

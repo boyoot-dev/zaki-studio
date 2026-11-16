@@ -25,6 +25,8 @@ so that anyone can implement it without the original code.
   stays for version 1 files.
 - **[examples/](examples/)** — three valid bundles (two version 1 and one
   version 2) and three refused examples, each with the reason it is refused.
+  **[examples/EXPECTED.md](examples/EXPECTED.md)** lists every example, its
+  verdict, and the path and message the reference reader reports for it.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed between versions of the
   standard.
 - **[LICENSE-TEXT](LICENSE-TEXT)** — the licence for `SPEC.md` and this
@@ -46,3 +48,8 @@ conforming writer must do. The JSON Schema cannot express every rule of the
 format (for example, "no web address in a text", or the cross-references
 between objects); those rules are listed in `SPEC.md` under "Rules beyond the
 schema" and are part of the format.
+
+The reference reader is `src/shared/format/bundle.ts` in this repository: a
+working reader that follows `SPEC.md`. Where it and the text disagree, the text
+is meant to win, and the disagreement is a bug to report.
+`examples/EXPECTED.md` records what it says about every example.
