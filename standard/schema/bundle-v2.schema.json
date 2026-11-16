@@ -17,7 +17,7 @@
 	],
 	"properties": {
 		"format": { "const": "mr-zaki-curriculum" },
-		"formatVersion": { "enum": [2] },
+		"formatVersion": { "const": 2 },
 		"id": {
 			"type": "string",
 			"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
