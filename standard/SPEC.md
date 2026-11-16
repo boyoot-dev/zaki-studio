@@ -41,6 +41,16 @@ links to outside material.
   A reader **MUST** refuse it.
 - Objects may not carry fields the format does not define (see "Unknown
   fields" in §7). A reader **MUST** refuse a bundle that has one.
+- An object may write the same key twice: JSON does not forbid it, and
+  `JSON.parse` keeps the **last** value and drops the earlier ones. The
+  reference reader therefore reads the last value, and does not refuse the file
+  for the repetition. A writer **MUST NOT** write a key twice in one object,
+  because which value a reader keeps is then a property of its parser and not of
+  this document. Refusing duplicate keys is a possible change for a later
+  version, not a rule today.
+- `NaN`, `Infinity`, `-Infinity`, comments (`//`, `/* */`) and trailing commas
+  are not JSON. A file that uses one is not valid JSON, and is refused for that
+  reason.
 
 ## 3. Texts: the rules every text follows
 
@@ -62,7 +72,7 @@ Every text in a bundle obeys all of these rules:
    text that is already normalised and trimmed.
 2. The text is **non-empty** after trimming.
 3. The text is at most its limit **in characters** (the limits are listed per
-   field in §6).
+   field in §6; a character here is a UTF-16 code unit, see §3.3).
 4. The text contains **no forbidden character** (see "Characters" below).
 5. The text contains **no web address** (see "Web addresses" below).
 
@@ -101,6 +111,64 @@ removed. A reader **MUST** refuse a text that contains one of these. A writer
 
 This rule is about the text a reader sees, so it cannot be expressed in a JSON
 Schema. See "Rules beyond the schema".
+
+### 3.3 How length is counted
+
+Every limit on a text counts **UTF-16 code units** of the normalised, trimmed
+text: the number JavaScript's `.length` gives for the string. A character of
+the Basic Multilingual Plane counts as one. A character outside it — most
+emoji, for example — counts as **two**, because JSON writes it as a surrogate
+pair, and the two halves are two code units. A limit of 400 therefore admits
+399 ordinary characters and one emoji, and a 400-character fact that holds an
+emoji is refused (`examples/invalid-emoji-length.json`).
+
+The file-size limit (§2) is counted the same way, on the decoded text.
+
+A reader that counts characters another way — code points, for example — may
+disagree with this document, and with the reference reader, exactly at the
+limit.
+
+### 3.4 What trim removes
+
+**Trim** removes what JavaScript's `trim()` removes at either end of a text:
+the Unicode space separators (general category `Zs`), tab `U+0009`, vertical tab
+`U+000B`, form feed `U+000C`, the byte-order mark `U+FEFF` (also called the
+zero-width no-break space), and the line terminators `U+000A`, `U+000D`,
+`U+2028` and `U+2029`.
+
+It does **not** remove `U+0085` (next line), which Unicode counts as white
+space but JavaScript does not trim: that character stays in the text and is
+then refused as a control character (§3.1). A text that holds only trim-able
+characters is empty after trimming, and is refused as empty.
+
+### 3.5 The order of the checks
+
+A reader applies its checks in this order. It is the order the reference reader
+uses, and each step leans on the one before it; a reader that reorders them can
+report a different problem for the same file.
+
+1. **Check the size.** The decoded text is at most 20,000,000 UTF-16 code units
+   (§2). A reader that starts from bytes **MAY** refuse early on the byte count,
+   since 20,000,000 code units are at most 80,000,000 bytes of UTF-8.
+2. **Decode UTF-8.** Bytes that are not valid UTF-8 make the file invalid, and
+   so does a byte-order mark at the start of the file. The reference reader is
+   handed text, so this step runs before it.
+3. **Parse the JSON.** A file that is not JSON is refused here, with the rules
+   of §2.
+4. **Normalise each text to NFC.** A multi-line text first has every `\r\n` and
+   every `\r` replaced by `\n`; the reference reader does that before
+   normalising. A single-line text is left as it is, so a line break inside one
+   is still there at step 8 and is refused.
+5. **Trim** each text (§3.4).
+6. **Check that it is non-empty.**
+7. **Check its length** against the field's limit (§3.3).
+8. **Check its characters** (§3.1).
+9. **Check for a web address** (§3.2).
+
+Steps 4 to 9 run once for each text in the document. The checks that compare
+fields rather than read one text — unknown fields, the cross-references, the
+counts — run as the objects that hold them are read, and the whole file is
+refused if any of them fails.
 
 ## 4. Identity and updates
 
@@ -146,6 +214,14 @@ generated).
 A bundle is written by a stranger, and a reader is often an app used by
 children. The following rules are **requirements**, not advice.
 
+A valid bundle is not necessarily a correct one. The facts in it may be false,
+an answer key may give the wrong answer, and an exam may be unlike the exam it
+names. Conformance (§8) checks the structure and the rules of this document; it
+says nothing about the truth of the content or the quality of the teaching.
+Nothing here is relaxed because a file passed those checks: a reader **MUST**
+keep treating every text as untrusted data, including the texts it passes to a
+model it calls (item 4 below).
+
 1. A reader **MUST** treat every text in a bundle as **plain data**. Text is
    never HTML, never markup, never a program, never a link to follow.
 2. A reader **MUST NOT** render any text in a bundle as HTML, and **MUST NOT**
@@ -178,7 +254,7 @@ limits, and its meaning. "Required" means the file is refused when the field is
 missing; "optional" means the file is fine without it, and the default is
 stated.
 
-All limits on texts are in characters of the normalised, trimmed text (§3).
+All limits on texts are in characters of the normalised, trimmed text (§3.3).
 All integers are JSON integers; a non-integer where an integer is required is
 a failure. **Marks** are numbers from 0 to 200 in half steps (0.5, 1, 1.5 …);
 0.25 is refused. **Counts** are integers from 0 to 200.
@@ -217,6 +293,14 @@ or no period at all (the whole year).
 | `nameAr` | string | no | 1–80 characters | The same name in Arabic. Defaults to `nameEn`. |
 | `wholeYear` | boolean | no | default `false` | True when this period spans the whole year (typically the final exam). |
 | `periods` | array of period | no | at most 3 levels; at most 60 periods in the tree | The periods inside this one. Empty or absent means a leaf. A period at the third level may hold an empty `periods` list but no children. |
+
+`wholeYear` is a statement about a period, not a shape of the tree. The
+reference reader accepts it on a period at **any depth**, and a period that
+carries it may still have child periods; nothing checks where it is used. It
+relaxes no other rule: a unit may sit in that period only when the period is a
+**leaf**, like any other period, and an exam may name it at any depth. A file
+without any `wholeYear` is valid too; the flag is the author's statement, and
+the format gives it no further consequence itself.
 
 ### 6.3 Courses
 
@@ -306,6 +390,11 @@ Material kinds: `talk`, `dialogue`, `conversation`, `interview`,
 - `mixed` is anything else made of several kinds.
 - `other` has to say what it is in `description`; a file with `kind` `other`
   and no `description` is refused.
+
+`kind` says what a part reads or hears; it does not limit the other material
+fields. The reference reader accepts `description`, `words`, `speakers`,
+`topic`, `layout` and `timing` beside any `kind`, `none` included, and checks
+only that `kind` is one of the list and that `other` carries a `description`.
 
 Layout flags: `line-numbers`, `paragraph-numbers`, `gapped-text`,
 `inline-gaps`, `cloze`, `word-formation`.
@@ -407,6 +496,13 @@ example.
    enumerations, the integer and marks ranges, and the per-field limits it can
    express.
 5. "Rules beyond the schema", below, all hold.
+
+The schemas in this folder carry **no `$id`**, so they have no canonical URI of
+their own: this document names them by their path here,
+`schema/bundle-v1.schema.json` and `schema/bundle-v2.schema.json`, and each
+file's `$ref`s are local to that file. Canonical schema addresses are not
+published yet; a reader loads the schema file it was given rather than looking
+one up by URI.
 
 ### Rules beyond the schema
 
@@ -545,6 +641,16 @@ change needs a new version: unknown fields are refused, so even an optional
 new field is incompatible with version 1 readers.
 
 ## 10. The limits, at a glance
+
+The table below gathers the limits the sections above give. These limits are
+what make a file from a stranger cheap to check: the schema fixes the shape and
+the nesting depth, unknown fields are refused (§2), and every list has a cap
+here, so the number of objects and texts a reader can be made to visit is fixed
+before it reads a single value. The file-size limit (§2) bounds the file as a
+whole, and these per-field limits bound the work on each text in it.
+
+Every limit on a text in the table counts UTF-16 code units of the normalised,
+trimmed text (§3.3), and the whole-file limit counts them too.
 
 | What | Limit |
 |---|---|
