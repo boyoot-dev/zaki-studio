@@ -34,8 +34,9 @@ it. Nothing is uploaded anywhere else, and there is no telemetry.
 
 ## What it does
 
-- Makes a project folder (or adopts one you already have), from a wizard that asks for the
-  name, author, rights, the year's periods, grades and subjects.
+- Makes a project folder (or adopts one you already have, or makes one from a `.zaki`
+  curriculum file), from a wizard that asks for the name, author, rights, the year's
+  periods, grades and subjects.
 - Shows the folder as a tree; drops, pastes, moves, renames and deletes (to the Recycle Bin)
   files and folders; sorts the Inbox; opens the material it has built or found.
 - Views PDF, Word, PowerPoint, text and pictures side by side with the notes and facts.
@@ -145,6 +146,18 @@ resources/      the icon the window and the installer show, the rules the model 
 repository is its home. Apps that read bundles, such as Mr. Zaki, copy these files byte for
 byte from a tagged commit here, so the Studio and the apps can never disagree about what a
 valid file is. Change them here, never in a copy.
+
+## Opening a curriculum file
+
+"Open a curriculum file" makes a project from a `.zaki` file (task 214), so a curriculum can be
+added to: a missing grade, an empty block or more material for a course, built as usual from
+material dropped into the project. The file is checked by the same reader as an export, its
+author and rights are shown, and the author ticks that they may adapt it before an empty folder
+is chosen. The project keeps the file's id, and the file itself is kept as
+`.studio/exports/v<N>.json`, so the next export is version N + 1, an update for every family
+that has it. A file has no source books, so its facts show "From the curriculum file, no page"
+and come in as the author's own: a later change set adds facts beside them and never replaces
+them. Double-clicking a `.zaki` file opens it this way (the installers register the extension).
 
 ## Opening an existing curriculum built elsewhere
 

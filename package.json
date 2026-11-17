@@ -50,6 +50,15 @@
 		"directories": {
 			"output": "dist"
 		},
+		"fileAssociations": [
+			{
+				"ext": "zaki",
+				"name": "Mr. Zaki curriculum",
+				"description": "Mr. Zaki curriculum",
+				"role": "Editor",
+				"icon": "resources/icon"
+			}
+		],
 		"files": [
 			"out/**",
 			"resources/**",

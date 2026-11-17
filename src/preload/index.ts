@@ -22,6 +22,16 @@ const api: StudioApi = {
 	createProject: (root, project) =>
 		ipcRenderer.invoke("studio:createProject", root, project),
 	recentProjects: () => ipcRenderer.invoke("studio:recentProjects"),
+	chooseBundle: () => ipcRenderer.invoke("studio:chooseBundle"),
+	launchedBundle: () => ipcRenderer.invoke("studio:launchedBundle"),
+	onBundleLaunched: (callback) => {
+		const listener = () => callback();
+		ipcRenderer.on("studio:bundleLaunched", listener);
+		return () => {
+			ipcRenderer.removeListener("studio:bundleLaunched", listener);
+		};
+	},
+	projectFromBundle: () => ipcRenderer.invoke("studio:projectFromBundle"),
 	listTree: (root, rel) =>
 		ipcRenderer.invoke("studio:listTree", root, rel ?? ""),
 	course: (root, grade, subject) =>

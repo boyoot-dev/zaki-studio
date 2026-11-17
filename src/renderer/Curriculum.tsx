@@ -407,6 +407,11 @@ export function Curriculum({
 																	<p className="fact" dir="auto">
 																		{fact.text}
 																	</p>
+																	{fact.sources.length === 0 && (
+																		<p className="muted small">
+																			{say("curriculum.noPage")}
+																		</p>
+																	)}
 																	{fact.sources.length > 0 && (
 																		<div className="chips">
 																			{fact.sources.map((sourceId) => (

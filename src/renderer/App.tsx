@@ -6,6 +6,8 @@ import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
+	BundleChoice,
+	BundleInfo,
 	Failure,
 	GuessFolder,
 	ProjectOpen,
@@ -15,6 +17,7 @@ import { isRightToLeft, type Lang, type TextKey, t } from "../shared/i18n";
 import type { Project } from "../shared/project";
 import { Toast } from "./Chrome";
 import { LanguageProvider } from "./i18n";
+import { OpenBundle } from "./OpenBundle";
 import { ProjectView } from "./ProjectView";
 import { StartScreen } from "./StartScreen";
 import { Wizard } from "./Wizard";
@@ -45,6 +48,11 @@ export function App() {
 	const [screen, setScreen] = useState<Screen>({ kind: "start" });
 	const [toast, setToast] = useState<string | null>(null);
 	const toastTimer = useRef<number | null>(null);
+	/** A curriculum file being opened as a project (task 214), or one that failed its check. */
+	const [bundle, setBundle] = useState<{
+		info: BundleInfo | null;
+		issues: string[];
+	} | null>(null);
 
 	useEffect(() => {
 		document.documentElement.lang = lang;
@@ -102,6 +110,24 @@ export function App() {
 	const chooseFolder = async (): Promise<string | null> =>
 		await window.studio.chooseFolder();
 
+	/** Shows a curriculum file the main process read: its summary, or why it can't open. */
+	const showBundle = useCallback(
+		(choice: BundleChoice) => {
+			if (choice.ok) setBundle({ info: choice.info, issues: [] });
+			else if (choice.code === "invalidBundle")
+				setBundle({ info: null, issues: choice.issues ?? [] });
+			else say(failureText(lang, choice));
+		},
+		[lang, say],
+	);
+
+	// A .zaki file double-clicked to start the Studio, or while it is open.
+	useEffect(() => {
+		const ask = () => void window.studio.launchedBundle().then(showBundle);
+		ask();
+		return window.studio.onBundleLaunched(ask);
+	}, [showBundle]);
+
 	const onOpened = (opened: ProjectOpen) => {
 		if (!opened.ok) {
 			say(failureText(lang, opened));
@@ -137,6 +163,7 @@ export function App() {
 							sayMessage("toast.alreadyProject");
 						showOpened(opened.ok ? opened.root : "", opened);
 					}}
+					onBundle={async () => showBundle(await window.studio.chooseBundle())}
 					onRecent={openRecent}
 				/>
 			)}
@@ -161,6 +188,18 @@ export function App() {
 					onLanguage={setLang}
 					onNotify={say}
 					onStart={() => setScreen({ kind: "start" })}
+				/>
+			)}
+			{bundle !== null && (
+				<OpenBundle
+					lang={lang}
+					info={bundle.info}
+					issues={bundle.issues}
+					onClose={() => setBundle(null)}
+					onOpened={(opened) => {
+						setBundle(null);
+						onOpened(opened);
+					}}
 				/>
 			)}
 			<Toast text={toast} />
