@@ -9,6 +9,7 @@ import { app, BrowserWindow, dialog, session, shell } from "electron";
 // app/ at run time.
 import iconIco from "../../resources/icon.ico?asset";
 import iconPng from "../../resources/icon.png?asset";
+import { queueLaunch, zakiInArgs } from "./frombundle.ts";
 import { registerIpc } from "./ipc.ts";
 import { contentSecurityPolicy, windowOptions } from "./window.ts";
 
@@ -118,7 +119,27 @@ function createWindow(): void {
 	else void window.loadFile(join(__dirname, "../renderer/index.html"));
 }
 
-app.on("second-instance", () => {
+// A double-clicked .zaki file (task 214). Windows starts the Studio with its path, or, when
+// the Studio is already open, sends the path to it as a second instance; macOS sends
+// open-file, even before the app is ready. The page is told and asks for the file itself.
+const launchedWith = zakiInArgs(process.argv);
+if (launchedWith !== null) queueLaunch(launchedWith);
+
+/** Keeps a double-clicked file and tells an open page to show it. */
+function launch(path: string): void {
+	queueLaunch(path);
+	if (window !== null && !window.webContents.isLoading())
+		window.webContents.send("studio:bundleLaunched");
+}
+
+app.on("open-file", (event, path) => {
+	event.preventDefault();
+	launch(path);
+});
+
+app.on("second-instance", (_event, argv) => {
+	const path = zakiInArgs(argv);
+	if (path !== null) launch(path);
 	if (window === null) return;
 	if (window.isMinimized()) window.restore();
 	window.focus();

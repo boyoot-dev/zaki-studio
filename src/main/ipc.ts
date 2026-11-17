@@ -26,6 +26,7 @@ import {
 } from "electron";
 
 import type {
+	BundleChoice,
 	ChangesCollected,
 	ChangesState,
 	ChangesWritten,
@@ -117,6 +118,12 @@ import {
 	safePath,
 	savePastedImage,
 } from "./files.ts";
+import {
+	makeFromBundle,
+	type OpenedBundle,
+	readBundleFile,
+	takeLaunch,
+} from "./frombundle.ts";
 import { canonicalRoot, grantedRoot, sameFolder } from "./grants.ts";
 import {
 	invalidateItems,
@@ -369,6 +376,29 @@ function openProject(root: string): ProjectOpen {
 /** The watcher each window has, so a second ask (React's strict mode) replaces the first. */
 const watchers = new Map<number, () => void>();
 
+/** The curriculum file each window read and checked, until it becomes a project (task 214). */
+const openedBundles = new Map<number, OpenedBundle>();
+
+/** Reads and checks a .zaki file for a window, keeping it there; the page gets a summary. */
+async function chooseBundleFor(
+	sender: Electron.WebContents,
+	path: string | null,
+): Promise<BundleChoice> {
+	if (path === null) return { ok: false, code: "cancelled" };
+	const read = await readBundleFile(path, subjects);
+	if (!read.ok)
+		return {
+			ok: false,
+			code: "invalidBundle",
+			issues: read.issues.map((issue) =>
+				issue.path === "" ? issue.message : `${issue.path}: ${issue.message}`,
+			),
+		};
+	openedBundles.set(sender.id, read.opened);
+	sender.once("destroyed", () => openedBundles.delete(sender.id));
+	return { ok: true, info: read.info };
+}
+
 /** Asks for one folder with the system dialog; null when the author changes their mind. */
 async function pickFolder(options: {
 	title: string;
@@ -447,6 +477,47 @@ export function registerIpc(): void {
 			// The one place a folder becomes usable: the author chose it themselves.
 			if (picked !== null) grant(event.sender, picked);
 			return picked;
+		},
+	);
+
+	ipcMain.handle(
+		"studio:chooseBundle",
+		async (event): Promise<BundleChoice> => {
+			const window = BrowserWindow.getFocusedWindow();
+			const settings: Electron.OpenDialogOptions = {
+				title: "Open a curriculum file",
+				properties: ["openFile"],
+				filters: [{ name: "Mr. Zaki curriculum", extensions: ["zaki"] }],
+			};
+			const result =
+				window === null
+					? await dialog.showOpenDialog(settings)
+					: await dialog.showOpenDialog(window, settings);
+			const path = result.canceled ? null : (result.filePaths[0] ?? null);
+			return chooseBundleFor(event.sender, path);
+		},
+	);
+
+	ipcMain.handle(
+		"studio:launchedBundle",
+		async (event): Promise<BundleChoice> =>
+			chooseBundleFor(event.sender, takeLaunch()),
+	);
+
+	ipcMain.handle(
+		"studio:projectFromBundle",
+		async (event): Promise<ProjectOpen> => {
+			const opened = openedBundles.get(event.sender.id);
+			if (opened === undefined) return { ok: false, code: "missing" };
+			const root = await pickFolder({
+				title: "Choose an empty folder for the project",
+			});
+			if (root === null) return { ok: false, code: "cancelled" };
+			grant(event.sender, root);
+			const made = makeFromBundle(root, opened);
+			if (!made.ok) return made;
+			openedBundles.delete(event.sender.id);
+			return openProject(root);
 		},
 	);
 

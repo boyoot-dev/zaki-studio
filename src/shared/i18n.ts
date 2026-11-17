@@ -102,6 +102,19 @@ const en = {
 	"curriculum.exams": "Exams",
 	"curriculum.examStyle": "Exam style",
 	"curriculum.source": "Where it came from",
+	"curriculum.noPage": "From the curriculum file, no page",
+	// Opening a curriculum file (task 214).
+	"start.bundle": "Open a curriculum file",
+	"start.bundleHint":
+		"Make a project from a .zaki file, then add a grade, a block or more material.",
+	"bundle.title": "Open a curriculum file",
+	"bundle.invalid": "This file can't be opened:",
+	"bundle.author": "By {name}",
+	"bundle.rights": "Its rights:",
+	"bundle.agree": "I may adapt this curriculum (see its rights above).",
+	"bundle.hint":
+		"Next, choose an empty folder: the project is made there, and its next export is an update of this curriculum.",
+	"bundle.make": "Choose a folder and make the project…",
 	"curriculum.pickFact": "Choose a fact's page to see it here.",
 	"curriculum.pageText": "The page's text",
 	"curriculum.noPageText": "No text was read from this page.",
@@ -183,6 +196,7 @@ const en = {
 	"failure.noWork": "There is no _work folder beside that material.",
 	"failure.emptyModel": "This project has no curriculum to export yet.",
 	"failure.invalidBundle": "The file did not pass the check.",
+	"failure.notEmpty": "Choose an empty folder for the new project.",
 	"failure.unknown": "Something went wrong.",
 	"failure.cancelled": "",
 
@@ -572,6 +586,18 @@ const ar: Record<TextKey, string> = {
 	"curriculum.exams": "الاختبارات",
 	"curriculum.examStyle": "أسلوب الاختبار",
 	"curriculum.source": "من أين جاءت",
+	"curriculum.noPage": "من ملف المنهج، بلا صفحة",
+	"start.bundle": "افتح ملف منهج",
+	"start.bundleHint":
+		"أنشئ مشروعًا من ملف ‎.zaki، ثم أضف صفًا أو فترة أو مواد أكثر.",
+	"bundle.title": "فتح ملف منهج",
+	"bundle.invalid": "لا يمكن فتح هذا الملف:",
+	"bundle.author": "إعداد {name}",
+	"bundle.rights": "حقوقه:",
+	"bundle.agree": "يحق لي تعديل هذا المنهج (انظر حقوقه أعلاه).",
+	"bundle.hint":
+		"بعد ذلك اختر مجلدًا فارغًا: يُنشأ فيه المشروع، ويكون تصديره التالي تحديثًا لهذا المنهج.",
+	"bundle.make": "اختر مجلدًا وأنشئ المشروع…",
 	"curriculum.pickFact": "اختر صفحة حقيقة لعرضها هنا.",
 	"curriculum.pageText": "نص الصفحة",
 	"curriculum.noPageText": "لم يُقرأ نصّ من هذه الصفحة.",
@@ -646,6 +672,7 @@ const ar: Record<TextKey, string> = {
 	"failure.noWork": "لا يوجد مجلد _work بجانب هذه المواد.",
 	"failure.emptyModel": "لا يوجد منهج في هذا المشروع لتصديره بعد.",
 	"failure.invalidBundle": "لم يجتز الملف الفحص.",
+	"failure.notEmpty": "اختر مجلدًا فارغًا للمشروع الجديد.",
 	"failure.unknown": "حدث خطأ ما.",
 	"failure.cancelled": "",
 

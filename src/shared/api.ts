@@ -52,6 +52,7 @@ export type FailureCode =
 	| "noWork"
 	| "emptyModel"
 	| "invalidBundle"
+	| "notEmpty"
 	| "cancelled"
 	| "noKey"
 	| "noStorage"
@@ -171,6 +172,22 @@ export type ExportCheck =
 /** An export that reached disk, or the problems the shared parser found instead. */
 export type Exported =
 	| { ok: true; version: number; path: string; summary: ModelSummary }
+	| (Failure & { issues?: string[] });
+
+/** What the page is shown about a curriculum file before it becomes a project (task 214). */
+export type BundleInfo = {
+	file: string;
+	nameEn: string;
+	nameAr: string;
+	author: string;
+	rights: string;
+	version: number;
+	summary: ModelSummary;
+};
+
+/** A curriculum file the main process read and checked, or why it couldn't. */
+export type BundleChoice =
+	| { ok: true; info: BundleInfo }
 	| (Failure & { issues?: string[] });
 
 /** The model and the spending limit the notes run uses; never the key. */
@@ -402,6 +419,14 @@ export type StudioApi = {
 	exportBundle(root: string, author: string, rights: string): Promise<Exported>;
 	/** Creates the project's folders and curriculum.json where the wizard showed them. */
 	createProject(root: string, project: Project): Promise<ProjectOpen>;
+	/** Asks for a .zaki file, then reads and checks it; the main process keeps it (task 214). */
+	chooseBundle(): Promise<BundleChoice>;
+	/** The .zaki file the Studio was opened with (double-click), read and checked, if any. */
+	launchedBundle(): Promise<BundleChoice>;
+	/** Called when a .zaki file is double-clicked while the Studio is already open. */
+	onBundleLaunched(callback: () => void): () => void;
+	/** Asks for an empty folder and makes the kept curriculum file a project in it. */
+	projectFromBundle(): Promise<ProjectOpen>;
 	/** The projects opened before, newest first. */
 	recentProjects(): Promise<RecentProject[]>;
 	/** The one level of the tree at `rel` ("" is the top): folders carry the count of files

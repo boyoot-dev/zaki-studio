@@ -15,6 +15,7 @@ export function StartScreen({
 	onNew,
 	onOpen,
 	onAdopt,
+	onBundle,
 	onRecent,
 }: {
 	lang: Lang;
@@ -22,6 +23,7 @@ export function StartScreen({
 	onNew: () => void;
 	onOpen: () => void;
 	onAdopt: () => Promise<void>;
+	onBundle: () => Promise<void>;
 	onRecent: (root: string) => Promise<void>;
 }) {
 	const say = useSay();
@@ -68,6 +70,13 @@ export function StartScreen({
 					</span>
 					<span className="card-title">{say("start.adopt")}</span>
 					<span className="card-hint">{say("start.adoptHint")}</span>
+				</button>
+				<button type="button" className="card" onClick={() => void onBundle()}>
+					<span className="card-sign" aria-hidden="true">
+						📦
+					</span>
+					<span className="card-title">{say("start.bundle")}</span>
+					<span className="card-hint">{say("start.bundleHint")}</span>
 				</button>
 			</div>
 
