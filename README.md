@@ -49,7 +49,8 @@ it. Nothing is uploaded anywhere else, and there is no telemetry.
 - Proposes a course's exam papers from its exam papers' and mark schemes' notes (papers,
   parts, timing, marks, question types and a writing task's answer length); accepts, rejects
   or edits per paper.
-- Exports the bundle that Mr. Zaki imports, checked by the same validator the app uses.
+- Exports the curriculum file that Mr. Zaki imports, a `.zaki` file, checked by the same
+  validator the app uses.
 
 ## Building from source
 
@@ -139,7 +140,8 @@ resources/      the icon the window and the installer show, the rules the model 
 ```
 
 `src/shared/format/` is the reference reader of the bundle format (`bundle.ts`, `grades.ts`,
-`web-address.ts` and the subject list). It reads version 1 and version 2 of the format. This
+`web-address.ts` and the subject list) and of the `.zaki` file that carries a bundle
+(`container.ts`, since format-2.1.0): a zip with `manifest.json` and `bundle.json`. It reads version 1 and version 2 of the format. This
 repository is its home. Apps that read bundles, such as Mr. Zaki, copy these files byte for
 byte from a tagged commit here, so the Studio and the apps can never disagree about what a
 valid file is. Change them here, never in a copy.
