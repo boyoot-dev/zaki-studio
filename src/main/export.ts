@@ -3,9 +3,12 @@
 // shared parseBundle before anything is written, so an invalid file never reaches disk. Each
 // export keeps a copy in .studio/exports/v<N>.json, and the version is the last copy's plus
 // one, so importing a later file is an update and never a new curriculum (docs/BUNDLES.md).
+// Since task 212 the file is a .zaki (src/shared/format/container.ts); the copy kept in
+// .studio/exports stays plain text, because it is the Studio's own memory.
 
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { deflateRawSync } from "node:zlib";
 import { BrowserWindow, dialog } from "electron";
 import type { ExportCheck, Exported, Failure } from "../shared/api.ts";
 import { courseNumberWarnings } from "../shared/exam-numbers.ts";
@@ -15,6 +18,7 @@ import {
 	filledModel,
 	issueLines,
 } from "../shared/export.ts";
+import { writeZaki } from "../shared/format/container.ts";
 import { modelSummary, nextVersion } from "../shared/model.ts";
 import { readProject, writeProject } from "./files.ts";
 import {
@@ -107,7 +111,7 @@ export async function exportProject(
 			dirname(root),
 			exportFileName(filled.curriculum.nameEn, version),
 		),
-		filters: [{ name: "Curriculum bundle", extensions: ["json"] }],
+		filters: [{ name: "Mr. Zaki curriculum", extensions: ["zaki"] }],
 	};
 	const chosen =
 		window === null
@@ -120,7 +124,10 @@ export async function exportProject(
 	)
 		return failure("cancelled");
 	try {
-		writeFileSync(chosen.filePath, text.text, "utf8");
+		const file = await writeZaki(text.text, async (bytes) =>
+			deflateRawSync(bytes),
+		);
+		writeFileSync(chosen.filePath, file);
 	} catch {
 		return failure("unreadable", chosen.filePath);
 	}

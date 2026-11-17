@@ -51,14 +51,14 @@ export function bundleText(
 	return { ok: true, text: modelFileText(bundle) };
 }
 
-/** "Sunrise Curriculum v3.json", with the characters Windows refuses taken out. */
+/** "Sunrise Curriculum v3.zaki", with the characters Windows refuses taken out. */
 export function exportFileName(nameEn: string, version: number): string {
 	const clean = nameEn
 		.replace(/[\p{Cc}<>:"/\\|?*]/gu, "-")
 		.replace(/\s+/g, " ")
 		.trim()
 		.replace(/\.+$/, "");
-	return `${clean === "" ? "curriculum" : clean.slice(0, 60)} v${version}.json`;
+	return `${clean === "" ? "curriculum" : clean.slice(0, 60)} v${version}.zaki`;
 }
 
 /**

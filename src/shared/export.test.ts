@@ -214,12 +214,12 @@ describe("the author's answers", () => {
 describe("the name the save dialog suggests", () => {
 	it("keeps a readable name and the version", () => {
 		expect(exportFileName("Sunrise Curriculum", 3)).toBe(
-			"Sunrise Curriculum v3.json",
+			"Sunrise Curriculum v3.zaki",
 		);
 	});
 
 	it("takes out the characters Windows refuses", () => {
-		expect(exportFileName('A/B: "C" <D>', 1)).toBe("A-B- -C- -D- v1.json");
-		expect(exportFileName("", 1)).toBe("curriculum v1.json");
+		expect(exportFileName('A/B: "C" <D>', 1)).toBe("A-B- -C- -D- v1.zaki");
+		expect(exportFileName("", 1)).toBe("curriculum v1.zaki");
 	});
 });
