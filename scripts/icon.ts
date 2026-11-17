@@ -5,11 +5,16 @@
 // version reads (and the installer task can hand to the exe). The .icns is the png itself in
 // its one chunk, which macOS reads.
 //
+// It also draws the icon of a .zaki file (task 221, owner 2026-11-17: a file showed the
+// app's own face and looked like the app): a white page with a folded corner, the face
+// smaller on it and a blue band at the bottom, the way a document's icon looks on Windows
+// and macOS. It is drawn at twice the size and averaged down, so its edges are smooth.
+//
 // Run it when resources/icon.png changes: node scripts/icon.ts
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { inflateSync } from "node:zlib";
+import { crc32, deflateSync, inflateSync } from "node:zlib";
 
 /** The sizes Windows asks a taskbar or Explorer for; 256 is the large tile. */
 const SIZES = [16, 24, 32, 48, 64, 256] as const;
@@ -223,12 +228,143 @@ function icns(png: Buffer, size: number): Buffer {
 	return Buffer.concat([header, chunk, png]);
 }
 
+/** A png of 8-bit RGBA, unfiltered: what the file icon is saved as. */
+function encodePng(rgba: Uint8Array, size: number): Buffer {
+	const chunk = (name: string, body: Buffer) => {
+		const head = Buffer.alloc(8);
+		head.writeUInt32BE(body.length, 0);
+		head.write(name, 4, "latin1");
+		const sum = Buffer.alloc(4);
+		sum.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), body])), 0);
+		return Buffer.concat([head, body, sum]);
+	};
+	const header = Buffer.alloc(13);
+	header.writeUInt32BE(size, 0);
+	header.writeUInt32BE(size, 4);
+	header[8] = 8; // 8 bits a channel
+	header[9] = 6; // RGBA
+	const rows = Buffer.alloc((size * 4 + 1) * size);
+	for (let y = 0; y < size; y += 1) {
+		rows[y * (size * 4 + 1)] = 0; // no filter
+		rows.set(
+			rgba.subarray(y * size * 4, (y + 1) * size * 4),
+			y * (size * 4 + 1) + 1,
+		);
+	}
+	return Buffer.concat([
+		Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+		chunk("IHDR", header),
+		chunk("IDAT", deflateSync(rows)),
+		chunk("IEND", Buffer.alloc(0)),
+	]);
+}
+
+/** The colours of the file icon: the page, its edge, the folded corner and the band. */
+const PAGE = [255, 255, 255];
+const EDGE = [176, 186, 200];
+const FOLD = [222, 228, 236];
+const BAND = [47, 107, 216];
+
+/**
+ * The .zaki file's icon at 512 pixels: a page with its top right corner folded, the face
+ * on it and a band along the bottom. Drawn at 1024 and averaged down to 512.
+ */
+function fileIcon(face: Image): Image {
+	const big = 1024;
+	const rgba = new Uint8Array(big * big * 4);
+	// The page, in the 1024 drawing.
+	const left = 176;
+	const right = 848;
+	const top = 48;
+	const bottom = 976;
+	const radius = 40;
+	const fold = 208;
+	const edge = 14;
+	/** Inside the page shrunk by `inset`: a rounded box with its top right corner cut off. */
+	const inPage = (x: number, y: number, inset: number) => {
+		const l = left + inset;
+		const r = right - inset;
+		const t = top + inset;
+		const b = bottom - inset;
+		if (x < l || x > r || y < t || y > b) return false;
+		// The cut runs from (right - fold, top) to (right, top + fold), moved in by the inset.
+		if (x - (right - fold) - (y - top) > -inset * Math.SQRT2) return false;
+		const rr = Math.max(radius - inset, 0);
+		const corners: [number, number][] = [
+			[l + rr, t + rr],
+			[l + rr, b - rr],
+			[r - rr, b - rr],
+		];
+		for (const [cx, cy] of corners) {
+			const outX = (x < cx && cx === l + rr) || (x > cx && cx === r - rr);
+			const outY = (y < cy && cy === t + rr) || (y > cy && cy === b - rr);
+			if (outX && outY && (x - cx) ** 2 + (y - cy) ** 2 > rr ** 2) return false;
+		}
+		return true;
+	};
+	/** The folded corner: the triangle under the cut, against the page. */
+	const inFold = (x: number, y: number) =>
+		x >= right - fold && y <= top + fold && x - (right - fold) <= y - top;
+	const bandTop = 790;
+	for (let y = 0; y < big; y += 1) {
+		for (let x = 0; x < big; x += 1) {
+			const px = x + 0.5;
+			const py = y + 0.5;
+			let colour: number[] | null = null;
+			if (inFold(px, py)) {
+				const inside =
+					px >= right - fold + edge &&
+					py <= top + fold - edge &&
+					px - (right - fold) <= py - top - edge * Math.SQRT2;
+				colour = inside ? FOLD : EDGE;
+			} else if (inPage(px, py, 0)) {
+				if (!inPage(px, py, edge)) colour = EDGE;
+				else colour = py >= bandTop ? BAND : PAGE;
+			}
+			if (!colour) continue;
+			const at = (y * big + x) * 4;
+			rgba[at] = colour[0];
+			rgba[at + 1] = colour[1];
+			rgba[at + 2] = colour[2];
+			rgba[at + 3] = 255;
+		}
+	}
+	// The face, 520 pixels across, centred on the page above the band.
+	const faceSize = 520;
+	const small = shrink(face, faceSize);
+	const faceLeft = Math.round((left + right - faceSize) / 2);
+	const faceTop = Math.round((top + bandTop - faceSize) / 2) + 20;
+	for (let y = 0; y < faceSize; y += 1) {
+		for (let x = 0; x < faceSize; x += 1) {
+			const from = (y * faceSize + x) * 4;
+			const alpha = small[from + 3] / 255;
+			if (alpha === 0) continue;
+			const at = ((faceTop + y) * big + faceLeft + x) * 4;
+			for (let c = 0; c < 3; c += 1)
+				rgba[at + c] = Math.round(
+					small[from + c] * alpha + rgba[at + c] * (1 - alpha),
+				);
+			rgba[at + 3] = Math.max(rgba[at + 3], small[from + 3]);
+		}
+	}
+	return {
+		width: 512,
+		height: 512,
+		rgba: shrink({ width: big, height: big, rgba }, 512),
+	};
+}
+
 const png = readFileSync(SOURCE);
 const image = decodePng(png);
 mkdirSync(RESOURCES, { recursive: true });
 writeFileSync(`${RESOURCES}icon.png`, png);
 writeFileSync(`${RESOURCES}icon.ico`, ico(image));
 writeFileSync(`${RESOURCES}icon.icns`, icns(png, image.width));
+const file = fileIcon(image);
+const filePng = encodePng(file.rgba, file.width);
+writeFileSync(`${RESOURCES}zaki-file.png`, filePng);
+writeFileSync(`${RESOURCES}zaki-file.ico`, ico(file));
+writeFileSync(`${RESOURCES}zaki-file.icns`, icns(filePng, file.width));
 console.log(
-	`icon.png, icon.ico (${SIZES.join(", ")} px) and icon.icns from ${SOURCE}: ${image.width}×${image.height}`,
+	`icon.png, icon.ico (${SIZES.join(", ")} px) and icon.icns from ${SOURCE}: ${image.width}×${image.height}; zaki-file.png, .ico and .icns for .zaki files`,
 );
