@@ -122,11 +122,14 @@ describe("the year's periods", () => {
 		expect(periods[0]?.periods[1]?.nameAr).toBe("المرحلة 2");
 	});
 
-	it("offers the other presets, and no split at all", () => {
+	it("offers the other presets, and a year not split as one period", () => {
 		expect(presetPeriods("semesters")).toHaveLength(2);
 		expect(presetPeriods("terms")).toHaveLength(3);
 		expect(presetPeriods("quarters")).toHaveLength(4);
-		expect(presetPeriods("none")).toEqual([]);
+		const year = presetPeriods("none");
+		expect(year.map((period) => period.id)).toEqual(["year"]);
+		expect(year[0]?.wholeYear).toBe(false);
+		expect(year[0]?.periods).toEqual([]);
 	});
 
 	it("keeps the final exam apart, covering the whole year", () => {

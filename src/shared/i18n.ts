@@ -121,7 +121,7 @@ const en = {
 		"Language subjects are taught in their own language. You can change any course later in the Curriculum tab.",
 	"export.languageWarn": "{course}: {text}",
 	"curriculum.empty":
-		"This project has no curriculum yet. Open your existing material to bring one in.",
+		"No units yet. Write the notes for your files in Notes, then propose the units in Changes to review.",
 	"curriculum.units": "Units",
 	"curriculum.period": "Period",
 	"curriculum.skills": "Skills",
@@ -633,7 +633,7 @@ const ar: Record<TextKey, string> = {
 		"تُدرَّس مواد اللغات بلغتها. يمكنك تغيير لغة أي مقرر لاحقًا من تبويب المنهج.",
 	"export.languageWarn": "{course}: {text}",
 	"curriculum.empty":
-		"لا يوجد منهج في هذا المشروع بعد. افتح موادّك الحالية لإدخال منهج.",
+		"لا وحدات بعد. اكتب ملاحظات ملفاتك في «الملاحظات»، ثم اقترح الوحدات في «تغييرات للمراجعة».",
 	"curriculum.units": "الوحدات",
 	"curriculum.period": "المرحلة",
 	"curriculum.skills": "المهارات",

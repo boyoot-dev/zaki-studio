@@ -192,7 +192,18 @@ function presetNames(preset: PeriodPreset): {
  * rename them before anything is written; this is only the first suggestion.
  */
 export function presetPeriods(preset: PeriodPreset): BundlePeriod[] {
-	if (preset === "none") return [];
+	// A year that is not split is still one period: every unit sits in a leaf period, so a
+	// year with none could never hold a unit (found in the owner's walkthrough, 2026-11-18).
+	if (preset === "none")
+		return [
+			{
+				id: "year",
+				nameEn: "The year",
+				nameAr: "السنة الدراسية",
+				wholeYear: false,
+				periods: [],
+			},
+		];
 	const shape = presetNames(preset);
 	const out: BundlePeriod[] = [];
 	for (let t = 1; t <= shape.terms; t += 1) {
