@@ -210,12 +210,22 @@ export function readModel(
 	const dir = join(root, MODEL_DIR);
 	const headerFile = join(dir, MODEL_FILE);
 	if (snapshot === null || !existsSync(headerFile)) {
-		const missing = failure(
-			"missing",
-			"this project has no curriculum model yet",
-		);
-		holder.model = { snapshot, value: missing };
-		return missing;
+		// A project the wizard made has no model until its first accepted change set. It starts
+		// from an empty one built from the project file, so the Curriculum and Changes tabs work
+		// from the first day (found in the owner's walkthrough, 2026-11-18). Nothing is written,
+		// and nothing is cached: the snapshot of an absent model can't see the project change.
+		holder.model = undefined;
+		const project = readProject(root);
+		if (!project.ok)
+			return failure("missing", "this project has no curriculum model yet");
+		const { nameEn, nameAr, author, rights, periods } = project.project;
+		return {
+			ok: true,
+			model: {
+				curriculum: { nameEn, nameAr, author, rights, periods },
+				courses: [],
+			},
+		};
 	}
 	let headerText: string;
 	const courses: { name: string; text: string }[] = [];

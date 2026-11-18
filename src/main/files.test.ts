@@ -24,6 +24,7 @@ import {
 	type SubjectLabel,
 	wizardProject,
 } from "../shared/project.ts";
+import { rowPeriods } from "./changes.ts";
 import {
 	addCourseLanguage,
 	createProject,
@@ -42,6 +43,7 @@ import {
 	setCourseLanguages,
 	stamp,
 } from "./files.ts";
+import { readModel } from "./model.ts";
 
 const ID = "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10";
 const SUBJECTS: SubjectLabel[] = [
@@ -366,5 +368,76 @@ describe("a second course language (task 228)", () => {
 		expect(addCourseLanguage(root, 7, "science", "fre").ok).toBe(false);
 		expect(addCourseLanguage(root, "7", "science", "ar").ok).toBe(false);
 		expect(addCourseLanguage(root, 7, "science", "en").ok).toBe(false);
+	});
+});
+
+describe("a new project before its first change set", () => {
+	it("reads as an empty model built from the project file", () => {
+		createProject(root, project());
+		const read = readModel(root);
+		expect(read.ok).toBe(true);
+		if (!read.ok) return;
+		expect(read.model.courses).toEqual([]);
+		expect(read.model.curriculum.nameEn).toBe("Sunrise Curriculum");
+		expect(read.model.curriculum.rights).toBe("For my own students only.");
+		expect(read.model.curriculum.periods.map((period) => period.id)).toEqual([
+			"t1",
+			"t2",
+			"t3",
+			"final",
+		]);
+		// Nothing was written: the first accepted change set writes the model.
+		expect(existsSync(join(root, ".studio", "model"))).toBe(false);
+	});
+
+	it("follows the project file when it changes", () => {
+		createProject(root, project());
+		expect(readModel(root).ok).toBe(true);
+		const changed = { ...project(), nameEn: "Sunset Curriculum" };
+		writeFileSync(
+			join(root, "curriculum.json"),
+			`${JSON.stringify(changed, null, "	")}
+`,
+			"utf8",
+		);
+		const read = readModel(root);
+		expect(read.ok && read.model.curriculum.nameEn).toBe("Sunset Curriculum");
+	});
+
+	it("is still missing when there is no project at all", () => {
+		const read = readModel(root);
+		expect(read.ok).toBe(false);
+		if (!read.ok) expect(read.code).toBe("missing");
+	});
+
+	it("offers a file with no block the year's one unit period", () => {
+		const notSplit = wizardProject(
+			{
+				nameEn: "Sunrise Curriculum",
+				nameAr: "منهج الشروق",
+				author: "A. Teacher",
+				rights: "For my own students only.",
+				grades: [{ grade: 7, subjects: ["science"] }],
+				periods: presetPeriods("none"),
+				finalExam: true,
+			},
+			SUBJECTS,
+			ID,
+		);
+		if (!notSplit.ok) throw new Error(JSON.stringify(notSplit.issues));
+		createProject(root, notSplit.project);
+		const read = readModel(root);
+		if (!read.ok) throw new Error(read.code);
+		// The final exam covers the whole year, so the units' one period is "year".
+		expect(rowPeriods(read.model, "")).toEqual(["year"]);
+		// A block the path names still wins.
+		expect(rowPeriods(read.model, "2")).toEqual(["block-2"]);
+	});
+
+	it("offers no period for a file with no block in a year of several", () => {
+		createProject(root, project());
+		const read = readModel(root);
+		if (!read.ok) throw new Error(read.code);
+		expect(rowPeriods(read.model, "")).toEqual([]);
 	});
 });

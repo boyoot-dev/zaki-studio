@@ -185,6 +185,27 @@ export function blockPeriods(block: string): string[] {
 }
 
 /**
+ * The periods a register row offers the units step: the blocks its path names, else the
+ * year's one unit period when the year has exactly one (a leaf that is not a whole-year
+ * exam). A file in a wizard project names no block, and a year that is not split still has
+ * one period for its units (found in the owner's walkthrough, 2026-11-18). A year with several
+ * periods and no block in the path offers none: which period such a file is for is open.
+ */
+export function rowPeriods(model: CurriculumModel, block: string): string[] {
+	const named = blockPeriods(block);
+	if (named.length > 0) return named;
+	const leaves: string[] = [];
+	const walk = (periods: CurriculumModel["curriculum"]["periods"]) => {
+		for (const period of periods) {
+			if (period.periods.length > 0) walk(period.periods);
+			else if (!period.wholeYear) leaves.push(period.id);
+		}
+	};
+	walk(model.curriculum.periods);
+	return leaves.length === 1 ? leaves : [];
+}
+
+/**
  * The request the change set's own file and the register are checked against. A course the
  * project has not got yet, or a block it has no unit in, is an empty course: the set writes
  * the units from the notes alone (task 178). `allowNewUnits` keeps a set made for such a

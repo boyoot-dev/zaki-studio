@@ -83,7 +83,6 @@ import {
 	acceptExamChange,
 	allowedExamTarget,
 	allowedTarget,
-	blockPeriods,
 	collectUnitsJob,
 	deleteChange,
 	deleteExamChange,
@@ -94,6 +93,7 @@ import {
 	readUnitsSettings,
 	rejectChange,
 	rejectExamChange,
+	rowPeriods,
 	targetCourse,
 	writeUnitsSettings,
 } from "./changes.ts";
@@ -1418,7 +1418,7 @@ export function registerIpc(): void {
 			}
 			for (const row of files.files) {
 				if (row.grade === null || !noted.has(row.id)) continue;
-				for (const period of blockPeriods(row.block)) {
+				for (const period of rowPeriods(model.model, row.block)) {
 					// A row whose language is not settled yet can't name its course.
 					if (row.language === "") continue;
 					const known = allowedTarget(
