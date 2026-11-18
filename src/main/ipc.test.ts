@@ -127,10 +127,13 @@ beforeEach(async () => {
 			{
 				grade: 3,
 				subject: "math",
+				language: "en",
+				support: [],
 				examStyle: null,
 				exams: [],
 				units: [
 					{
+						id: "u2",
 						number: 1,
 						period: "block-1",
 						title: "Numbers",
@@ -139,9 +142,10 @@ beforeEach(async () => {
 						evidence: [],
 						lessons: [
 							{
+								id: "l3",
 								number: 1,
 								title: "Counting",
-								skills: [{ code: null, text: "count to ten" }],
+								skills: [{ id: "s1", code: null, text: "count to ten" }],
 								facts: [],
 								activity: null,
 							},

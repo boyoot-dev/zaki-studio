@@ -103,10 +103,12 @@ beforeEach(() => {
 			examStyle: "One paper, short answers.",
 			exams: [
 				{
+					id: "e5",
 					period: "black",
 					name: "Block 1 test",
 					papers: [
 						{
+							id: "p4",
 							name: "Paper 1",
 							skill: "written",
 							parts: [
@@ -127,6 +129,7 @@ beforeEach(() => {
 			],
 			units: [
 				{
+					id: "u2",
 					number: 1,
 					period: "black",
 					title: "Classification",
@@ -135,9 +138,12 @@ beforeEach(() => {
 					evidence: [],
 					lessons: [
 						{
+							id: "l3",
 							number: 1,
 							title: "Living things",
-							skills: [{ code: "7-1-1", text: "Sort living things." }],
+							skills: [
+								{ id: "s1", code: "7-1-1", text: "Sort living things." },
+							],
 							facts: [
 								{
 									text: "Living things are sorted by features.",
@@ -199,7 +205,14 @@ describe("adopting a material folder", () => {
 				{
 					grade: 7,
 					folder: "Grade 7",
-					subjects: [{ subject: "science", folder: "Science" }],
+					subjects: [
+						{
+							subject: "science",
+							folder: "Science",
+							language: "en",
+							support: [],
+						},
+					],
 				},
 			]);
 		}

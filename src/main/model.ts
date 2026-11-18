@@ -21,6 +21,7 @@ import {
 import { join, resolve } from "node:path";
 
 import type { Failure, FileFields } from "../shared/api.ts";
+import { legacySubject } from "../shared/convert.ts";
 import {
 	type CurriculumModel,
 	courseFile,
@@ -38,8 +39,20 @@ import {
 	parseModelText,
 	REPORT_FILE,
 	TEXT_DIR,
+	withProjectLanguages,
 } from "../shared/model.ts";
+import { PROJECT_FILE } from "../shared/project.ts";
 import { AUTHORITIES, KINDS, type NewMaterial } from "../shared/register.ts";
+import { BACKUP_DIR, readProject } from "./files.ts";
+
+/** The model with the project's course languages, when the project can be read (task 225). */
+function languagesFromProject(
+	root: string,
+	model: CurriculumModel,
+): CurriculumModel {
+	const project = readProject(root);
+	return project.ok ? withProjectLanguages(model, project.project) : model;
+}
 
 /**
  * What the project keeps, read once and kept in memory until a write or a watcher poke says
@@ -128,6 +141,10 @@ function modelSnapshot(root: string): string | null {
 	} catch {
 		return null;
 	}
+	// The project file holds the courses' languages, so a change there re-reads the model.
+	const project = statOf(join(root, PROJECT_FILE));
+	if (project !== null)
+		parts.push(`${PROJECT_FILE}|${project.mtimeNs}|${project.size}`);
 	return parts.sort().join(";");
 }
 
@@ -145,8 +162,9 @@ function sameStat(a: Stat, b: Stat): boolean {
 /** Writes the model: the header, then one file per course, replacing any earlier model. */
 export function writeModel(
 	root: string,
-	model: CurriculumModel,
+	given: CurriculumModel,
 ): Failure | { ok: true } {
+	const model = languagesFromProject(root, given);
 	try {
 		const dir = join(root, MODEL_DIR);
 		mkdirSync(dir, { recursive: true });
@@ -220,7 +238,28 @@ export function readModel(
 		holder.model = { snapshot, value: invalid };
 		return invalid;
 	}
-	holder.model = { snapshot, value: { ok: true, model: parsed.model } };
+	// A model from before format version 1 is converted once (task 224): the old files go to
+	// the backup folder first, then the converted model is written in their place.
+	if (parsed.converted) {
+		try {
+			const backup = join(root, BACKUP_DIR, "model");
+			if (!existsSync(backup)) {
+				mkdirSync(backup, { recursive: true });
+				for (const name of readdirSync(dir))
+					if (name.endsWith(".json"))
+						copyFileSync(join(dir, name), join(backup, name));
+			}
+		} catch {
+			return failure("unreadable");
+		}
+		return writeModel(root, parsed.model).ok
+			? readModel(root)
+			: failure("unreadable");
+	}
+	holder.model = {
+		snapshot,
+		value: { ok: true, model: languagesFromProject(root, parsed.model) },
+	};
 	return holder.model.value;
 }
 
@@ -287,7 +326,13 @@ export function readFiles(
 			id: row.id,
 			path: row.path,
 			grade: typeof row.grade === "number" ? row.grade : null,
-			subject: typeof row.subject === "string" ? row.subject : "",
+			// An old row may name a language copy (`math-ar`), which is its subject now (task 224).
+			subject:
+				typeof row.subject === "string" && row.subject !== "unknown"
+					? legacySubject(row.subject).subject
+					: typeof row.subject === "string"
+						? row.subject
+						: "",
 			block: typeof row.block === "string" ? row.block : "",
 			kind: typeof row.kind === "string" ? row.kind : "",
 			pages: typeof row.pages === "number" ? row.pages : null,

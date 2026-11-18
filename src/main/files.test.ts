@@ -289,6 +289,6 @@ describe("reading a project back", () => {
 			readFileSync(join(root, "curriculum.json"), "utf8"),
 		);
 		expect(written.nameAr).toBe("منهج الشروق");
-		expect(written.formatVersion).toBe(1);
+		expect(written.formatVersion).toBe(2);
 	});
 });

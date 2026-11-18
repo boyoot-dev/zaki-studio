@@ -142,7 +142,7 @@ resources/      the icon the window and the installer show, the rules the model 
 
 `src/shared/format/` is the reference reader of the bundle format (`bundle.ts`, `grades.ts`,
 `web-address.ts` and the subject list) and of the `.zaki` file that carries a bundle
-(`container.ts`, since format-2.1.0): a zip with `manifest.json` and `bundle.json`. It reads version 1 and version 2 of the format. This
+(`container.ts`, since format-2.1.0): a zip with `manifest.json` and `bundle.json`. It reads format version 1, the only version since 2026-11 (task 224). This
 repository is its home. Apps that read bundles, such as Mr. Zaki, copy these files byte for
 byte from a tagged commit here, so the Studio and the apps can never disagree about what a
 valid file is. Change them here, never in a copy.
@@ -382,9 +382,7 @@ and the version (the last copy's plus one). The author's name and rights sentenc
 for when the project still lacks them. The bundle is checked by the app's own `parseBundle`
 before anything is written; the save dialog picks the file, and a copy goes to
 `.studio/exports/v<N>.json`. Nothing is written when the check finds a problem. The file says
-format version 1, or version 2 when an exam part gives how long the child's own answer must
-be (`questions.answerWords`), so a file that doesn't use the new field stays readable by
-version 1 readers.
+format version 1, the only version (task 224).
 
 ## Security
 

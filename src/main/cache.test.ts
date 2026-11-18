@@ -87,10 +87,13 @@ const MODEL_A = {
 		{
 			grade: 7,
 			subject: "science",
+			language: "en",
+			support: [],
 			examStyle: null,
 			exams: [],
 			units: [
 				{
+					id: "u1",
 					number: 1,
 					period: "block-1",
 					title: "Original title",
@@ -99,6 +102,7 @@ const MODEL_A = {
 					evidence: [],
 					lessons: [
 						{
+							id: "l2",
 							number: 1,
 							title: "Lesson one",
 							skills: [],

@@ -19,17 +19,27 @@
 		{
 			"grade": 8,
 			"subject": "science",
+			"language": "en",
 			"units": [
 				{
+					"id": "u1",
 					"number": 1,
 					"period": "year",
 					"title": "The Moon",
-					"keywords": ["moon"],
+					"keywords": [
+						"moon"
+					],
 					"lessons": [
 						{
+							"id": "u1-l1",
 							"number": 1,
 							"title": "Why the Moon changes shape",
-							"skills": ["Describe how the Moon's phases work"],
+							"skills": [
+								{
+									"id": "u1-l1-s1",
+									"text": "Describe how the Moon's phases work"
+								}
+							],
 							"facts": [
 								"The Moon orbits Earth once every 27 and a third days.",
 								"For diagrams of the phases, see https://example.org/moon-phases"

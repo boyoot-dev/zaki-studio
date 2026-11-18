@@ -13,6 +13,7 @@
 
 import type { ReviewExam } from "./exam-changes.ts";
 import { BUNDLE_LIMITS, type BundleSkill, checkText } from "./format/bundle.ts";
+import { newId } from "./ids.ts";
 import type {
 	FileRow,
 	ModelCourse,
@@ -56,8 +57,39 @@ export type CleanFact = {
 	copy: string | null;
 };
 
-/** One skill: the sheet's code when it gives one, and what the child should be able to do. */
-export type CleanSkill = BundleSkill;
+/**
+ * One skill: the sheet's code when it gives one, and what the child should be able to do. A
+ * proposal has no ids; merging gives each skill one (keepSkillIds).
+ */
+export type CleanSkill = Omit<BundleSkill, "id">;
+
+/**
+ * The proposed skills with ids (task 224): a skill keeps the id of the old one with the same
+ * text, else of the old one at the same position (a reworded skill keeps its progress, as it
+ * always did), else gets a new id.
+ */
+export function keepSkillIds(
+	old: readonly BundleSkill[],
+	proposed: readonly CleanSkill[],
+): BundleSkill[] {
+	const used = new Set<string>();
+	const byText = proposed.map(
+		(skill) =>
+			old.find((entry) => entry.text === skill.text && !used.has(entry.id)) ??
+			null,
+	);
+	for (const found of byText) if (found !== null) used.add(found.id);
+	return proposed.map((skill, i) => {
+		const same = byText[i];
+		if (same !== null && same !== undefined) return { ...skill, id: same.id };
+		const at = old[i];
+		if (at !== undefined && !used.has(at.id)) {
+			used.add(at.id);
+			return { ...skill, id: at.id };
+		}
+		return { ...skill, id: newId() };
+	});
+}
 
 export type CleanLesson = {
 	number: number;
@@ -685,6 +717,7 @@ export function mergeCourse(
 		.filter((entry) => choice.kind === "all" || choice.unit === entry.number)
 		.map(
 			(entry): ModelUnit => ({
+				id: newId(),
 				number: entry.number,
 				period: set.period,
 				title: entry.title,
@@ -716,7 +749,7 @@ function mergeLessons(
 		return {
 			...lesson,
 			title: found.title,
-			skills: found.skills.map((skill) => ({ ...skill })),
+			skills: keepSkillIds(lesson.skills, found.skills),
 			activity: found.activity,
 			facts: mergeFacts(lesson.facts, found.facts),
 		};
@@ -728,9 +761,10 @@ function mergeLessons(
 		)
 		.map(
 			(entry): ModelLesson => ({
+				id: newId(),
 				number: entry.number,
 				title: entry.title,
-				skills: entry.skills.map((skill) => ({ ...skill })),
+				skills: keepSkillIds([], entry.skills),
 				activity: entry.activity,
 				facts: mergeFacts([], entry.facts),
 			}),

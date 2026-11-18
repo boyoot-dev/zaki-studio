@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"title": "Curriculum bundle, format version 1",
-	"description": "One JSON file that an author writes and an app reads: one curriculum, one author. This schema covers the shapes, types, required fields and the limits that can be written in a schema. The rest (the file size, the total number of periods, the character rules, the web-address rule, the cross-references) are listed in SPEC.md under \"Rules beyond the schema\".",
+	"description": "One JSON file that an author writes and an app reads: one curriculum, one author. This schema covers the shapes, types, required fields and the limits that can be written in a schema. The rest (the file size, the total number of periods, the character rules, the web-address rule, duplicate keys, unique ids, the cross-references, ordered word ranges, and a course's support languages never repeating its own) are listed in SPEC.md under \"Rules beyond the schema\".",
 	"type": "object",
 	"additionalProperties": false,
 	"required": [
@@ -114,12 +114,6 @@
 			"maxLength": 40,
 			"pattern": "^[a-z0-9-]+$"
 		},
-		"partId": {
-			"type": "string",
-			"minLength": 1,
-			"maxLength": 40,
-			"pattern": "^[a-z0-9-]+$"
-		},
 		"periodRef": {
 			"type": "string",
 			"minLength": 1,
@@ -219,28 +213,25 @@
 			}
 		},
 		"skill": {
-			"anyOf": [
-				{ "$ref": "#/$defs/text300" },
-				{
-					"type": "object",
-					"additionalProperties": false,
-					"required": ["code", "text"],
-					"properties": {
-						"code": {
-							"type": "string",
-							"minLength": 1,
-							"maxLength": 20
-						},
-						"text": { "$ref": "#/$defs/text300" }
-					}
-				}
-			]
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "text"],
+			"properties": {
+				"id": { "$ref": "#/$defs/objectId" },
+				"code": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 20
+				},
+				"text": { "$ref": "#/$defs/text300" }
+			}
 		},
 		"lesson": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["number", "title", "skills"],
+			"required": ["id", "number", "title", "skills"],
 			"properties": {
+				"id": { "$ref": "#/$defs/objectId" },
 				"number": { "$ref": "#/$defs/number99" },
 				"title": { "$ref": "#/$defs/text150" },
 				"skills": {
@@ -254,18 +245,23 @@
 					"maxItems": 25,
 					"items": { "$ref": "#/$defs/text400" }
 				},
-				"activity": { "enum": ["writing", "reading"] }
+				"activity": {
+					"enum": ["writing", "reading"]
+				}
 			}
 		},
 		"unit": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["number", "period", "title", "lessons"],
+			"required": ["id", "number", "period", "title", "lessons"],
 			"properties": {
+				"id": { "$ref": "#/$defs/objectId" },
 				"number": { "$ref": "#/$defs/number99" },
 				"period": { "$ref": "#/$defs/periodRef" },
 				"title": { "$ref": "#/$defs/text150" },
-				"source": { "enum": ["sheet", "provisional"] },
+				"source": {
+					"enum": ["sheet", "provisional"]
+				},
 				"keywords": {
 					"type": "array",
 					"maxItems": 40,
@@ -290,7 +286,9 @@
 			"properties": {
 				"readingSeconds": { "$ref": "#/$defs/seconds" },
 				"plays": { "$ref": "#/$defs/count" },
-				"repeat": { "enum": ["segment", "whole"] },
+				"repeat": {
+					"enum": ["segment", "whole"]
+				},
 				"pauseSeconds": { "$ref": "#/$defs/seconds" },
 				"checkSeconds": { "$ref": "#/$defs/seconds" }
 			}
@@ -337,21 +335,17 @@
 						"type": "integer",
 						"minimum": 0,
 						"maximum": 5000
-					}
+					},
+					"description": "The shortest and the longest. A schema cannot compare the two items, so the format also requires the first number to be no larger than the second."
 				},
 				"speakers": { "$ref": "#/$defs/count" },
-				"topic": { "enum": ["units", "outside-units"] },
+				"topic": {
+					"enum": ["units", "outside-units"]
+				},
 				"layout": {
 					"type": "array",
 					"items": {
-						"enum": [
-							"line-numbers",
-							"paragraph-numbers",
-							"gapped-text",
-							"inline-gaps",
-							"cloze",
-							"word-formation"
-						]
+						"enum": ["line-numbers", "paragraph-numbers", "gapped-text", "inline-gaps", "cloze", "word-formation"]
 					}
 				},
 				"timing": { "$ref": "#/$defs/timing" }
@@ -370,6 +364,17 @@
 					"maximum": 4
 				},
 				"maxWords": { "$ref": "#/$defs/count" },
+				"answerWords": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 5000
+					},
+					"description": "How long the answer must be, in words: the shortest and the longest. A schema cannot compare the two items, so the format also requires the first number to be no larger than the second."
+				},
 				"marksEach": { "$ref": "#/$defs/marks" },
 				"marksByType": { "$ref": "#/$defs/typeMarks" },
 				"totalMarks": { "$ref": "#/$defs/marks" },
@@ -380,9 +385,9 @@
 		"part": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["name", "material", "questions"],
+			"required": ["id", "name", "material", "questions"],
 			"properties": {
-				"id": { "$ref": "#/$defs/partId" },
+				"id": { "$ref": "#/$defs/objectId" },
 				"name": { "$ref": "#/$defs/examName" },
 				"nameEn": { "$ref": "#/$defs/examName" },
 				"instruction": { "$ref": "#/$defs/examName" },
@@ -398,13 +403,14 @@
 		"paper": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["name", "skill", "parts"],
+			"required": ["id", "name", "skill", "parts"],
 			"properties": {
+				"id": { "$ref": "#/$defs/objectId" },
 				"name": { "$ref": "#/$defs/examName" },
 				"skill": {
 					"enum": ["listening", "reading", "writing", "speaking", "written"]
 				},
-				"language": { "enum": ["en", "ar", "fr"] },
+				"language": { "$ref": "#/$defs/language" },
 				"minutes": { "$ref": "#/$defs/count" },
 				"marks": { "$ref": "#/$defs/marks" },
 				"parts": {
@@ -418,8 +424,9 @@
 		"exam": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["name", "papers"],
+			"required": ["id", "name", "papers"],
 			"properties": {
+				"id": { "$ref": "#/$defs/objectId" },
 				"period": { "$ref": "#/$defs/periodRef" },
 				"name": { "$ref": "#/$defs/examName" },
 				"papers": {
@@ -433,14 +440,30 @@
 		"course": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["grade", "subject", "units"],
+			"required": ["grade", "subject", "language", "units"],
 			"properties": {
 				"grade": {
 					"type": "integer",
 					"minimum": -1,
 					"maximum": 12
 				},
-				"subject": { "type": "string", "minLength": 1 },
+				"subject": {
+					"type": "string",
+					"minLength": 1
+				},
+				"language": { "$ref": "#/$defs/language" },
+				"support": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 3,
+					"uniqueItems": true,
+					"items": {
+						"anyOf": [
+							{ "$ref": "#/$defs/language" },
+							{ "const": "native" }
+						]
+					}
+				},
 				"examStyle": { "$ref": "#/$defs/examStyle" },
 				"exams": {
 					"type": "array",
@@ -455,6 +478,201 @@
 					"items": { "$ref": "#/$defs/unit" }
 				}
 			}
+		},
+		"objectId": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 40,
+			"pattern": "^[a-z0-9-]+$",
+			"description": "A permanent id, unique among objects of its kind in the course. Uniqueness is beyond the schema."
+		},
+		"language": {
+			"enum": [
+				"aa",
+				"ab",
+				"ae",
+				"af",
+				"ak",
+				"am",
+				"an",
+				"ar",
+				"as",
+				"av",
+				"ay",
+				"az",
+				"ba",
+				"be",
+				"bg",
+				"bi",
+				"bm",
+				"bn",
+				"bo",
+				"br",
+				"bs",
+				"ca",
+				"ce",
+				"ch",
+				"co",
+				"cr",
+				"cs",
+				"cu",
+				"cv",
+				"cy",
+				"da",
+				"de",
+				"dv",
+				"dz",
+				"ee",
+				"el",
+				"en",
+				"eo",
+				"es",
+				"et",
+				"eu",
+				"fa",
+				"ff",
+				"fi",
+				"fj",
+				"fo",
+				"fr",
+				"fy",
+				"ga",
+				"gd",
+				"gl",
+				"gn",
+				"gu",
+				"gv",
+				"ha",
+				"he",
+				"hi",
+				"ho",
+				"hr",
+				"ht",
+				"hu",
+				"hy",
+				"hz",
+				"ia",
+				"id",
+				"ie",
+				"ig",
+				"ii",
+				"ik",
+				"io",
+				"is",
+				"it",
+				"iu",
+				"ja",
+				"jv",
+				"ka",
+				"kg",
+				"ki",
+				"kj",
+				"kk",
+				"kl",
+				"km",
+				"kn",
+				"ko",
+				"kr",
+				"ks",
+				"ku",
+				"kv",
+				"kw",
+				"ky",
+				"la",
+				"lb",
+				"lg",
+				"li",
+				"ln",
+				"lo",
+				"lt",
+				"lu",
+				"lv",
+				"mg",
+				"mh",
+				"mi",
+				"mk",
+				"ml",
+				"mn",
+				"mr",
+				"ms",
+				"mt",
+				"my",
+				"na",
+				"nb",
+				"nd",
+				"ne",
+				"ng",
+				"nl",
+				"nn",
+				"no",
+				"nr",
+				"nv",
+				"ny",
+				"oc",
+				"oj",
+				"om",
+				"or",
+				"os",
+				"pa",
+				"pi",
+				"pl",
+				"ps",
+				"pt",
+				"qu",
+				"rm",
+				"rn",
+				"ro",
+				"ru",
+				"rw",
+				"sa",
+				"sc",
+				"sd",
+				"se",
+				"sg",
+				"si",
+				"sk",
+				"sl",
+				"sm",
+				"sn",
+				"so",
+				"sq",
+				"sr",
+				"ss",
+				"st",
+				"su",
+				"sv",
+				"sw",
+				"ta",
+				"te",
+				"tg",
+				"th",
+				"ti",
+				"tk",
+				"tl",
+				"tn",
+				"to",
+				"tr",
+				"ts",
+				"tt",
+				"tw",
+				"ty",
+				"ug",
+				"uk",
+				"ur",
+				"uz",
+				"ve",
+				"vi",
+				"vo",
+				"wa",
+				"wo",
+				"xh",
+				"yi",
+				"yo",
+				"za",
+				"zh",
+				"zu"
+			],
+			"description": "An ISO 639-1 language code."
 		}
 	}
 }

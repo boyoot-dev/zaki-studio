@@ -74,10 +74,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [],
 		units: [
 			{
+				id: "u7",
 				number: 5,
 				period: "block-3",
 				title: "Breathing (provisional)",
@@ -86,9 +89,10 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l10",
 						number: 1,
 						title: "Last year's title",
-						skills: [{ code: null, text: "an old skill" }],
+						skills: [{ id: "s1", code: null, text: "an old skill" }],
 						facts: [
 							{
 								text: "The author's own fact stays.",
@@ -108,6 +112,7 @@ function course(): ModelCourse {
 				],
 			},
 			{
+				id: "u8",
 				number: 6,
 				period: "block-3",
 				title: "Digestion (provisional)",
@@ -116,15 +121,17 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l11",
 						number: 1,
 						title: "The stomach",
-						skills: [{ code: null, text: "an old skill" }],
+						skills: [{ id: "s2", code: null, text: "an old skill" }],
 						facts: [],
 						activity: null,
 					},
 				],
 			},
 			{
+				id: "u9",
 				number: 4,
 				period: "block-2",
 				title: "Cells",
@@ -133,9 +140,12 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l12",
 						number: 1,
 						title: "The cell",
-						skills: [{ code: null, text: "name the parts of a cell" }],
+						skills: [
+							{ id: "s3", code: null, text: "name the parts of a cell" },
+						],
 						facts: [],
 						activity: null,
 					},
@@ -199,7 +209,7 @@ function changeSet(): Record<string, unknown> {
 						number: 1,
 						title: "The lungs",
 						activity: null,
-						skills: [{ code: null, text: "name the parts" }],
+						skills: [{ id: "s4", code: null, text: "name the parts" }],
 						facts: [
 							{
 								text: "The lungs take oxygen from the air.",
@@ -220,7 +230,7 @@ function changeSet(): Record<string, unknown> {
 						number: 1,
 						title: "The stomach",
 						activity: null,
-						skills: [{ code: null, text: "describe digestion" }],
+						skills: [{ id: "s5", code: null, text: "describe digestion" }],
 						facts: [
 							{
 								text: "The stomach breaks food down.",
@@ -239,7 +249,7 @@ function changeSet(): Record<string, unknown> {
 function projectFile(): Project {
 	return {
 		format: "mr-zaki-studio-project",
-		formatVersion: 1,
+		formatVersion: 2,
 		id: "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10",
 		nameEn: "Made-up Curriculum",
 		nameAr: "منهج مُختلق",
@@ -250,7 +260,14 @@ function projectFile(): Project {
 			{
 				grade: 7,
 				folder: "Grade 7",
-				subjects: [{ subject: "science", folder: "Science" }],
+				subjects: [
+					{
+						subject: "science",
+						folder: "Science",
+						language: "en",
+						support: [],
+					},
+				],
 			},
 		],
 	};
@@ -746,7 +763,7 @@ describe("a new course built from the notes (task 178)", () => {
 						number: 1,
 						title: "First lesson",
 						activity: null,
-						skills: [{ code: null, text: "say a word" }],
+						skills: [{ id: "s6", code: null, text: "say a word" }],
 						facts: [
 							{
 								text: `A made-up fact of unit ${number}.`,

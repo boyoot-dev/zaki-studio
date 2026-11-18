@@ -51,10 +51,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: "One paper, short answers.",
 		exams: [],
 		units: [
 			{
+				id: "u2",
 				number: 1,
 				period: "t1",
 				title: "Classification",
@@ -63,10 +66,15 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l3",
 						number: 1,
 						title: "Living things",
 						skills: [
-							{ code: "7-1-1", text: "Sort living things into groups." },
+							{
+								id: "s1",
+								code: "7-1-1",
+								text: "Sort living things into groups.",
+							},
 						],
 						facts: [
 							{
@@ -166,6 +174,7 @@ describe("the model's files", () => {
 				unit.keywords = [];
 				unit.lessons = [
 					{
+						id: "l4",
 						number: 1,
 						title: "An empty lesson",
 						skills: [],
@@ -194,10 +203,12 @@ describe("the model's files", () => {
 		const withExam = course();
 		withExam.exams = [
 			{
+				id: "e6",
 				period: "t1",
 				name: "Term 1 test",
 				papers: [
 					{
+						id: "p5",
 						name: "Paper 1",
 						skill: "written",
 						language: null,
@@ -205,7 +216,7 @@ describe("the model's files", () => {
 						marks: null,
 						parts: [
 							{
-								id: null,
+								id: "t1",
 								name: "Part 1",
 								nameEn: null,
 								instruction: null,

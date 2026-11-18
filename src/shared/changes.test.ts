@@ -72,10 +72,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [],
 		units: [
 			{
+				id: "u14",
 				number: 5,
 				period: "block-3",
 				title: "Breathing (provisional)",
@@ -84,9 +87,10 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l16",
 						number: 1,
 						title: "Last year's title",
-						skills: [{ code: null, text: "an old skill" }],
+						skills: [{ id: "s1", code: null, text: "an old skill" }],
 						facts: [
 							fact("An old draft fact that the change set replaces."),
 							fact("The author's own fact stays.", true),
@@ -94,15 +98,17 @@ function course(): ModelCourse {
 						activity: null,
 					},
 					{
+						id: "l17",
 						number: 2,
 						title: "A lesson the set does not touch",
-						skills: [{ code: null, text: "an old skill" }],
+						skills: [{ id: "s2", code: null, text: "an old skill" }],
 						facts: [],
 						activity: null,
 					},
 				],
 			},
 			{
+				id: "u15",
 				number: 4,
 				period: "block-2",
 				title: "Cells",
@@ -147,7 +153,11 @@ function changeSet(
 						title: "The lungs",
 						activity: null,
 						skills: [
-							{ code: "S1", text: "name the parts of the breathing system" },
+							{
+								id: "s3",
+								code: "S1",
+								text: "name the parts of the breathing system",
+							},
 						],
 						facts: [
 							{
@@ -225,7 +235,7 @@ describe("one bad value", () => {
 			number: 1,
 			title: "The lungs",
 			activity: null,
-			skills: [{ code: null, text: "name the parts" }],
+			skills: [{ id: "s4", code: null, text: "name the parts" }],
 			facts: [
 				{
 					text: "Read more at https://example.com/lungs for the answer.",
@@ -283,9 +293,10 @@ describe("one bad value", () => {
 		const unit = (withBad.units as Record<string, unknown>[])[0];
 		if (unit === undefined) throw new Error("no unit");
 		(unit.lessons as Record<string, unknown>[])[0] = {
+			id: "l18",
 			number: 1,
 			title: "The lungs",
-			skills: [{ code: null, text: "name the parts" }],
+			skills: [{ id: "s5", code: null, text: "name the parts" }],
 			facts: [
 				{ text: "A fact here.", sources: [`${ID}#p99`] },
 				{ text: "The lungs take oxygen from the air.", sources: [`${ID}#p6`] },
@@ -316,7 +327,7 @@ function changeSetUnit(
 				number: 1,
 				title: "The lungs",
 				activity: null,
-				skills: [{ code: null, text: "name the parts" }],
+				skills: [{ id: "s6", code: null, text: "name the parts" }],
 				facts: [{ text: "A fact about the lungs.", sources: [source] }],
 			},
 		],
@@ -338,7 +349,7 @@ describe("a period with no unit yet", () => {
 							number: 1,
 							title: "The pencil",
 							activity: null,
-							skills: [{ code: null, text: "hold the pencil" }],
+							skills: [{ id: "s7", code: null, text: "hold the pencil" }],
 							facts: [
 								{
 									text: "A pencil is held between the thumb and two fingers.",
@@ -356,7 +367,7 @@ describe("a period with no unit yet", () => {
 							number: 1,
 							title: "First words",
 							activity: null,
-							skills: [{ code: null, text: "read a short word" }],
+							skills: [{ id: "s8", code: null, text: "read a short word" }],
 							facts: [
 								{
 									text: "A word is read from right to left in Arabic.",
@@ -429,7 +440,7 @@ describe("the two checks", () => {
 							number: 1,
 							title: "The lungs",
 							activity: null,
-							skills: [{ code: null, text: "name the parts" }],
+							skills: [{ id: "s9", code: null, text: "name the parts" }],
 							facts: [
 								{
 									text: "Photosynthesis makes sugar inside the leaf.",
@@ -464,7 +475,7 @@ describe("the two checks", () => {
 							number: 1,
 							title: "The lungs",
 							activity: null,
-							skills: [{ code: null, text: "name the parts" }],
+							skills: [{ id: "s10", code: null, text: "name the parts" }],
 							facts: [
 								{
 									text: `This page says ${copied} before the air reaches them.`,
@@ -549,7 +560,13 @@ describe("merging a set into the course", () => {
 		const lesson = unit?.lessons.find((entry) => entry.number === 1);
 		expect(lesson).toMatchObject({
 			title: "The lungs",
-			skills: [{ code: "S1", text: "name the parts of the breathing system" }],
+			skills: [
+				{
+					id: "s1",
+					code: "S1",
+					text: "name the parts of the breathing system",
+				},
+			],
 		});
 		// A lesson the set does not name is left exactly as it was.
 		expect(unit?.lessons.find((entry) => entry.number === 2)).toMatchObject({
@@ -597,7 +614,7 @@ describe("merging a set into the course", () => {
 				number: 3,
 				title: "A new lesson",
 				activity: null,
-				skills: [{ code: null, text: "describe gas exchange" }],
+				skills: [{ id: "s12", code: null, text: "describe gas exchange" }],
 				facts: [
 					{
 						text: "The lungs take oxygen from the air.",

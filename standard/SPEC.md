@@ -1,6 +1,7 @@
-# The Curriculum Bundle Format, Version 2
+# The Curriculum Bundle Format, Version 1
 
-Status: Version 2, stable. Version 1 files remain valid. This text is licensed under CC BY 4.0; see `LICENSE-TEXT`.
+Status: Version 1, stable (2026-11). Earlier drafts are withdrawn; their files are not
+valid bundles. This text is licensed under CC BY 4.0; see `LICENSE-TEXT`.
 The JSON Schema and the examples are licensed under MIT; see `LICENSE-SCHEMA`.
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT** and **MAY** in this
@@ -41,13 +42,11 @@ links to outside material.
   A reader **MUST** refuse it.
 - Objects may not carry fields the format does not define (see "Unknown
   fields" in §7). A reader **MUST** refuse a bundle that has one.
-- An object may write the same key twice: JSON does not forbid it, and
-  `JSON.parse` keeps the **last** value and drops the earlier ones. The
-  reference reader therefore reads the last value, and does not refuse the file
-  for the repetition. A writer **MUST NOT** write a key twice in one object,
-  because which value a reader keeps is then a property of its parser and not of
-  this document. Refusing duplicate keys is a possible change for a later
-  version, not a rule today.
+- An object **MUST NOT** write the same key twice. JSON does not forbid it,
+  and parsers disagree about which copy they keep (`JSON.parse` keeps the last
+  one without a word), so a reader **MUST** refuse a file with a repeated key.
+  This is checked on the text, since a parsed value no longer shows the
+  repetition.
 - `NaN`, `Infinity`, `-Infinity`, comments (`//`, `/* */`) and trailing commas
   are not JSON. A file that uses one is not valid JSON, and is refused for that
   reason.
@@ -175,9 +174,7 @@ refused if any of them fails.
 Three fields make a bundle who it is:
 
 - `format` — always the string `mr-zaki-curriculum`.
-- `formatVersion` — the integer `1` or `2`. Version 2 adds one optional field,
-  `questions.answerWords` (§9.1). A version 2 reader **MUST** accept version 1
-  files; a version 1 reader knows nothing of `answerWords` and refuses it.
+- `formatVersion` — the integer `1`.
 - `id` — a **lowercase UUID** (`8-4-4-4-12` hex groups), written once by the
   author and never changed.
 
@@ -190,24 +187,28 @@ the stored curriculum in place and keep whatever progress hangs on it. A
 reader **MUST NOT** treat a newer version as a reason to discard a child's
 progress.
 
-Updates work because of two rules for authors:
+Updates work because everything carries a permanent id:
 
-1. **Authors add; they never renumber.** A unit keeps its `number`, a lesson
-   keeps its `number`, and a skill keeps its position within the lesson, for
-   as long as the curriculum lives. Rows are matched by unit number, lesson
-   number and skill position. Renumbering moves a student's progress to the
-   wrong lesson. A skill is matched by its **position** in the lesson, so
-   inserting one in the middle shifts every later skill and moves progress to
-   the wrong skill. New skills are added **at the end** of a lesson.
-2. The `id` is stable. A file with a new `id` is a new curriculum, whatever
-   its `version` says.
+1. **Every object has an id.** A unit, a lesson, a skill, an exam, a paper and
+   a part each carry an `id`, written once when the object is made and never
+   changed. A reader matches the rows of a newer version to the old ones **by
+   id**, never by number or position.
+2. **What an id keeps.** An object whose id stays keeps the progress on it when
+   it is renumbered, reordered, renamed, reworded, or moved to another place in
+   its course (a lesson to another unit, say). Numbers are for display and
+   order only.
+3. **What an id ends.** An object whose id the newer version no longer has is
+   deleted, and the progress on it is deleted with it. An object with a new id
+   is new, even if its text matches an old one.
+4. **A course is its grade, subject and teaching language** (§6.3). A course
+   whose teaching language changes is a different course; progress does not
+   follow it.
+5. The bundle's `id` is stable. A file with a new `id` is a new curriculum,
+   whatever its `version` says.
 
 What a newer version means for a reader: more units, fewer units, corrected
-facts, exams reworked. A unit, a lesson or a skill that the newer version no
-longer has is deleted, and the progress on it is deleted with it. Progress on
-rows that stay is kept. The file is the whole truth; nothing carries over
-except what the reader keeps for itself (progress, and any practice it
-generated).
+facts, exams reworked. The file is the whole truth; nothing carries over except
+what the reader keeps for itself (progress, and any practice it generated).
 
 ## 5. Untrusted input
 
@@ -266,7 +267,7 @@ Unknown fields are refused everywhere, including here.
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
 | `format` | string | yes | exactly `mr-zaki-curriculum` | The format this file claims to be. |
-| `formatVersion` | integer | yes | `1` or `2` | The version of the format. |
+| `formatVersion` | integer | yes | `1` | The version of the format. |
 | `id` | string | yes | lowercase UUID, `8-4-4-4-12` hex | The stable identity of this bundle (§4). |
 | `version` | integer | yes | 1–1,000,000 | The author's version of this file (§4). Bumped on every export. |
 | `nameEn` | string | yes | 1–100 characters | The bundle's name, in English (or the author's first language). |
@@ -274,7 +275,7 @@ Unknown fields are refused everywhere, including here.
 | `author` | string | yes | 1–80 characters | Who wrote the bundle. Shown to the app's users as-is. |
 | `rights` | string | yes | 1–300 characters | The author's rights sentence: who may use this, and on what terms. |
 | `periods` | array of period | yes | at least 1 | The year structure (§6.2). |
-| `courses` | array of course | yes | at least 1, at most 400 | One course per grade and subject (§6.3). |
+| `courses` | array of course | yes | at least 1, at most 400 | One course per grade, subject and teaching language (§6.3). |
 
 ### 6.2 Periods (the year structure)
 
@@ -304,16 +305,17 @@ the format gives it no further consequence itself.
 
 ### 6.3 Courses
 
-A course is one grade and one subject. The same grade and subject may not
-appear twice in a file.
-
-A course's **teaching language** comes from the reader's subject list, not from
-the file: `math-ar` is taught in Arabic, `science` in English.
+A course is one subject taught in one grade in one language. The same grade,
+subject and teaching language may not appear twice in a file; the same subject
+may appear twice in a grade when the two courses are taught in different
+languages (maths in English and maths in Arabic).
 
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
 | `grade` | integer | yes | −1 to 12 | The grade. −1 is the first kindergarten year, 0 is the second; 1 to 12 are school grades. |
-| `subject` | string | yes | no limit beyond the file's | A subject id from the reader's own subject list (for example `science`). The format does not fix the list; the reader knows its own subjects and **MUST** refuse an unknown one. |
+| `subject` | string | yes | no limit beyond the file's | A subject id from the reader's own subject list (for example `science`). The format does not fix the list; the reader knows its own subjects and **MUST** refuse an unknown one. A subject id says what is taught, never in which language. |
+| `language` | string | yes | an ISO 639-1 code (two lowercase letters) | The **teaching language**: what the lessons are written in, and the language the course is taught in. |
+| `support` | array of string | no | 1–3 entries; each an ISO 639-1 code or `native`; no repeats; never the course's own `language` | Languages that may help the student beside the teaching language: to explain what the student hasn't understood, and to be understood when the student writes in them. `native` means the student's own home language, whatever it is. Absent means none. |
 | `examStyle` | string | no | 1–8,000 characters, may be multi-line | How exams in this course are set, in the author's words, for what the structured `exams` cannot say. |
 | `exams` | array of exam | no | 1–12; absent means no exams | How the exams are set (§6.4). Absent is the same as no key. An empty list is refused. |
 | `units` | array of unit | yes | at least 1, at most 60 | The units of this course (§6.5). |
@@ -322,6 +324,13 @@ A writer **MUST** check the target reader's subject list, because a bundle valid
 for one reader can be refused by another. `src/shared/format/subjects.json` in
 this repository is the list the Mr. Zaki reader uses.
 
+**Languages a reader can't teach in.** The format accepts every ISO 639-1 code
+for `language`, `support` and a paper's `language`. Which languages an app can
+actually teach in is the app's business, not the format's: a reader **MUST
+NOT** refuse a bundle because of a language it cannot teach in yet. It **SHOULD**
+keep such a course and show it as not available yet, so it works once the app
+learns the language. A support language a reader cannot use is skipped.
+
 ### 6.4 Exams
 
 An exam is one sitting: a period's test, or the whole year's, when `period`
@@ -329,6 +338,7 @@ is absent.
 
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
+| `id` | string | yes | an object id (§4, §10) | The exam's permanent id, unique among the course's exams. |
 | `period` | string | no | 1–40 characters | A period id of this bundle, at any depth. Absent means the exam covers the whole year. An id that is not a period of this bundle is a failure. |
 | `name` | string | yes | 1–300 characters | The exam's name, in the language of the papers. |
 | `papers` | array of paper | yes | at least 1, at most 6 | The papers of the exam (§6.4.1), in the order they are sat. |
@@ -339,9 +349,10 @@ A paper is one sitting of one skill.
 
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
+| `id` | string | yes | an object id (§4, §10) | The paper's permanent id, unique among the course's papers. |
 | `name` | string | yes | 1–300 characters | The paper's name, in the paper's language. |
 | `skill` | string | yes | one of `listening`, `reading`, `writing`, `speaking`, `written` | The skill the paper tests. |
-| `language` | string | no | one of `en`, `ar`, `fr` | The paper's language, when it is not the course's teaching language. |
+| `language` | string | no | an ISO 639-1 code | The paper's language, when it is not the course's teaching language. |
 | `minutes` | integer | no | 0–200 | How long the paper is. |
 | `marks` | marks | no | 0–200 in halves | What the paper is worth. |
 | `parts` | array of part | yes | at least 1, at most 8 | The parts of the paper (§6.4.2), in order. |
@@ -354,7 +365,7 @@ A part is what is read or heard, and what is asked about it.
 
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
-| `id` | string | no | 1–40 characters, `^[a-z0-9-]+$`; unique in the course | A stable key. Practice made for a part is stored against this key, so an update that keeps the key keeps the practice. |
+| `id` | string | yes | an object id (§4, §10) | The part's permanent id, unique among the course's parts. Practice made for a part is stored against it, so an update that keeps the id keeps the practice. |
 | `name` | string | yes | 1–300 characters | The part's name, in the paper's language. |
 | `nameEn` | string | no | 1–300 characters | The same name in English, for the line under a title in the teaching language, when that language is not English. |
 | `instruction` | string | no | 1–300 characters | The instruction, paraphrased, in the paper's language. |
@@ -420,7 +431,7 @@ left out is the exam's own choice.
 | `types` | object | yes | keys are known question types (below); values are counts 0–200 | Question type → how many of that type. Unknown keys are refused. |
 | `choiceOptions` | integer | no | 3 or 4 | How many options a choice question has, as the paper prints. |
 | `maxWords` | integer | no | 0–200 | The longest answer, in words. |
-| `answerWords` | array of two integers | no | both 0–5,000; the first no larger than the second | How long the answer must be, in words: the shortest and the longest (a writing task). Version 2. |
+| `answerWords` | array of two integers | no | both 0–5,000; the first no larger than the second | How long the answer must be, in words: the shortest and the longest (a writing task). |
 | `marksEach` | marks | no | 0–200 in halves | What every question is worth, when they are all worth the same. |
 | `marksByType` | object | no | keys are known question types; values are marks 0–200 in halves | What a question of each type is worth, for papers that mix them. Unknown keys are refused. |
 | `totalMarks` | marks | no | 0–200 in halves | What the questions are worth in all. |
@@ -431,18 +442,30 @@ Question types: `choice`, `truefalse`, `gap`, `short`, `form`, `yesno`,
 `match`, `picture`, `multi`, `truefalse-justify`, `extract`, `essay`,
 `calculation`, `labelling`, `ordering`, `other`.
 
-The numbers here are the paper's own statement, and the format does not check
-that they add up. A reader **MUST NOT** assume that `count` equals the sum of
-`types`, that `marksEach` × `count` equals `totalMarks`, that the parts' marks
-add up to the paper's `marks`, that `choiceOptions` comes with a choice
-question, or that `maxWords` and `answerWords` agree. None of these sums is
-checked today.
+The numbers here are the paper's own statement, and the format does not refuse
+a file whose numbers disagree: one mistyped mark should not block a whole
+curriculum, so a writer **SHOULD** warn about a mismatch instead. Because they
+may disagree, every reader reads them by the same rule:
+
+- **How many questions** a part has is the larger of `count` and the sum of
+  the counts in `types`. The types are the kinds a paper must have, so fewer
+  typed questions than `count` leaves the rest of any kind; more typed
+  questions than `count` means the types decide.
+- **What a part is worth** is, in this order, the first that is present: the
+  part's own `marks`; `totalMarks`; the sum over `types` of each type's count
+  times its `marksByType`; `marksEach` times the number of questions above.
+  `marksEach` and `marksByType` may appear together; `marksByType` wins, as
+  the order says.
+- A reader **MUST NOT** assume that the parts' marks add up to the paper's
+  `marks`, that `choiceOptions` comes with a choice question, or that
+  `maxWords` and `answerWords` agree.
 
 ### 6.5 Units
 
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
-| `number` | integer | yes | 0–99; unique in the course | The unit's number. Never renumbered (§4). |
+| `id` | string | yes | an object id (§4, §10) | The unit's permanent id, unique among the course's units. |
+| `number` | integer | yes | 0–99; unique in the course | The unit's number, for display and order. It may change; the id doesn't (§4). |
 | `period` | string | yes | 1–40 characters | The id of a **leaf** period of this bundle. A unit may not sit in a period that has children. |
 | `title` | string | yes | 1–150 characters | The unit's title. |
 | `source` | string | no | one of `sheet`, `provisional`; default `sheet` | Where the unit came from: the author's own sheet, or a provisional outline. |
@@ -454,20 +477,22 @@ checked today.
 
 | Field | Type | Required | Limits | Meaning |
 |---|---|---|---|---|
-| `number` | integer | yes | 0–99; unique in the unit | The lesson's number. Never renumbered (§4). |
+| `id` | string | yes | an object id (§4, §10) | The lesson's permanent id, unique among the course's lessons. |
+| `number` | integer | yes | 0–99; unique in the unit | The lesson's number, for display and order. It may change; the id doesn't (§4). |
 | `title` | string | yes | 1–150 characters | The lesson's title. |
-| `skills` | array of skill | yes | at least 1, at most 20 | What the student can do after the lesson (§6.7), in priority order. A skill's position within this list is its stable key. |
+| `skills` | array of skill | yes | at least 1, at most 20 | What the student can do after the lesson (§6.7), in priority order. |
 | `facts` | array of string | no | at most 25; each 1–400 characters | The plain facts the lesson teaches, as any textbook would state them. Absent means none. |
 | `activity` | string | no | one of `writing`, `reading` | The lesson's main activity, when the author wants to say so. |
 
 ### 6.7 Skills
 
-A skill is either a plain string, or an object with a code and a text:
+A skill is an object:
 
-| Form | Type | Limits | Meaning |
-|---|---|---|---|
-| `"…"` | string | 1–300 characters | The skill statement, for a course that does not use codes. |
-| `{ "code": …, "text": … }` | object | `code` 1–20 characters; `text` 1–300 characters | A coded skill (for example a syllabus code) and its statement. Both fields are required in this form. |
+| Field | Type | Required | Limits | Meaning |
+|---|---|---|---|---|
+| `id` | string | yes | an object id (§4, §10) | The skill's permanent id, unique among the course's skills. |
+| `code` | string | no | 1–20 characters | A code for the skill, for example a syllabus code. |
+| `text` | string | yes | 1–300 characters | The skill statement: what the student can do. |
 
 ### 6.8 Lists of texts
 
@@ -490,17 +515,14 @@ example.
 3. Unknown fields are refused, everywhere. In objects whose keys are fixed
    (the header, a period, a course, …) every key must be a defined field; in
    `types` and `marksByType` every key must be a known question type.
-4. The JSON Schema for the file's `formatVersion`
-   (`schema/bundle-v1.schema.json` or `schema/bundle-v2.schema.json`, draft
-   2020-12) accepts the file: the shapes, the required fields, the types, the
-   enumerations, the integer and marks ranges, and the per-field limits it can
-   express.
+4. The JSON Schema (`schema/bundle-v1.schema.json`, draft 2020-12) accepts the
+   file: the shapes, the required fields, the types, the enumerations, the
+   integer and marks ranges, and the per-field limits it can express.
 5. "Rules beyond the schema", below, all hold.
 
-The schemas in this folder carry **no `$id`**, so they have no canonical URI of
-their own: this document names them by their path here,
-`schema/bundle-v1.schema.json` and `schema/bundle-v2.schema.json`, and each
-file's `$ref`s are local to that file. Canonical schema addresses are not
+The schema in this folder carries **no `$id`**, so it has no canonical URI of
+its own: this document names it by its path here,
+`schema/bundle-v1.schema.json`, and its `$ref`s are local to the file. Canonical schema addresses are not
 published yet; a reader loads the schema file it was given rather than looking
 one up by URI.
 
@@ -510,6 +532,7 @@ These rules cannot be written in the JSON Schema. They are part of the format,
 and a conforming reader **MUST** enforce them:
 
 - The **file size** limit (§2): 20,000,000 characters, checked before parsing.
+- **Duplicate keys** (§2): no object writes a key twice, checked on the text.
 - The **total number of periods**: at most 60 in the whole tree (the schema
   bounds each list, not the sum).
 - The **character rules** (§3.1): the refused categories and the allowed
@@ -522,18 +545,22 @@ and a conforming reader **MUST** enforce them:
   - A unit's `period` is a **leaf** period of this bundle.
   - An exam's `period`, when present, is **some period of this bundle, at any
     depth**.
-  - Part ids are unique within a course.
+  - Object ids (units, lessons, skills, exams, papers, parts) are unique among
+    their own kind within a course; two courses may use the same id.
   - Period ids are unique in the whole tree.
   - Unit numbers are unique in a course; lesson numbers are unique in a unit.
-  - A grade and subject pair appears at most once per file.
+  - A grade, subject and teaching language appear together at most once per
+    file.
+  - A course's `support` never repeats an entry and never names the course's
+    own `language`.
 - The material kind `other` **requires** a `description`.
-- `answerWords`, when present, holds exactly two integers, and the first is no
-  larger than the second (§6.4.4).
+- `answerWords` and a material's `words`, when present, each hold exactly two
+  integers, and the first is no larger than the second (§6.4.3, §6.4.4).
 - A multi-line text may contain `\n`; a single-line text may not (§3).
 - **Exam numbers**: `count`, `types`, `marksEach`, `totalMarks`, the parts'
   marks, `choiceOptions`, `maxWords` and `answerWords` are separate statements.
-  The format does not check that they add up, and a reader **MUST NOT** assume
-  that they do (§6.4.4).
+  The format does not refuse a file whose numbers disagree; every reader reads
+  them by the rule in §6.4.4.
 - An absent `nameAr` on the header or a period defaults to the matching
   `nameEn`; an absent `source` defaults to `sheet`; an absent `wholeYear`
   defaults to `false`; absent `exams`, `facts`, `keywords`, `evidence` default
@@ -542,14 +569,11 @@ and a conforming reader **MUST** enforce them:
 
 ### Invalid examples
 
-The `examples/` folder carries four refused files and says why. All are
-refused by the rules above; `invalid-web-address.json` passes the JSON Schema
-(it breaks a rule beyond the schema), `invalid-unknown-field.json` fails the
-JSON Schema as well, `invalid-answer-words-v1.json` carries a version 2 field in
-a version 1 file and fails the version 1 JSON Schema too, and
-`invalid-emoji-length.json` passes the JSON Schema and is still refused,
-because a text's limit is counted in UTF-16 code units (§3.3) and the schema
-counts characters.
+The `examples/` folder carries eight refused files and says why
+(`examples/README.md`). All are refused by the rules above; some pass the JSON
+Schema and break only a rule beyond it (a web address, a support language that
+repeats the teaching language, a duplicate key, a text over its limit in UTF-16
+code units), and the others fail the schema too.
 `examples/EXPECTED.md` lists every example, its verdict, and the path and
 message the reference reader reports for it.
 
@@ -587,21 +611,19 @@ A writer is any program that produces bundles. A conforming writer:
 - **MUST** write a lowercase UUID in `id`, once, and reuse it for every later
   version of the same curriculum.
 - **MUST** bump `version` on every export.
-- **MUST NOT** renumber units, lessons or skills (§4).
+- **MUST** give every unit, lesson, skill, exam, paper and part an id when it
+  is made, and **MUST** keep that id in every later version (§4).
 - **MUST NOT** put a web address, or a forbidden character, in any text.
 - **MUST** write every text already normalised to NFC and trimmed (§3).
 - **SHOULD** check its own output with a validating reader before export.
 
-A file both accept is version 1 or version 2. A reader and a writer that both
-conform interoperate on any valid file of a version the reader supports. A
-version 2 reader **MUST** accept a valid version 1 file, because version 2 adds
-a field and changes nothing else.
+A reader and a writer that both conform interoperate on any valid file.
 
 ## 9. Versioning of the standard
 
 This section is about the standard, not about a bundle's own `version`.
 
-Version 2 is stable. The following changes **keep the current version**:
+Version 1 is stable. The following changes **keep the current version**:
 
 - Editorial fixes to this text, and to the schema's descriptions.
 - New examples, or clearer error messages.
@@ -620,25 +642,10 @@ schema, published together):
 - A change to what a valid bundle is, in either direction.
 
 A reader **MUST NOT** accept a `formatVersion` it does not know. A reader of
-this standard accepts `formatVersion` 1 and 2.
-
-A writer **MUST** write the **lowest version that holds the file**: version 2
-only when some part has `answerWords`, otherwise version 1. A file that does
-not use the new field therefore stays readable by version 1 readers.
-
-### 9.1 Differences from version 1
-
-Version 2 is version 1 plus one optional field: `questions.answerWords`
-(§6.4.4), a pair of integers from 0 to 5,000 that says how long the child's own
-answer must be, for a writing task. The first is no larger than the second.
-Nothing else changes: every limit, every rule and every refusal of version 1
-still holds, and a version 1 file whose `formatVersion` is changed to `2` is a
-valid version 2 file.
-
-In a version 1 file `answerWords` is an unknown field and is refused, exactly
-as any undefined field is. In a version 2 file it is allowed. That is why the
-change needs a new version: unknown fields are refused, so even an optional
-new field is incompatible with version 1 readers.
+this standard accepts `formatVersion` 1. The drafts before it (published in
+2026 as versions 1 and 2, with the teaching language taken from the subject id
+and no object ids) are withdrawn: their files are refused, and an author
+exports them again from the tool that made them.
 
 ## 10. The limits, at a glance
 
@@ -658,7 +665,9 @@ trimmed text (§3.3), and the whole-file limit counts them too.
 | Bundle `version` | 1–1,000,000 |
 | Courses per file | 1–400 |
 | Periods per tree | at most 60, at most 3 levels deep |
-| Period and part ids | 1–40 characters, `^[a-z0-9-]+$` |
+| Period ids and object ids (units, lessons, skills, exams, papers, parts) | 1–40 characters, `^[a-z0-9-]+$` |
+| Teaching and paper languages | an ISO 639-1 code |
+| Support languages per course | 1–3; ISO 639-1 codes or `native` |
 | Grades | −1 to 12 (−1 and 0 are the two kindergarten years) |
 | Units per course | 1–60 |
 | Lessons per unit | 1–40 |

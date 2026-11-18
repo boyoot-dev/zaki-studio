@@ -13,8 +13,16 @@
 			"nameEn": "Term 1",
 			"nameAr": "الفصل الأول",
 			"periods": [
-				{ "id": "block-1", "nameEn": "Block 1", "nameAr": "الوحدة الأولى" },
-				{ "id": "block-2", "nameEn": "Block 2", "nameAr": "الوحدة الثانية" }
+				{
+					"id": "block-1",
+					"nameEn": "Block 1",
+					"nameAr": "الوحدة الأولى"
+				},
+				{
+					"id": "block-2",
+					"nameEn": "Block 2",
+					"nameAr": "الوحدة الثانية"
+				}
 			]
 		},
 		{
@@ -22,7 +30,11 @@
 			"nameEn": "Term 2",
 			"nameAr": "الفصل الثاني",
 			"periods": [
-				{ "id": "block-3", "nameEn": "Block 3", "nameAr": "الوحدة الثالثة" }
+				{
+					"id": "block-3",
+					"nameEn": "Block 3",
+					"nameAr": "الوحدة الثالثة"
+				}
 			]
 		},
 		{
@@ -36,13 +48,19 @@
 		{
 			"grade": 9,
 			"subject": "science",
+			"language": "en",
+			"support": [
+				"ar"
+			],
 			"examStyle": "Two papers.\nPaper 1: reading, 40 minutes.\nPaper 2: listening in Arabic, played twice.",
 			"exams": [
 				{
+					"id": "e1",
 					"period": "final",
 					"name": "End of year exam",
 					"papers": [
 						{
+							"id": "e1-p1",
 							"name": "Paper 1: Reading",
 							"skill": "reading",
 							"language": "en",
@@ -60,14 +78,25 @@
 									"material": {
 										"kind": "article",
 										"description": "A factual article about the phases of the Moon.",
-										"words": [250, 350],
+										"words": [
+											250,
+											350
+										],
 										"topic": "units",
-										"layout": ["paragraph-numbers"]
+										"layout": [
+											"paragraph-numbers"
+										]
 									},
 									"questions": {
 										"count": 5,
-										"types": { "short": 5 },
+										"types": {
+											"short": 5
+										},
 										"maxWords": 40,
+										"answerWords": [
+											0,
+											40
+										],
 										"marksEach": 2,
 										"totalMarks": 10,
 										"example": false,
@@ -87,13 +116,20 @@
 									"material": {
 										"kind": "extracts",
 										"description": "Two short extracts about the Sun.",
-										"words": [100, 200],
+										"words": [
+											100,
+											200
+										],
 										"topic": "outside-units",
-										"layout": ["line-numbers"]
+										"layout": [
+											"line-numbers"
+										]
 									},
 									"questions": {
 										"count": 1,
-										"types": { "essay": 1 },
+										"types": {
+											"essay": 1
+										},
 										"marksEach": 10,
 										"totalMarks": 10,
 										"example": true,
@@ -105,6 +141,7 @@
 							]
 						},
 						{
+							"id": "e1-p2",
 							"name": "Paper 2: الاستماع",
 							"skill": "listening",
 							"language": "ar",
@@ -122,10 +159,15 @@
 									"material": {
 										"kind": "dialogue",
 										"description": "A dialogue between two students planning a visit to an observatory.",
-										"words": [200, 300],
+										"words": [
+											200,
+											300
+										],
 										"speakers": 2,
 										"topic": "units",
-										"layout": ["line-numbers"],
+										"layout": [
+											"line-numbers"
+										],
 										"timing": {
 											"readingSeconds": 60,
 											"plays": 2,
@@ -188,17 +230,30 @@
 			],
 			"units": [
 				{
+					"id": "u1",
 					"number": 1,
 					"period": "block-1",
 					"title": "The Earth and the Moon",
 					"source": "sheet",
-					"keywords": ["moon", "orbit", "phases"],
-					"evidence": ["Phases worksheet"],
+					"keywords": [
+						"moon",
+						"orbit",
+						"phases"
+					],
+					"evidence": [
+						"Phases worksheet"
+					],
 					"lessons": [
 						{
+							"id": "u1-l1",
 							"number": 1,
 							"title": "Day and night",
-							"skills": ["State why we have day and night"],
+							"skills": [
+								{
+									"id": "u1-l1-s1",
+									"text": "State why we have day and night"
+								}
+							],
 							"facts": [
 								"The Earth spins on its axis once every 24 hours.",
 								"The Sun appears to rise in the east and set in the west."
@@ -206,10 +261,12 @@
 							"activity": "reading"
 						},
 						{
+							"id": "u1-l2",
 							"number": 2,
 							"title": "The phases of the Moon",
 							"skills": [
 								{
+									"id": "u1-l2-s1",
 									"code": "9-1-2",
 									"text": "Explain the phases of the Moon"
 								}
@@ -222,19 +279,32 @@
 					]
 				},
 				{
+					"id": "u2",
 					"number": 2,
 					"period": "block-2",
 					"title": "The Sun",
 					"source": "provisional",
-					"keywords": ["sun", "energy"],
-					"evidence": ["Sun factsheet"],
+					"keywords": [
+						"sun",
+						"energy"
+					],
+					"evidence": [
+						"Sun factsheet"
+					],
 					"lessons": [
 						{
+							"id": "u2-l1",
 							"number": 1,
 							"title": "What the Sun is made of",
 							"skills": [
-								"State what the Sun is mostly made of",
-								"Describe how the Sun gives us light and heat"
+								{
+									"id": "u2-l1-s1",
+									"text": "State what the Sun is mostly made of"
+								},
+								{
+									"id": "u2-l1-s2",
+									"text": "Describe how the Sun gives us light and heat"
+								}
 							],
 							"facts": [
 								"The Sun is a star made mostly of hydrogen and helium.",

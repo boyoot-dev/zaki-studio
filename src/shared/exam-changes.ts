@@ -17,7 +17,6 @@ import {
 	type BundlePaper,
 	type BundlePart,
 	type BundlePeriod,
-	EXAM_LANGUAGES,
 	EXAM_LAYOUTS,
 	EXAM_MATERIAL_KINDS,
 	EXAM_QUESTION_TYPES,
@@ -26,7 +25,35 @@ import {
 	examPeriodIssues,
 	parseCourseExams,
 } from "./format/bundle.ts";
+import { newId } from "./ids.ts";
 import type { FileRow, ModelCourse } from "./model.ts";
+
+/**
+ * A proposal's exams with ids written in (task 224): a model writes no exam or paper ids, so
+ * an exam keeps the id of today's exam with the same period and name, a paper the id of that
+ * exam's paper with the same name, and anything new gets a new id. Parts are left alone: the
+ * model writes each part's id, because its sources are named by it, and a part without one
+ * is refused. Works on the raw JSON, before it is parsed.
+ */
+export function fillExamIds(raw: unknown, now: readonly BundleExam[]): void {
+	if (!Array.isArray(raw)) return;
+	const isObject = (value: unknown): value is Record<string, unknown> =>
+		typeof value === "object" && value !== null && !Array.isArray(value);
+	for (const exam of raw) {
+		if (!isObject(exam)) continue;
+		const old = now.find(
+			(entry) =>
+				entry.name === exam.name && (entry.period ?? undefined) === exam.period,
+		);
+		if (typeof exam.id !== "string") exam.id = old?.id ?? newId();
+		if (!Array.isArray(exam.papers)) continue;
+		for (const paper of exam.papers) {
+			if (!isObject(paper)) continue;
+			const oldPaper = old?.papers.find((entry) => entry.name === paper.name);
+			if (typeof paper.id !== "string") paper.id = oldPaper?.id ?? newId();
+		}
+	}
+}
 
 /** One course an exam change set is for. An exam covers the whole course, not one period. */
 export type ExamTarget = { grade: number; subject: string };
@@ -79,7 +106,7 @@ export const EXAM_FORMAT = `{
       "papers": [
         { "name": "<text>",
           "skill": ${oneOf(EXAM_SKILLS)},
-          "language": ${oneOf(EXAM_LANGUAGES)},
+          "language": "<two-letter language code, only when not the course's own>",
           "minutes": <number>, "marks": <number>,
           "parts": [
             { "id": "<lowercase id>", "name": "<text>",
@@ -191,7 +218,7 @@ export function examTargetOf(
 
 /**
  * An exam change set as the model wrote it, or why it is not one. The exams go through the
- * bundle's own parser at format version 2, so `answerWords` is allowed. Every part must name at
+ * bundle's own parser, which allows `answerWords`. Every part must name at
  * least one register file of this course, and the files must be exam papers or mark schemes.
  */
 export function parseExamChangeSet(
@@ -220,7 +247,9 @@ export function parseExamChangeSet(
 	if (!Array.isArray(raw.exams) || raw.exams.length === 0)
 		return { ok: false, issue: "the change set has no exams", refused: [] };
 
-	const parsed = parseCourseExams(raw.exams, "exams", 2);
+	const exams = structuredClone(raw.exams);
+	fillExamIds(exams, given.exams);
+	const parsed = parseCourseExams(exams, "exams");
 	if (parsed.issues.length > 0) {
 		const refused = parsed.issues.map((issue) => ({
 			path: issue.path,
@@ -297,10 +326,6 @@ function parseSources(
 		for (const [j, paper] of exam.papers.entries()) {
 			for (const [k, part] of paper.parts.entries()) {
 				const where = `exams[${i}].papers[${j}].parts[${k}]`;
-				if (part.id === null) {
-					add(`${where}.id`, "a part needs an id so its sources can be named");
-					continue;
-				}
 				if (known.has(part.id)) {
 					add(`${where}.id`, `part id "${part.id}" is used twice`);
 					continue;
@@ -504,7 +529,7 @@ function reviewParts(
 			state: stateOf(current, part, fields),
 			now: current,
 			proposed: part,
-			sources: part.id === null ? [] : (sources[part.id] ?? []),
+			sources: sources[part.id] ?? [],
 			fields,
 			changes: sentences(fields),
 		});

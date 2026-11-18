@@ -930,10 +930,6 @@ export function registerIpc(): void {
 			const ocr = ocrEngine(studioRoot());
 			try {
 				const outcome = await scanProject(where, {
-					subjects: subjects.map((subject) => ({
-						id: subject.id,
-						contentLanguage: subject.contentLanguage,
-					})),
 					studioRoot: studioRoot(),
 					render: (bytes, page) => renderer.render(bytes, page),
 					ocr,

@@ -210,16 +210,23 @@ describe("the subject of a file", () => {
 		expect(subjectOf(["Grade 9", "Poems"])).toBe("unknown");
 	});
 
-	it("names a subject's teaching language and English for OCR", () => {
-		const subjects = [
-			{ id: "arabic", contentLanguage: "ar" },
-			{ id: "french", contentLanguage: "fr" },
-			{ id: "math", contentLanguage: "en" },
+	it("names a course's teaching language and English for OCR", () => {
+		const courses = [
+			{ grade: 3, subject: "arabic", language: "ar" },
+			{ grade: 3, subject: "french", language: "fr" },
+			{ grade: 3, subject: "math", language: "en" },
+			{ grade: 7, subject: "math", language: "ar" },
+			{ grade: 7, subject: "science", language: "de" },
 		];
-		expect(tessLangs("arabic", subjects)).toBe("ara+eng");
-		expect(tessLangs("french", subjects)).toBe("fra+eng");
-		expect(tessLangs("math", subjects)).toBe("eng");
-		expect(tessLangs("unknown", subjects)).toBe("eng");
+		expect(tessLangs(3, "arabic", courses)).toBe("ara+eng");
+		expect(tessLangs(3, "french", courses)).toBe("fra+eng");
+		expect(tessLangs(3, "math", courses)).toBe("eng");
+		// The language is the course's: maths in Arabic in grade 7 is read in Arabic.
+		expect(tessLangs(7, "math", courses)).toBe("ara+eng");
+		// A language the Studio has no Tesseract data for is read as English.
+		expect(tessLangs(7, "science", courses)).toBe("eng");
+		expect(tessLangs(3, "unknown", courses)).toBe("eng");
+		expect(tessLangs(null, "math", courses)).toBe("eng");
 	});
 });
 

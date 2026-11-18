@@ -46,10 +46,13 @@ function model(subject = "science"): CurriculumModel {
 			{
 				grade: 7,
 				subject,
+				language: "en",
+				support: [],
 				examStyle: null,
 				exams: [],
 				units: [
 					{
+						id: "u2",
 						number: 1,
 						period: "t1",
 						title: "Classification",
@@ -58,9 +61,10 @@ function model(subject = "science"): CurriculumModel {
 						evidence: [],
 						lessons: [
 							{
+								id: "l3",
 								number: 1,
 								title: "Living things",
-								skills: [{ code: null, text: "Sort living things." }],
+								skills: [{ id: "s1", code: null, text: "Sort living things." }],
 								facts: [
 									{
 										text: "Living things are sorted by features.",
@@ -99,7 +103,7 @@ describe("the bundle an export writes", () => {
 		if (result.ok) expect(JSON.parse(result.text).formatVersion).toBe(1);
 	});
 
-	it("says version 2 when a part gives the answer's length", () => {
+	it("says version 1 when a part gives the answer's length too: there is one version", () => {
 		const withWriting = model();
 		const course = withWriting.courses[0];
 		if (course === undefined) throw new Error("the model has no course");
@@ -108,7 +112,7 @@ describe("the bundle an export writes", () => {
 		expect(result.ok).toBe(true);
 		if (result.ok) {
 			const parsed = JSON.parse(result.text);
-			expect(parsed.formatVersion).toBe(2);
+			expect(parsed.formatVersion).toBe(1);
 			expect(
 				parsed.courses[0].exams[0].papers[0].parts[0].questions.answerWords,
 			).toEqual([300, 400]);
@@ -128,10 +132,12 @@ describe("the bundle an export writes", () => {
 /** A writing paper with one part, so a test can give the answer's length. */
 function writingExam(answerWords: [number, number] | null): BundleExam {
 	return {
+		id: "e5",
 		period: null,
 		name: "Writing paper",
 		papers: [
 			{
+				id: "p4",
 				name: "Paper 1: Writing",
 				skill: "writing",
 				language: null,

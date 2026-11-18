@@ -22,12 +22,13 @@ import { fileURLToPath } from "node:url";
 import { collectRows } from "../src/main/collect.ts";
 import { ocrEngine, ocrPoolSize, tessdataDir } from "../src/main/ocr.ts";
 import { readTextFile } from "../src/main/read.ts";
+import { legacySubject } from "../src/shared/convert.ts";
 import type { FileRow } from "../src/shared/model.ts";
 import {
 	type IndexRow,
 	readIndex,
 	registerRows,
-	tessLangs,
+	tessLangsFor,
 } from "../src/shared/register.ts";
 import { pageText } from "../src/shared/text.ts";
 import { SUBJECTS_FILE, subjectsJson } from "./subjects.ts";
@@ -361,7 +362,7 @@ async function checkText(
 async function checkOcr(
 	work: string,
 	rows: readonly FileRow[],
-	subjects: readonly { id: string; contentLanguage: string }[],
+	_subjects: readonly { id: string }[],
 ): Promise<void> {
 	const byId = new Map(rows.map((row) => [row.id, row]));
 	const pages: { id: string; png: string; text: string }[] = [];
@@ -413,7 +414,7 @@ async function checkOcr(
 	try {
 		for (const page of pages) {
 			const row = byId.get(page.id);
-			const langs = tessLangs(row?.subject ?? "", subjects);
+			const langs = tessLangsFor(legacySubject(row?.subject ?? "").language);
 			const text = await engine.text(
 				new Uint8Array(readFileSync(page.png)),
 				langs,
@@ -453,7 +454,6 @@ async function main(): Promise<void> {
 		subjectsJson(readFileSync(SUBJECTS_FILE, "utf8")),
 	) as {
 		id: string;
-		contentLanguage: string;
 	}[];
 
 	console.log(`The register (${materials} against ${join(work, "index.csv")})`);

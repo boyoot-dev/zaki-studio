@@ -54,10 +54,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [],
 		units: [
 			{
+				id: "u3",
 				number: 5,
 				period: "block-3",
 				title: "Breathing",
@@ -66,22 +69,25 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l5",
 						number: 1,
 						title: "The lungs",
-						skills: [{ code: null, text: "name the parts" }],
+						skills: [{ id: "s1", code: null, text: "name the parts" }],
 						facts: [],
 						activity: null,
 					},
 					{
+						id: "l6",
 						number: 2,
 						title: "The blood",
-						skills: [{ code: null, text: "describe the heart" }],
+						skills: [{ id: "s2", code: null, text: "describe the heart" }],
 						facts: [],
 						activity: null,
 					},
 				],
 			},
 			{
+				id: "u4",
 				number: 4,
 				period: "block-2",
 				title: "Cells",

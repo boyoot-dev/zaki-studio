@@ -18,7 +18,6 @@ import {
 import {
 	type BundleExam,
 	type BundlePart,
-	EXAM_LANGUAGES,
 	EXAM_LAYOUTS,
 	EXAM_MATERIAL_KINDS,
 	EXAM_QUESTION_TYPES,
@@ -132,6 +131,7 @@ function examJson(over: Partial<BundleExam> = {}): Record<string, unknown> {
 		...(value.period === null ? {} : { period: value.period }),
 		name: value.name,
 		papers: value.papers.map((paper) => ({
+			id: "p1",
 			name: paper.name,
 			skill: paper.skill,
 			...(paper.language === null ? {} : { language: paper.language }),
@@ -145,10 +145,12 @@ function examJson(over: Partial<BundleExam> = {}): Record<string, unknown> {
 /** One exam, with its writing paper. */
 function exam(over: Partial<BundleExam> = {}): BundleExam {
 	return {
+		id: "e11",
 		period: "term-1",
 		name: "Term 1",
 		papers: [
 			{
+				id: "p2",
 				name: "Writing",
 				skill: "writing",
 				language: null,
@@ -190,6 +192,7 @@ function changeSet(
 			examJson({
 				papers: [
 					{
+						id: "p3",
 						name: "Writing",
 						skill: "writing",
 						language: null,
@@ -235,7 +238,6 @@ describe("the format the model gets", () => {
 	it("lists every value the bundle's constants allow", () => {
 		const lists = [
 			EXAM_SKILLS,
-			EXAM_LANGUAGES,
 			EXAM_MATERIAL_KINDS,
 			EXAM_QUESTION_TYPES,
 			EXAM_LAYOUTS,
@@ -260,6 +262,7 @@ describe("the format the model gets", () => {
 					name: "Term 1",
 					papers: [
 						{
+							id: "p4",
 							name: "Writing",
 							skill: "writing",
 							parts: [
@@ -313,6 +316,7 @@ describe("the checks on a part", () => {
 					examJson({
 						papers: [
 							{
+								id: "p5",
 								name: "Writing",
 								skill: "writing",
 								language: null,
@@ -369,12 +373,13 @@ describe("the checks on a part", () => {
 					examJson({
 						papers: [
 							{
+								id: "p6",
 								name: "Writing",
 								skill: "writing",
 								language: null,
 								minutes: 70,
 								marks: 40,
-								parts: [part({ id: null })],
+								parts: [{ ...part(), id: undefined as unknown as string }],
 							},
 						],
 					}),
@@ -384,7 +389,7 @@ describe("the checks on a part", () => {
 		);
 		expect(outcome.ok).toBe(false);
 		if (outcome.ok) return;
-		expect(outcome.issue).toContain("needs an id");
+		expect(outcome.issue).toContain("parts[0].id");
 	});
 });
 
@@ -401,6 +406,7 @@ describe("the review side by side", () => {
 				exam({
 					papers: [
 						{
+							id: "p7",
 							name: "Writing",
 							skill: "writing",
 							language: null,
@@ -429,6 +435,7 @@ describe("the review side by side", () => {
 					name: "Term 2",
 					papers: [
 						exam().papers[0] ?? {
+							id: "p8",
 							name: "x",
 							skill: "writing",
 							language: null,
@@ -454,11 +461,14 @@ describe("merging a set into the course", () => {
 		return {
 			grade: 9,
 			subject: "arabic",
+			language: "en",
+			support: [],
 			examStyle: null,
 			exams: [
 				exam({
 					papers: [
 						{
+							id: "p9",
 							name: "Writing",
 							skill: "writing",
 							language: null,
@@ -467,6 +477,7 @@ describe("merging a set into the course", () => {
 							parts: [part({ minutes: 60 })],
 						},
 						{
+							id: "p10",
 							name: "Reading",
 							skill: "reading",
 							language: null,

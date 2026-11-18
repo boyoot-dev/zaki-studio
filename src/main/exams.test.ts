@@ -83,10 +83,12 @@ function part(
 /** One exam with its writing paper. */
 function exam(): BundleExam {
 	return {
+		id: "e3",
 		period: "term-1",
 		name: "Term 1",
 		papers: [
 			{
+				id: "p1",
 				name: "Writing",
 				skill: "writing",
 				language: null,
@@ -134,6 +136,8 @@ function course(): ModelCourse {
 	return {
 		grade: 9,
 		subject: "arabic",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [exam()],
 		units: [],
@@ -165,10 +169,12 @@ function model(): CurriculumModel {
 /** The exam as a bundle file writes it: optional null fields left out. */
 function examJson(): Record<string, unknown> {
 	return {
+		id: "e4",
 		period: "term-1",
 		name: "Term 1",
 		papers: [
 			{
+				id: "p2",
 				name: "Writing",
 				skill: "writing",
 				minutes: 70,

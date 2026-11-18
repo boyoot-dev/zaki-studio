@@ -14,8 +14,12 @@ the reader.
 |---|---|---|---|
 | `minimal.json` | valid | — | — |
 | `full.json` | valid | — | — |
-| `writing-v2.json` | valid | — | — |
+| `writing.json` | valid | — | — |
 | `invalid-web-address.json` | refused | `courses[0].units[0].lessons[0].facts[1]` | remove the web address |
 | `invalid-unknown-field.json` | refused | `courses[0].units[0].summary` | unknown field "summary" |
-| `invalid-answer-words-v1.json` | refused | `courses[0].exams[0].papers[0].parts[0].questions.answerWords` | unknown field "answerWords" |
 | `invalid-emoji-length.json` | refused | `courses[0].units[0].lessons[0].facts[0]` | at most 400 characters |
+| `invalid-language-code.json` | refused | `courses[0].language` | expected a two-letter language code, e.g. en, ar, fr |
+| `invalid-support-repeats-language.json` | refused | `courses[0].support[0]` | the course's own language is not a support language |
+| `invalid-missing-id.json` | refused | `courses[0].units[0].lessons[0].id` | expected a non-empty string |
+| `invalid-duplicate-key.json` | refused | `courses[0].units[0].title` | key "title" appears twice |
+| `invalid-old-version.json` | refused | `formatVersion` | This file was made by an older Studio. Open its project in the new Studio and export it again. |

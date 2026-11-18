@@ -258,7 +258,6 @@ async function scanStall(
 	const started = performance.now();
 	try {
 		await scanProject(root, {
-			subjects: [],
 			studioRoot: STUDIO,
 			cancelled: () => false,
 			onProgress: () => {},

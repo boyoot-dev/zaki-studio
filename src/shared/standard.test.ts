@@ -3,9 +3,8 @@
 // examples can never drift from what a real app accepts. ajv is used here and only
 // here, to check the examples against the JSON Schema the standard ships.
 //
-// Task 174 added format version 2 and its one field, `questions.answerWords`; the
-// tests below also pin the version rule: a version 1 file refuses the new field and
-// a version 2 file accepts it.
+// Task 224 made the format version 1 again: one version, with each course's teaching
+// and help languages, a permanent id on every object, and duplicate keys refused.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -13,7 +12,8 @@ import Ajv from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
 import { subjectsJson } from "../../scripts/subjects.ts";
 import {
-	LATEST_FORMAT_VERSION,
+	duplicateKey,
+	LANGUAGE_CODES,
 	parseBundle,
 	parseCourseExams,
 } from "./format/bundle.ts";
@@ -35,24 +35,12 @@ const example = (name: string): string =>
 	readFileSync(`${STANDARD}/examples/${name}`, "utf8");
 const exampleJson = (name: string): unknown => JSON.parse(example(name));
 
-/** Both schemas, compiled once for all the checks. */
-const schemaV1 = JSON.parse(
+/** The schema, compiled once for all the checks. */
+const schema = JSON.parse(
 	readFileSync(`${STANDARD}/schema/bundle-v1.schema.json`, "utf8"),
 ) as object;
-const schemaV2 = JSON.parse(
-	readFileSync(`${STANDARD}/schema/bundle-v2.schema.json`, "utf8"),
-) as object;
 const ajv = new Ajv({ allErrors: true });
-const validateV1 = ajv.compile(schemaV1);
-const validateV2 = ajv.compile(schemaV2);
-
-const issuesOf = (name: string): string => {
-	const result = parseBundle(example(name), subjectIds);
-	if (result.ok) throw new Error(`${name} was expected to be refused`);
-	return result.issues
-		.map((issue) => `${issue.path}: ${issue.message}`)
-		.join("\n");
-};
+const validate = ajv.compile(schema);
 
 const issuesOfText = (text: string): string => {
 	const result = parseBundle(text, subjectIds);
@@ -61,77 +49,83 @@ const issuesOfText = (text: string): string => {
 		.map((issue) => `${issue.path}: ${issue.message}`)
 		.join("\n");
 };
+const issuesOf = (name: string): string => issuesOfText(example(name));
 
 describe("the standard's examples", () => {
-	it("the minimal example passes the parser and version 1's schema", () => {
-		const result = parseBundle(example("minimal.json"), subjectIds);
-		expect(result.ok).toBe(true);
-		if (result.ok) expect(result.formatVersion).toBe(1);
-		expect(validateV1(exampleJson("minimal.json"))).toBe(true);
-	});
-
-	it("the fuller example passes the parser and version 1's schema", () => {
-		const result = parseBundle(example("full.json"), subjectIds);
-		expect(result.ok).toBe(true);
-		if (result.ok) expect(result.formatVersion).toBe(1);
-		expect(validateV1(exampleJson("full.json"))).toBe(true);
-	});
-
-	it("the writing example passes the parser and version 2's schema", () => {
-		const result = parseBundle(example("writing-v2.json"), subjectIds);
-		expect(result.ok).toBe(true);
-		if (result.ok) expect(result.formatVersion).toBe(2);
-		expect(validateV2(exampleJson("writing-v2.json"))).toBe(true);
-		// A version 1 schema refuses the file, which is why version 2 is a version.
-		expect(validateV1(exampleJson("writing-v2.json"))).toBe(false);
+	it.each([
+		"minimal.json",
+		"full.json",
+		"writing.json",
+	])("%s passes the parser and the schema", (name) => {
+		expect(parseBundle(example(name), subjectIds).ok).toBe(true);
+		expect(validate(exampleJson(name))).toBe(true);
 	});
 
 	it("the web-address example is refused by the parser, for the reason given", () => {
 		// This one breaks a rule beyond the schema (no web address in a text), so it
 		// passes the JSON Schema and is still refused: "remove the web address".
-		expect(validateV1(exampleJson("invalid-web-address.json"))).toBe(true);
+		expect(validate(exampleJson("invalid-web-address.json"))).toBe(true);
 		expect(issuesOf("invalid-web-address.json")).toContain(
 			"courses[0].units[0].lessons[0].facts[1]: remove the web address",
 		);
 	});
 
 	it("the unknown-field example is refused by the parser and the schema", () => {
-		expect(validateV1(exampleJson("invalid-unknown-field.json"))).toBe(false);
+		expect(validate(exampleJson("invalid-unknown-field.json"))).toBe(false);
 		expect(issuesOf("invalid-unknown-field.json")).toContain(
 			'courses[0].units[0].summary: unknown field "summary"',
 		);
 	});
 
-	it("the answer-words example is refused by the parser and version 1's schema", () => {
-		expect(validateV1(exampleJson("invalid-answer-words-v1.json"))).toBe(false);
-		expect(issuesOf("invalid-answer-words-v1.json")).toContain(
-			'courses[0].exams[0].papers[0].parts[0].questions.answerWords: unknown field "answerWords"',
+	it("the language and id examples are refused by the parser and the schema", () => {
+		expect(validate(exampleJson("invalid-language-code.json"))).toBe(false);
+		expect(validate(exampleJson("invalid-missing-id.json"))).toBe(false);
+	});
+
+	it("the support and duplicate-key examples pass the schema and are refused by the rules", () => {
+		expect(validate(exampleJson("invalid-support-repeats-language.json"))).toBe(
+			true,
 		);
+		expect(validate(exampleJson("invalid-duplicate-key.json"))).toBe(true);
 	});
 });
 
+/** The minimal example as an object, to vary one thing in it. */
+function minimal(): Record<string, unknown> {
+	return exampleJson("minimal.json") as Record<string, unknown>;
+}
+function courseOf(bundle: Record<string, unknown>): Record<string, unknown> {
+	return (bundle.courses as Record<string, unknown>[])[0] as Record<
+		string,
+		unknown
+	>;
+}
+
 /**
- * The minimal example with one writing part, so a test can vary the file's version
- * and the answer's length. Everything else stays the same valid bundle.
+ * The minimal example with one writing part, so a test can vary the answer's length.
+ * Everything else stays the same valid bundle.
  */
-function writingBundle(formatVersion: unknown, answerWords?: unknown): string {
-	const bundle = exampleJson("minimal.json") as Record<string, unknown>;
-	bundle.formatVersion = formatVersion;
-	const questions: Record<string, unknown> = {
-		count: 1,
-		types: { essay: 1 },
-	};
+function writingBundle(answerWords?: unknown): string {
+	const bundle = minimal();
+	const questions: Record<string, unknown> = { count: 1, types: { essay: 1 } };
 	if (answerWords !== undefined) questions.answerWords = answerWords;
-	const courses = bundle.courses as Record<string, unknown>[];
-	const course = courses[0] as Record<string, unknown>;
-	course.exams = [
+	courseOf(bundle).exams = [
 		{
+			id: "e1",
 			name: "Writing paper",
 			papers: [
 				{
+					id: "e1-p1",
 					name: "Paper 1: Writing",
 					skill: "writing",
-					parts: [{ name: "Part 1", material: { kind: "none" }, questions }],
+					parts: [
+						{
+							id: "e1-p1-t1",
+							name: "Part 1",
+							material: { kind: "none" },
+							questions,
+						},
+					],
 				},
 			],
 		},
@@ -139,27 +133,19 @@ function writingBundle(formatVersion: unknown, answerWords?: unknown): string {
 	return JSON.stringify(bundle);
 }
 
-describe("how long the child's answer must be (version 2)", () => {
-	it("a version 2 file reads [300, 400] as the answer's shortest and longest", () => {
-		const result = parseBundle(writingBundle(2, [300, 400]), subjectIds);
+describe("how long the child's answer must be", () => {
+	it("reads [300, 400] as the answer's shortest and longest", () => {
+		const result = parseBundle(writingBundle([300, 400]), subjectIds);
 		expect(result.ok).toBe(true);
-		if (result.ok) {
-			expect(result.formatVersion).toBe(2);
+		if (result.ok)
 			expect(
 				result.bundle.courses[0]?.exams[0]?.papers[0]?.parts[0]?.questions
 					.answerWords,
 			).toEqual([300, 400]);
-		}
-	});
-
-	it("a version 1 file refuses answerWords as an unknown field", () => {
-		expect(issuesOfText(writingBundle(1, [300, 400]))).toContain(
-			'questions.answerWords: unknown field "answerWords"',
-		);
 	});
 
 	it("refuses a shortest longer than the longest", () => {
-		expect(issuesOfText(writingBundle(2, [400, 300]))).toContain(
+		expect(issuesOfText(writingBundle([400, 300]))).toContain(
 			"questions.answerWords: the first number must not be larger than the second",
 		);
 	});
@@ -173,42 +159,176 @@ describe("how long the child's answer must be (version 2)", () => {
 		],
 		["300-400", "questions.answerWords: expected an array"],
 	])("refuses %j", (answerWords, message) => {
-		expect(issuesOfText(writingBundle(2, answerWords))).toContain(message);
+		expect(issuesOfText(writingBundle(answerWords))).toContain(message);
 	});
 
-	it("refuses a format version it doesn't know", () => {
-		expect(issuesOfText(writingBundle(3))).toContain(
-			"formatVersion: expected 1 or 2",
+	it("reads a course's exams on their own", () => {
+		const result = parseCourseExams(
+			(
+				JSON.parse(writingBundle([300, 400])) as {
+					courses: { exams: unknown }[];
+				}
+			).courses[0]?.exams,
+		);
+		expect(result.issues).toEqual([]);
+		expect(result.exams[0]?.papers[0]?.parts[0]?.id).toBe("e1-p1-t1");
+	});
+});
+
+describe("format versions (task 224)", () => {
+	it.each([2, 3, 0])("refuses formatVersion %j with one plain message", (v) => {
+		const bundle = minimal();
+		bundle.formatVersion = v;
+		const result = parseBundle(JSON.stringify(bundle), subjectIds);
+		expect(result.ok).toBe(false);
+		if (!result.ok)
+			expect(result.issues).toEqual([
+				{
+					path: "formatVersion",
+					message:
+						"This file was made by an older Studio. Open its project in the new Studio and export it again.",
+				},
+			]);
+	});
+});
+
+describe("a course's languages (task 224)", () => {
+	it("has the 183 ISO 639-1 codes, each two lowercase letters", () => {
+		expect(LANGUAGE_CODES).toHaveLength(183);
+		expect(LANGUAGE_CODES.every((code) => /^[a-z]{2}$/.test(code))).toBe(true);
+		expect(new Set(LANGUAGE_CODES).size).toBe(183);
+	});
+
+	it("requires a teaching language", () => {
+		const bundle = minimal();
+		delete courseOf(bundle).language;
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			"courses[0].language: expected a two-letter language code",
 		);
 	});
 
-	it("reads a course's exams without a bundle at the latest version", () => {
-		const result = parseCourseExams([
-			{
-				name: "Writing paper",
-				papers: [
-					{
-						name: "Paper 1: Writing",
-						skill: "writing",
-						parts: [
-							{
-								name: "Part 1",
-								material: { kind: "none" },
-								questions: {
-									count: 1,
-									types: { essay: 1 },
-									answerWords: [300, 400],
-								},
-							},
-						],
-					},
-				],
-			},
-		]);
-		expect(LATEST_FORMAT_VERSION).toBe(2);
-		expect(result.issues).toEqual([]);
-		expect(result.exams[0]?.papers[0]?.parts[0]?.questions.answerWords).toEqual(
-			[300, 400],
+	it.each(["fre", "EN", "xx", ""])("refuses the language %j", (code) => {
+		const bundle = minimal();
+		courseOf(bundle).language = code;
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			"courses[0].language: expected a two-letter language code",
+		);
+	});
+
+	it("accepts a language Mr. Zaki can't teach yet: that is the app's business", () => {
+		const bundle = minimal();
+		courseOf(bundle).language = "de";
+		expect(parseBundle(JSON.stringify(bundle), subjectIds).ok).toBe(true);
+	});
+
+	it("reads support languages, the child's own among them", () => {
+		const bundle = minimal();
+		courseOf(bundle).support = ["native", "ar"];
+		const result = parseBundle(JSON.stringify(bundle), subjectIds);
+		expect(result.ok).toBe(true);
+		if (result.ok)
+			expect(result.bundle.courses[0]?.support).toEqual(["native", "ar"]);
+	});
+
+	it.each([
+		[["native", "native"], 'courses[0].support[1]: "native" is listed twice'],
+		[
+			["en"],
+			"courses[0].support[0]: the course's own language is not a support language",
+		],
+		[[], "courses[0].support: expected 1 to 3 languages"],
+		[["ar", "fr", "de", "tr"], "courses[0].support: expected 1 to 3 languages"],
+		[["fre"], "courses[0].support[0]: expected a two-letter language code"],
+	])("refuses support %j", (support, message) => {
+		const bundle = minimal();
+		courseOf(bundle).support = support;
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(message);
+	});
+
+	it("takes one subject twice in a grade only in two languages", () => {
+		const bundle = minimal();
+		const course = courseOf(bundle);
+		const twin = structuredClone(course);
+		bundle.courses = [course, twin];
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			'courses[1]: grade 8 science in "en" appears twice',
+		);
+		twin.language = "ar";
+		expect(parseBundle(JSON.stringify(bundle), subjectIds).ok).toBe(true);
+	});
+});
+
+describe("ids (task 224)", () => {
+	it("refuses a skill written as a plain string", () => {
+		const bundle = minimal();
+		const unit = (courseOf(bundle).units as Record<string, unknown>[])[0];
+		const lesson = (unit?.lessons as Record<string, unknown>[])[0];
+		if (lesson !== undefined) lesson.skills = ["Describe the Moon"];
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			"courses[0].units[0].lessons[0].skills[0]: expected {id, text} or {id, code, text}",
+		);
+	});
+
+	it("refuses an id used twice by its kind in one course, and a bad id", () => {
+		const bundle = minimal();
+		const units = courseOf(bundle).units as Record<string, unknown>[];
+		const second = structuredClone(units[0]) as Record<string, unknown>;
+		second.number = 2;
+		units.push(second);
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			'courses[0].units[1].id: unit id "u1" is used twice in this course',
+		);
+		second.id = "Unit 2";
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			"courses[0].units[1].id: use lowercase letters, digits and -",
+		);
+	});
+
+	it("allows the same id in two courses", () => {
+		const bundle = minimal();
+		const course = courseOf(bundle);
+		const twin = structuredClone(course);
+		twin.grade = 9;
+		bundle.courses = [course, twin];
+		expect(parseBundle(JSON.stringify(bundle), subjectIds).ok).toBe(true);
+	});
+});
+
+describe("duplicate keys (task 224)", () => {
+	it("finds a key written twice, with its path", () => {
+		expect(duplicateKey('{"a": 1, "b": {"c": [1, {"d": 2, "d": 3}]}}')).toEqual(
+			{ path: "b.c[1].d", key: "d" },
+		);
+		expect(duplicateKey('{"a": 1, "a": 2}')).toEqual({ path: "a", key: "a" });
+	});
+
+	it("is not fooled by keys inside strings, or by escapes", () => {
+		expect(duplicateKey('{"a": "\\"a\\": 1", "b": "a"}')).toBeNull();
+		expect(duplicateKey('{"a\\u0062": 1, "ab": 2}')).toEqual({
+			path: "ab",
+			key: "ab",
+		});
+		expect(duplicateKey('[{"a": 1}, {"a": 1}]')).toBeNull();
+	});
+
+	it("refuses the file", () => {
+		expect(issuesOf("invalid-duplicate-key.json")).toContain(
+			'courses[0].units[0].title: key "title" appears twice',
+		);
+	});
+});
+
+describe("ordered word ranges (task 224)", () => {
+	it("refuses material whose shortest is longer than its longest", () => {
+		const bundle = JSON.parse(writingBundle()) as Record<string, unknown>;
+		const exams = courseOf(bundle).exams as {
+			papers: { parts: { material: Record<string, unknown> }[] }[];
+		}[];
+		const part = exams[0]?.papers[0]?.parts[0];
+		if (part !== undefined)
+			part.material = { kind: "article", words: [500, 200] };
+		expect(issuesOfText(JSON.stringify(bundle))).toContain(
+			"material.words: the first number must not be larger than the second",
 		);
 	});
 });
@@ -216,11 +336,11 @@ describe("how long the child's answer must be (version 2)", () => {
 /**
  * Every key parseBundle reads must appear in the schema, and every key in the
  * schema must be one parseBundle reads. Walking the fuller example works for
- * both directions: the example uses every field version 1 has (that is what
+ * both directions: the example uses every field the format has (that is what
  * makes it the fuller example), so the set of keys in it is the set the parser
  * reads. The schema side is collected from every "properties" object in the
- * schema — which includes the question-type keys under `types` and
- * `marksByType` — so a field added to the schema but not to the parser, or the
+ * schema, which includes the question-type keys under `types` and
+ * `marksByType`, so a field added to the schema but not to the parser, or the
  * reverse, fails here.
  */
 describe("the schema and the parser agree on the keys", () => {
@@ -257,15 +377,8 @@ describe("the schema and the parser agree on the keys", () => {
 
 	it("reads the same keys", () => {
 		const exampleKeys = jsonKeys(exampleJson("full.json"));
-		const keysInSchema = schemaKeys(schemaV1);
+		const keysInSchema = schemaKeys(schema);
 		expect([...keysInSchema].filter((k) => !exampleKeys.has(k))).toEqual([]);
 		expect([...exampleKeys].filter((k) => !keysInSchema.has(k))).toEqual([]);
-	});
-
-	it("version 2's schema is version 1's plus answerWords, and nothing else", () => {
-		const keysV1 = schemaKeys(schemaV1);
-		const keysV2 = schemaKeys(schemaV2);
-		expect([...keysV2].filter((k) => !keysV1.has(k))).toEqual(["answerWords"]);
-		expect([...keysV1].filter((k) => !keysV2.has(k))).toEqual([]);
 	});
 });

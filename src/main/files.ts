@@ -293,8 +293,25 @@ export function readProject(
 				? undefined
 				: `${result.issues[0].path}: ${result.issues[0].message}`,
 		);
+	// A project from before format version 1 is converted once (task 224): the old file is
+	// kept in the backup folder, and the converted one is written in its place.
+	if (result.converted === true) {
+		try {
+			const backup = join(root, BACKUP_DIR);
+			mkdirSync(backup, { recursive: true });
+			const kept = join(backup, PROJECT_FILE);
+			if (!existsSync(kept)) writeFileSync(kept, text, "utf8");
+		} catch {
+			return failure("unreadable");
+		}
+		const written = writeProject(root, result.project);
+		if (!written.ok) return written;
+	}
 	return { ok: true, project: result.project };
 }
+
+/** Where the conversion of an old project keeps the files it replaced (task 224). */
+export const BACKUP_DIR = ".studio/backup-project-v1";
 
 /** The top-level folders of a folder that isn't a project yet, and their child folders. */
 export function guessFolders(root: string): GuessFolder[] {

@@ -1,6 +1,6 @@
 {
 	"format": "mr-zaki-curriculum",
-	"formatVersion": 2,
+	"formatVersion": 1,
 	"id": "6c1d4f8a-2b9e-4d7c-a1f3-5e8b0c2d9a64",
 	"version": 1,
 	"nameEn": "Starlight Astronomy",
@@ -19,11 +19,14 @@
 		{
 			"grade": 9,
 			"subject": "science",
+			"language": "en",
 			"exams": [
 				{
+					"id": "e1",
 					"name": "Writing paper",
 					"papers": [
 						{
+							"id": "e1-p1",
 							"name": "Paper 1: Writing",
 							"skill": "writing",
 							"minutes": 60,
@@ -35,11 +38,18 @@
 									"instruction": "Write about why day and night happen.",
 									"marks": 20,
 									"minutes": 30,
-									"material": { "kind": "none" },
+									"material": {
+										"kind": "none"
+									},
 									"questions": {
 										"count": 1,
-										"types": { "essay": 1 },
-										"answerWords": [300, 400],
+										"types": {
+											"essay": 1
+										},
+										"answerWords": [
+											300,
+											400
+										],
 										"marksEach": 20,
 										"totalMarks": 20
 									}
@@ -50,11 +60,18 @@
 									"instruction": "Write about why the Moon has phases.",
 									"marks": 20,
 									"minutes": 30,
-									"material": { "kind": "none" },
+									"material": {
+										"kind": "none"
+									},
 									"questions": {
 										"count": 1,
-										"types": { "essay": 1 },
-										"answerWords": [300, 400],
+										"types": {
+											"essay": 1
+										},
+										"answerWords": [
+											300,
+											400
+										],
 										"marksEach": 20,
 										"totalMarks": 20
 									}
@@ -66,24 +83,40 @@
 			],
 			"units": [
 				{
+					"id": "u1",
 					"number": 1,
 					"period": "year",
 					"title": "The Earth and the Moon",
-					"keywords": ["moon", "phases"],
+					"keywords": [
+						"moon",
+						"phases"
+					],
 					"lessons": [
 						{
+							"id": "u1-l1",
 							"number": 1,
 							"title": "Day and night",
-							"skills": ["State why we have day and night"],
+							"skills": [
+								{
+									"id": "u1-l1-s1",
+									"text": "State why we have day and night"
+								}
+							],
 							"facts": [
 								"The Earth spins on its axis once every 24 hours.",
 								"The Sun appears to rise in the east and set in the west."
 							]
 						},
 						{
+							"id": "u1-l2",
 							"number": 2,
 							"title": "The phases of the Moon",
-							"skills": ["Explain the phases of the Moon"],
+							"skills": [
+								{
+									"id": "u1-l2-s1",
+									"text": "Explain the phases of the Moon"
+								}
+							],
 							"facts": [
 								"The Moon orbits Earth once every 27 and a third days.",
 								"We see phases because the sunlit half of the Moon faces us in different amounts."

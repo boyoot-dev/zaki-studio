@@ -1,4 +1,4 @@
-// The curriculum bundle format, versions 1 and 2 (docs/BUNDLES.md): one JSON file that an
+// The curriculum bundle format, version 1 (standard/SPEC.md): one JSON file that an
 // author writes and a family imports. A bundle is written by a stranger, so parseBundle
 // checks the whole file and builds its result from checked values only, and it never throws.
 // It is also the one validator the Studio and the checker page use, so they run it in a
@@ -52,8 +52,10 @@ export const BUNDLE_LIMITS = {
 	examText: 2_000,
 	/** A name or an instruction in an exam, in characters. */
 	examName: 300,
-	/** A part id: lowercase letters, digits and -. */
-	partId: 40,
+	/** An object's id (unit, lesson, skill, exam, paper, part): lowercase letters, digits and -. */
+	objectId: 40,
+	/** Support languages on one course. */
+	support: 3,
 	/** How many questions or speakers, and what a question is worth. */
 	examCount: 200,
 	/** How long a text or a recording is, or how long an answer must be, in words. */
@@ -73,8 +75,11 @@ export type BundlePeriod = {
 	wholeYear: boolean;
 	periods: BundlePeriod[];
 };
-export type BundleSkill = { code: string | null; text: string };
+/** A skill: its permanent id, an optional syllabus code, and its statement. */
+export type BundleSkill = { id: string; code: string | null; text: string };
 export type BundleLesson = {
+	/** Permanent: progress is matched by it, never by number or position. */
+	id: string;
 	number: number;
 	title: string;
 	skills: BundleSkill[];
@@ -82,6 +87,7 @@ export type BundleLesson = {
 	activity: "writing" | "reading" | null;
 };
 export type BundleUnit = {
+	id: string;
 	number: number;
 	period: string;
 	title: string;
@@ -101,9 +107,22 @@ export const EXAM_SKILLS = [
 ] as const;
 export type ExamSkill = (typeof EXAM_SKILLS)[number];
 
-/** A part's own language: the three the app reads and writes (docs/LANGUAGES.md). */
-export const EXAM_LANGUAGES = ["en", "ar", "fr"] as const;
-export type ExamLanguage = (typeof EXAM_LANGUAGES)[number];
+/**
+ * The language codes a file may use: ISO 639-1, two lowercase letters. Which of them an app
+ * can teach in is the app's own business, so the format accepts every one (owner, 2026-11-18).
+ */
+export const LANGUAGE_CODES: readonly string[] = (
+	"aa ab ae af ak am an ar as av ay az ba be bg bi bm bn bo br bs ca ce ch co cr cs cu cv " +
+	"cy da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho " +
+	"hr ht hu hy hz ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku " +
+	"kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn " +
+	"no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm " +
+	"sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi " +
+	"vo wa wo xh yi yo za zh zu"
+).split(" ");
+
+/** A support entry that means the child's own home language, whatever it is. */
+export const NATIVE = "native";
 
 /**
  * What a part reads or hears. `conversation` is the general practice shape (a short
@@ -218,7 +237,7 @@ export type BundleQuestions = {
 	choiceOptions: number | null;
 	/** The longest answer, in words. */
 	maxWords: number | null;
-	/** How long the answer must be, in words: the shortest and the longest (a writing task). Version 2. */
+	/** How long the answer must be, in words: the shortest and the longest (a writing task). */
 	answerWords: [number, number] | null;
 	/** What every question is worth, when they are all worth the same. */
 	marksEach: number | null;
@@ -237,8 +256,8 @@ export type BundleQuestions = {
  * never as instructions, so it travels in the material block (task 150).
  */
 export type BundlePart = {
-	/** A stable key, e.g. "ar9-l1"; practice made for it stays when the part keeps it. */
-	id: string | null;
+	/** A permanent key, e.g. "ar9-l1"; practice made for it stays when the part keeps it. */
+	id: string;
 	/** The part's name in the paper's language. */
 	name: string;
 	/** The same name in English, for the line under an Arabic or French title. */
@@ -257,10 +276,11 @@ export type BundlePart = {
 
 /** One paper of an exam: one sitting and one skill, with its parts in order. */
 export type BundlePaper = {
+	id: string;
 	name: string;
 	skill: ExamSkill;
 	/** The paper's language, when it is not the course's teaching language. */
-	language: ExamLanguage | null;
+	language: string | null;
 	minutes: number | null;
 	marks: number | null;
 	parts: BundlePart[];
@@ -268,15 +288,21 @@ export type BundlePaper = {
 
 /** One exam of a course: a period's test, or the whole year's (task 149). */
 export type BundleExam = {
+	id: string;
 	/** A period id of the bundle; null for an exam that covers the whole year. */
 	period: string | null;
 	name: string;
 	papers: BundlePaper[];
 };
 
+/** One course: a subject taught in one grade in one language. */
 export type BundleCourse = {
 	grade: number;
 	subject: string;
+	/** The language the course is taught in: lessons, replies, everything. */
+	language: string;
+	/** Languages that may help the child (explaining, and being understood); "native" is the child's own. */
+	support: string[];
 	examStyle: string | null;
 	exams: BundleExam[];
 	units: BundleUnit[];
@@ -296,21 +322,15 @@ export type Bundle = {
 export type BundleIssue = { path: string; message: string };
 
 export type BundleResult =
-	| {
-			ok: true;
-			bundle: Bundle;
-			/** The format version the file was written with: 1 or 2. */
-			formatVersion: BundleFormatVersion;
-	  }
+	| { ok: true; bundle: Bundle }
 	| { ok: false; issues: BundleIssue[] };
 
 const FORMAT = "mr-zaki-curriculum";
-/** The format versions this reader accepts (task 174): version 2 adds `answerWords`. */
-const SUPPORTED_VERSIONS = [1, 2] as const;
-export type BundleFormatVersion = (typeof SUPPORTED_VERSIONS)[number];
-/** The version a writer writes when a file uses the newest field (task 174). */
-export const LATEST_FORMAT_VERSION: BundleFormatVersion = 2;
+/** The one format version (2026-11-18: earlier drafts were withdrawn, not kept readable). */
+export const FORMAT_VERSION = 1;
 const NOT_JSON = "The file is not valid JSON.";
+const OLD_VERSION =
+	"This file was made by an older Studio. Open its project in the new Studio and export it again.";
 
 const BUNDLE_KEYS = [
 	"format",
@@ -325,9 +345,25 @@ const BUNDLE_KEYS = [
 	"courses",
 ];
 const PERIOD_KEYS = ["id", "nameEn", "nameAr", "wholeYear", "periods"];
-const COURSE_KEYS = ["grade", "subject", "examStyle", "exams", "units"];
-const EXAM_KEYS = ["period", "name", "papers"];
-const PAPER_KEYS = ["name", "skill", "language", "minutes", "marks", "parts"];
+const COURSE_KEYS = [
+	"grade",
+	"subject",
+	"language",
+	"support",
+	"examStyle",
+	"exams",
+	"units",
+];
+const EXAM_KEYS = ["id", "period", "name", "papers"];
+const PAPER_KEYS = [
+	"id",
+	"name",
+	"skill",
+	"language",
+	"minutes",
+	"marks",
+	"parts",
+];
 const PART_KEYS = [
 	"id",
 	"name",
@@ -360,9 +396,8 @@ const QUESTIONS_KEYS = [
 	"totalMarks",
 	"example",
 	"copiedExactly",
+	"answerWords",
 ];
-/** Version 2's one new field; a version 1 file still refuses it as unknown (task 174). */
-const QUESTIONS_KEYS_V2 = [...QUESTIONS_KEYS, "answerWords"];
 const TIMING_KEYS = [
 	"readingSeconds",
 	"plays",
@@ -371,6 +406,7 @@ const TIMING_KEYS = [
 	"checkSeconds",
 ];
 const UNIT_KEYS = [
+	"id",
 	"number",
 	"period",
 	"title",
@@ -379,13 +415,13 @@ const UNIT_KEYS = [
 	"evidence",
 	"lessons",
 ];
-const LESSON_KEYS = ["number", "title", "skills", "facts", "activity"];
-const SKILL_KEYS = ["code", "text"];
+const LESSON_KEYS = ["id", "number", "title", "skills", "facts", "activity"];
+const SKILL_KEYS = ["id", "code", "text"];
 
 /** A lowercase UUID, as the bundle id is written (exported so an admin's block checks it). */
 export const BUNDLE_ID =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-/** A period id: lowercase letters, digits and -. */
+/** A period id or an object id: lowercase letters, digits and -. */
 const PERIOD_ID = /^[a-z0-9-]+$/;
 
 /**
@@ -679,6 +715,66 @@ function asSubject(
 	return value;
 }
 
+/** One language code from LANGUAGE_CODES. */
+function asLanguage(value: unknown, path: string, walk: Walk): string | null {
+	if (typeof value !== "string" || !LANGUAGE_CODES.includes(value)) {
+		add(walk, path, "expected a two-letter language code, e.g. en, ar, fr");
+		return null;
+	}
+	return value;
+}
+
+/** The ids already used in one course, per kind: an id is unique among its own kind there. */
+type CourseIds = {
+	units: Set<string>;
+	lessons: Set<string>;
+	skills: Set<string>;
+	exams: Set<string>;
+	papers: Set<string>;
+	parts: Set<string>;
+};
+
+function courseIds(): CourseIds {
+	return {
+		units: new Set(),
+		lessons: new Set(),
+		skills: new Set(),
+		exams: new Set(),
+		papers: new Set(),
+		parts: new Set(),
+	};
+}
+
+/**
+ * An object's permanent id: required, lowercase letters, digits and -, and not used twice
+ * by its kind in the course. Readers match progress by it, never by number or position.
+ */
+function asObjectId(
+	raw: Json,
+	path: string,
+	walk: Walk,
+	seen: Set<string>,
+	kind: string,
+): string | null {
+	const id = asText(
+		read(raw, "id"),
+		field(path, "id"),
+		BUNDLE_LIMITS.objectId,
+		walk,
+	);
+	if (id === null) return null;
+	if (!PERIOD_ID.test(id)) {
+		add(walk, field(path, "id"), "use lowercase letters, digits and -");
+		return null;
+	}
+	if (seen.has(id)) {
+		add(walk, field(path, "id"), `${kind} id "${id}" is used twice in this course`);
+		return null;
+	}
+	seen.add(id);
+	return id;
+}
+
 /** Every period id of the year, at any depth: a term exam names a term, a unit a block. */
 function collectPeriodIds(periods: BundlePeriod[], into: Set<string>) {
 	for (const period of periods) {
@@ -717,37 +813,36 @@ function parseSkill(
 	value: unknown,
 	path: string,
 	walk: Walk,
+	ids: CourseIds,
 ): BundleSkill | null {
-	if (typeof value === "string") {
-		const text = asText(value, path, BUNDLE_LIMITS.skillChars, walk);
-		return text === null ? null : { code: null, text };
-	}
 	if (typeof value !== "object" || value === null || Array.isArray(value)) {
-		add(walk, path, "expected a string or {code, text}");
+		add(walk, path, "expected {id, text} or {id, code, text}");
 		return null;
 	}
 	const raw = value as Json;
 	checkKeys(raw, SKILL_KEYS, path, walk);
-	const code = asText(
-		read(raw, "code"),
-		field(path, "code"),
-		BUNDLE_LIMITS.skillCodeChars,
-		walk,
-	);
+	const id = asObjectId(raw, path, walk, ids.skills, "skill");
+	const codeRaw = read(raw, "code");
+	const code =
+		codeRaw === undefined
+			? null
+			: asText(codeRaw, field(path, "code"), BUNDLE_LIMITS.skillCodeChars, walk);
 	const text = asText(
 		read(raw, "text"),
 		field(path, "text"),
 		BUNDLE_LIMITS.skillChars,
 		walk,
 	);
-	if (code === null || text === null) return null;
-	return { code, text };
+	if (id === null || text === null || (code === null && codeRaw !== undefined))
+		return null;
+	return { id, code, text };
 }
 
 function parseSkills(
 	value: unknown,
 	path: string,
 	walk: Walk,
+	ids: CourseIds,
 ): BundleSkill[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -762,7 +857,7 @@ function parseSkills(
 	const out: BundleSkill[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const skill = parseSkill(list[i], entry(path, i), walk);
+		const skill = parseSkill(list[i], entry(path, i), walk, ids);
 		if (skill === null) bad = true;
 		else out.push(skill);
 	}
@@ -774,10 +869,12 @@ function parseLesson(
 	path: string,
 	walk: Walk,
 	numbers: Set<number>,
+	ids: CourseIds,
 ): BundleLesson | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
 	checkKeys(raw, LESSON_KEYS, path, walk);
+	const id = asObjectId(raw, path, walk, ids.lessons, "lesson");
 	const number = asInt(
 		read(raw, "number"),
 		field(path, "number"),
@@ -796,7 +893,12 @@ function parseLesson(
 		BUNDLE_LIMITS.title,
 		walk,
 	);
-	const skills = parseSkills(read(raw, "skills"), field(path, "skills"), walk);
+	const skills = parseSkills(
+		read(raw, "skills"),
+		field(path, "skills"),
+		walk,
+		ids,
+	);
 	const facts = asTextList(
 		read(raw, "facts"),
 		field(path, "facts"),
@@ -817,15 +919,22 @@ function parseLesson(
 		if (parsed === null) return null;
 		activity = parsed;
 	}
-	if (number === null || title === null || skills === null || facts === null)
+	if (
+		id === null ||
+		number === null ||
+		title === null ||
+		skills === null ||
+		facts === null
+	)
 		return null;
-	return { number, title, skills, facts, activity };
+	return { id, number, title, skills, facts, activity };
 }
 
 function parseLessons(
 	value: unknown,
 	path: string,
 	walk: Walk,
+	ids: CourseIds,
 ): BundleLesson[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -841,7 +950,7 @@ function parseLessons(
 	const out: BundleLesson[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const lesson = parseLesson(list[i], entry(path, i), walk, numbers);
+		const lesson = parseLesson(list[i], entry(path, i), walk, numbers, ids);
 		if (lesson === null) bad = true;
 		else out.push(lesson);
 	}
@@ -853,10 +962,12 @@ function parseUnit(
 	path: string,
 	walk: Walk,
 	numbers: Set<number>,
+	ids: CourseIds,
 ): BundleUnit | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
 	checkKeys(raw, UNIT_KEYS, path, walk);
+	const id = asObjectId(raw, path, walk, ids.units, "unit");
 	const number = asInt(
 		read(raw, "number"),
 		field(path, "number"),
@@ -913,8 +1024,10 @@ function parseUnit(
 		read(raw, "lessons"),
 		field(path, "lessons"),
 		walk,
+		ids,
 	);
 	if (
+		id === null ||
 		number === null ||
 		period === null ||
 		title === null ||
@@ -923,13 +1036,14 @@ function parseUnit(
 		lessons === null
 	)
 		return null;
-	return { number, period, title, source, keywords, evidence, lessons };
+	return { id, number, period, title, source, keywords, evidence, lessons };
 }
 
 function parseUnits(
 	value: unknown,
 	path: string,
 	walk: Walk,
+	ids: CourseIds,
 ): BundleUnit[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -945,7 +1059,7 @@ function parseUnits(
 	const out: BundleUnit[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const unit = parseUnit(list[i], entry(path, i), walk, numbers);
+		const unit = parseUnit(list[i], entry(path, i), walk, numbers, ids);
 		if (unit === null) bad = true;
 		else out.push(unit);
 	}
@@ -1087,7 +1201,15 @@ function parseMaterial(
 					BUNDLE_LIMITS.examWords,
 					walk,
 				);
-				if (low !== null && high !== null) words = [low, high];
+				if (low !== null && high !== null) {
+					if (low > high)
+						add(
+							walk,
+							field(path, "words"),
+							"the first number must not be larger than the second",
+						);
+					else words = [low, high];
+				}
 			}
 		}
 	}
@@ -1142,11 +1264,10 @@ function parseQuestions(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	version: BundleFormatVersion,
 ): BundleQuestions | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
-	checkKeys(raw, version >= 2 ? QUESTIONS_KEYS_V2 : QUESTIONS_KEYS, path, walk);
+	checkKeys(raw, QUESTIONS_KEYS, path, walk);
 	const count = asInt(
 		read(raw, "count"),
 		field(path, "count"),
@@ -1165,11 +1286,11 @@ function parseQuestions(
 	};
 	const choiceOptions = number("choiceOptions", 3, 4);
 	const maxWords = number("maxWords", 0, BUNDLE_LIMITS.examCount);
-	// How long the child's own answer must be (task 174): version 2 only, and the
-	// shortest number may not be larger than the longest.
+	// How long the child's own answer must be (task 174): the shortest number may not be
+	// larger than the longest.
 	let answerWords: [number, number] | null = null;
 	const answerWordsRaw = read(raw, "answerWords");
-	if (answerWordsRaw !== undefined && version >= 2) {
+	if (answerWordsRaw !== undefined) {
 		const list = asArray(answerWordsRaw, field(path, "answerWords"), walk);
 		if (list !== null) {
 			if (list.length !== 2)
@@ -1260,8 +1381,7 @@ function parsePart(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	ids: Set<string>,
-	version: BundleFormatVersion,
+	ids: CourseIds,
 ): BundlePart | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
@@ -1300,14 +1420,7 @@ function parsePart(
 		if (parsed === null) bad = true;
 		return parsed;
 	};
-	const id = text("id", BUNDLE_LIMITS.partId);
-	if (id !== null) {
-		if (!PERIOD_ID.test(id))
-			add(walk, field(path, "id"), "use lowercase letters, digits and -");
-		else if (ids.has(id))
-			add(walk, field(path, "id"), `part id "${id}" is used twice`);
-		else ids.add(id);
-	}
+	const id = asObjectId(raw, path, walk, ids.parts, "part");
 	const name = text("name", BUNDLE_LIMITS.examName);
 	const nameEn = text("nameEn", BUNDLE_LIMITS.examName);
 	const instruction = text("instruction", BUNDLE_LIMITS.examName);
@@ -1323,12 +1436,17 @@ function parsePart(
 		read(raw, "questions"),
 		field(path, "questions"),
 		walk,
-		version,
 	);
 	// The author's words about the part may run over several lines (task 152).
 	const notes = text("notes", BUNDLE_LIMITS.examText, true);
 	const marking = text("marking", BUNDLE_LIMITS.examText, true);
-	if (bad || name === null || material === null || questions === null)
+	if (
+		bad ||
+		id === null ||
+		name === null ||
+		material === null ||
+		questions === null
+	)
 		return null;
 	return {
 		id,
@@ -1349,8 +1467,7 @@ function parseParts(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	ids: Set<string>,
-	version: BundleFormatVersion,
+	ids: CourseIds,
 ): BundlePart[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -1365,7 +1482,7 @@ function parseParts(
 	const out: BundlePart[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const part = parsePart(list[i], entry(path, i), walk, ids, version);
+		const part = parsePart(list[i], entry(path, i), walk, ids);
 		if (part === null) bad = true;
 		else out.push(part);
 	}
@@ -1376,12 +1493,12 @@ function parsePaper(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	ids: Set<string>,
-	version: BundleFormatVersion,
+	ids: CourseIds,
 ): BundlePaper | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
 	checkKeys(raw, PAPER_KEYS, path, walk);
+	const id = asObjectId(raw, path, walk, ids.papers, "paper");
 	const name = asText(
 		read(raw, "name"),
 		field(path, "name"),
@@ -1409,14 +1526,9 @@ function parsePaper(
 		return parsed;
 	};
 	const languageRaw = read(raw, "language");
-	let language: ExamLanguage | null = null;
+	let language: string | null = null;
 	if (languageRaw !== undefined)
-		language = asOneOf(
-			languageRaw,
-			field(path, "language"),
-			EXAM_LANGUAGES,
-			walk,
-		);
+		language = asLanguage(languageRaw, field(path, "language"), walk);
 	const minutes = number("minutes");
 	const marksRaw = read(raw, "marks");
 	let marks: number | null = null;
@@ -1435,9 +1547,9 @@ function parsePaper(
 		field(path, "parts"),
 		walk,
 		ids,
-		version,
 	);
 	if (
+		id === null ||
 		name === null ||
 		skill === null ||
 		parts === null ||
@@ -1445,15 +1557,14 @@ function parsePaper(
 		(language === null && languageRaw !== undefined)
 	)
 		return null;
-	return { name, skill, language, minutes, marks, parts };
+	return { id, name, skill, language, minutes, marks, parts };
 }
 
 function parsePapers(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	ids: Set<string>,
-	version: BundleFormatVersion,
+	ids: CourseIds,
 ): BundlePaper[] | null {
 	const list = asArray(value, path, walk);
 	if (list === null) return null;
@@ -1468,7 +1579,7 @@ function parsePapers(
 	const out: BundlePaper[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const paper = parsePaper(list[i], entry(path, i), walk, ids, version);
+		const paper = parsePaper(list[i], entry(path, i), walk, ids);
 		if (paper === null) bad = true;
 		else out.push(paper);
 	}
@@ -1479,12 +1590,12 @@ function parseExam(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	ids: Set<string>,
-	version: BundleFormatVersion,
+	ids: CourseIds,
 ): BundleExam | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
 	checkKeys(raw, EXAM_KEYS, path, walk);
+	const id = asObjectId(raw, path, walk, ids.exams, "exam");
 	const periodRaw = read(raw, "period");
 	let period: string | null = null;
 	if (periodRaw !== undefined) {
@@ -1507,10 +1618,9 @@ function parseExam(
 		field(path, "papers"),
 		walk,
 		ids,
-		version,
 	);
-	if (name === null || papers === null) return null;
-	return { period, name, papers };
+	if (id === null || name === null || papers === null) return null;
+	return { id, period, name, papers };
 }
 
 /** A course's exams: none when the key is absent, so an old file still parses. */
@@ -1518,8 +1628,7 @@ function parseExams(
 	value: unknown,
 	path: string,
 	walk: Walk,
-	ids: Set<string>,
-	version: BundleFormatVersion,
+	ids: CourseIds,
 ): BundleExam[] | null {
 	if (value === undefined) return [];
 	const list = asArray(value, path, walk);
@@ -1535,7 +1644,7 @@ function parseExams(
 	const out: BundleExam[] = [];
 	let bad = false;
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
-		const exam = parseExam(list[i], entry(path, i), walk, ids, version);
+		const exam = parseExam(list[i], entry(path, i), walk, ids);
 		if (exam === null) bad = true;
 		else out.push(exam);
 	}
@@ -1549,10 +1658,9 @@ function parseExams(
 export function parseCourseExams(
 	value: unknown,
 	path = "exams",
-	formatVersion: BundleFormatVersion = LATEST_FORMAT_VERSION,
 ): { exams: BundleExam[]; issues: BundleIssue[] } {
 	const walk: Walk = { issues: [] };
-	const exams = parseExams(value, path, walk, new Set(), formatVersion);
+	const exams = parseExams(value, path, walk, courseIds());
 	return { exams: exams ?? [], issues: walk.issues };
 }
 
@@ -1577,13 +1685,43 @@ export function examPeriodIssues(
 	return issues;
 }
 
+/** A course's support languages: none when absent; codes or "native", no repeats, never its own. */
+function parseSupport(
+	value: unknown,
+	path: string,
+	walk: Walk,
+	language: string | null,
+): string[] | null {
+	if (value === undefined) return [];
+	const list = asArray(value, path, walk);
+	if (list === null) return null;
+	if (list.length === 0 || list.length > BUNDLE_LIMITS.support) {
+		add(walk, path, `expected 1 to ${BUNDLE_LIMITS.support} languages`);
+		return null;
+	}
+	const out: string[] = [];
+	let bad = false;
+	for (let i = 0; i < list.length; i += 1) {
+		const at = entry(path, i);
+		const code = list[i] === NATIVE ? NATIVE : asLanguage(list[i], at, walk);
+		if (code === null) bad = true;
+		else if (out.includes(code)) {
+			add(walk, at, `"${code}" is listed twice`);
+			bad = true;
+		} else if (code === language) {
+			add(walk, at, "the course's own language is not a support language");
+			bad = true;
+		} else out.push(code);
+	}
+	return bad ? null : out;
+}
+
 function parseCourse(
 	value: unknown,
 	path: string,
 	walk: Walk,
 	subjectIds: readonly string[],
-	pairs: Set<string>,
-	version: BundleFormatVersion,
+	keys: Set<string>,
 ): BundleCourse | null {
 	const raw = asObject(value, path, walk);
 	if (raw === null) return null;
@@ -1601,11 +1739,22 @@ function parseCourse(
 		walk,
 		subjectIds,
 	);
-	if (grade !== null && subject !== null) {
-		const key = `${grade} ${subject}`;
-		if (pairs.has(key))
-			add(walk, path, `grade ${grade} ${subject} appears twice`);
-		else pairs.add(key);
+	const language = asLanguage(
+		read(raw, "language"),
+		field(path, "language"),
+		walk,
+	);
+	const support = parseSupport(
+		read(raw, "support"),
+		field(path, "support"),
+		walk,
+		language,
+	);
+	if (grade !== null && subject !== null && language !== null) {
+		const key = `${grade} ${subject} ${language}`;
+		if (keys.has(key))
+			add(walk, path, `grade ${grade} ${subject} in "${language}" appears twice`);
+		else keys.add(key);
 	}
 	const styleRaw = read(raw, "examStyle");
 	let examStyle: string | null = null;
@@ -1619,25 +1768,26 @@ function parseCourse(
 		);
 		if (examStyle === null) return null;
 	}
-	const units = parseUnits(read(raw, "units"), field(path, "units"), walk);
-	// Part ids are unique within the course, so practice stays with the part it was made for.
-	const exams = parseExams(
-		read(raw, "exams"),
-		field(path, "exams"),
-		walk,
-		new Set<string>(),
-		version,
-	);
-	if (grade === null || subject === null || units === null || exams === null)
+	// Ids are unique within the course, so progress stays with the object it was made on.
+	const ids = courseIds();
+	const units = parseUnits(read(raw, "units"), field(path, "units"), walk, ids);
+	const exams = parseExams(read(raw, "exams"), field(path, "exams"), walk, ids);
+	if (
+		grade === null ||
+		subject === null ||
+		language === null ||
+		support === null ||
+		units === null ||
+		exams === null
+	)
 		return null;
-	return { grade, subject, examStyle, exams, units };
+	return { grade, subject, language, support, examStyle, exams, units };
 }
 
 function parseCourses(
 	value: unknown,
 	walk: Walk,
 	subjectIds: readonly string[],
-	version: BundleFormatVersion,
 ): BundleCourse[] | null {
 	const list = asArray(value, "courses", walk);
 	if (list === null) return null;
@@ -1649,7 +1799,7 @@ function parseCourses(
 		add(walk, "courses", `at most ${BUNDLE_LIMITS.courses} courses`);
 		return [];
 	}
-	const pairs = new Set<string>();
+	const keys = new Set<string>();
 	const out: BundleCourse[] = [];
 	for (let i = 0; i < list.length && !full(walk); i += 1) {
 		const course = parseCourse(
@@ -1657,8 +1807,7 @@ function parseCourses(
 			entry("courses", i),
 			walk,
 			subjectIds,
-			pairs,
-			version,
+			keys,
 		);
 		if (course !== null) out.push(course);
 	}
@@ -1808,21 +1957,32 @@ export function parseBundle(
 	} catch {
 		return { ok: false, issues: [{ path: "", message: NOT_JSON }] };
 	}
+	const twice = duplicateKey(text);
+	if (twice !== null)
+		return {
+			ok: false,
+			issues: [{ path: twice.path, message: `key "${twice.key}" appears twice` }],
+		};
 	const walk: Walk = { issues: [] };
 	const root = asObject(value, "", walk);
 	if (root === null) return { ok: false, issues: walk.issues };
+	// An older file is told so once, rather than buried under every field it lacks.
+	if (
+		read(root, "format") === FORMAT &&
+		read(root, "formatVersion") !== FORMAT_VERSION
+	)
+		return {
+			ok: false,
+			issues: [{ path: "formatVersion", message: OLD_VERSION }],
+		};
 
 	checkKeys(root, BUNDLE_KEYS, "", walk);
 	if (read(root, "format") !== FORMAT)
 		add(walk, "format", `expected "${FORMAT}"`);
-	const formatVersionRaw = read(root, "formatVersion");
 	const formatVersion =
-		typeof formatVersionRaw === "number" &&
-		(SUPPORTED_VERSIONS as readonly number[]).includes(formatVersionRaw)
-			? (formatVersionRaw as BundleFormatVersion)
-			: null;
+		read(root, "formatVersion") === FORMAT_VERSION ? FORMAT_VERSION : null;
 	if (formatVersion === null)
-		add(walk, "formatVersion", `expected ${SUPPORTED_VERSIONS.join(" or ")}`);
+		add(walk, "formatVersion", `expected ${FORMAT_VERSION}`);
 	const id = asId(read(root, "id"), walk);
 	const version = asInt(
 		read(root, "version"),
@@ -1867,12 +2027,7 @@ export function parseBundle(
 	if (tally.periods > BUNDLE_LIMITS.periods)
 		add(walk, "periods", `at most ${BUNDLE_LIMITS.periods} periods`);
 
-	const courses = parseCourses(
-		read(root, "courses"),
-		walk,
-		subjectIds,
-		formatVersion ?? LATEST_FORMAT_VERSION,
-	);
+	const courses = parseCourses(read(root, "courses"), walk, subjectIds);
 	if (courses !== null && periods !== null) {
 		checkUnitPeriods(courses, periods, walk);
 		const every = new Set<string>();
@@ -1903,6 +2058,98 @@ export function parseBundle(
 	return {
 		ok: true,
 		bundle: { id, version, nameEn, nameAr, author, rights, periods, courses },
-		formatVersion,
 	};
+}
+
+/**
+ * The first key written twice in one object, with where it is, or null. JSON.parse keeps the
+ * last copy silently, so the text is scanned on its own: strings and their escapes are read
+ * properly, and the work is one pass over the text. Only called on text JSON.parse accepted.
+ */
+export function duplicateKey(
+	text: string,
+): { path: string; key: string } | null {
+	type Frame = {
+		keys: Set<string> | null;
+		path: string;
+		index: number;
+		key: string | null;
+		expectKey: boolean;
+	};
+	const stack: Frame[] = [];
+	let at = 0;
+	const escapes: Record<string, string> = {
+		n: "\n",
+		t: "\t",
+		r: "\r",
+		b: "\b",
+		f: "\f",
+	};
+	const readString = (): string => {
+		// `at` is on the opening quote.
+		let out = "";
+		at += 1;
+		while (at < text.length) {
+			const ch = text.charAt(at);
+			if (ch === '"') {
+				at += 1;
+				return out;
+			}
+			if (ch === "\\") {
+				const next = text.charAt(at + 1);
+				if (next === "u") {
+					out += String.fromCharCode(
+						Number.parseInt(text.slice(at + 2, at + 6), 16),
+					);
+					at += 6;
+					continue;
+				}
+				out += escapes[next] ?? next;
+				at += 2;
+				continue;
+			}
+			out += ch;
+			at += 1;
+		}
+		return out;
+	};
+	while (at < text.length) {
+		const ch = text.charAt(at);
+		const top = stack.at(-1);
+		if (ch === "{" || ch === "[") {
+			let path = "";
+			if (top !== undefined)
+				path =
+					top.keys === null
+						? entry(top.path, top.index)
+						: field(top.path, top.key ?? "");
+			stack.push({
+				keys: ch === "{" ? new Set() : null,
+				path,
+				index: 0,
+				key: null,
+				expectKey: ch === "{",
+			});
+			at += 1;
+		} else if (ch === "}" || ch === "]") {
+			stack.pop();
+			at += 1;
+		} else if (ch === ",") {
+			if (top !== undefined) {
+				if (top.keys === null) top.index += 1;
+				else top.expectKey = true;
+			}
+			at += 1;
+		} else if (ch === '"') {
+			const value = readString();
+			if (top?.keys && top.expectKey) {
+				if (top.keys.has(value))
+					return { path: field(top.path, value), key: value };
+				top.keys.add(value);
+				top.key = value;
+				top.expectKey = false;
+			}
+		} else at += 1;
+	}
+	return null;
 }

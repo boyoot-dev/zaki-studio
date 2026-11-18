@@ -822,21 +822,45 @@ export function newMaterial(input: ReportInput): NewMaterial {
 	};
 }
 
-/** A subject as the OCR needs it: its id, and the language its material is written in. */
-export type LangSubject = { id: string; contentLanguage: string };
+/** A course as the OCR needs it: its grade and subject, and the language it is taught in. */
+export type LangCourse = { grade: number; subject: string; language: string };
 
 /**
- * The Tesseract languages a subject's pages are read with: its teaching language plus English,
- * because every subject's pages carry some English (school name, codes). A subject the list
- * doesn't know is read as English alone.
+ * The Tesseract languages a file's pages are read with: its course's teaching language plus
+ * English, because every subject's pages carry some English (school name, codes). Since task
+ * 224 the language is the course's, not the subject's. A file of no known course, or of a
+ * language the Studio has no Tesseract data for, is read as English alone.
  */
 export function tessLangs(
+	grade: number | null,
 	subject: string,
-	subjects: readonly LangSubject[],
+	courses: readonly LangCourse[],
 ): string {
-	const found = subjects.find((entry) => entry.id === subject);
-	const code = found?.contentLanguage ?? "en";
-	if (code === "ar") return "ara+eng";
-	if (code === "fr") return "fra+eng";
+	const found = courses.find(
+		(entry) => entry.grade === grade && entry.subject === subject,
+	);
+	return tessLangsFor(found?.language ?? "en");
+}
+
+/** The Tesseract languages for pages in one language, plus English. */
+export function tessLangsFor(language: string): string {
+	if (language === "ar") return "ara+eng";
+	if (language === "fr") return "fra+eng";
 	return "eng";
+}
+
+/** The courses of a project as the OCR needs them. */
+export function langCourses(project: {
+	grades: readonly {
+		grade: number;
+		subjects: readonly { subject: string; language: string }[];
+	}[];
+}): LangCourse[] {
+	return project.grades.flatMap((grade) =>
+		grade.subjects.map((entry) => ({
+			grade: grade.grade,
+			subject: entry.subject,
+			language: entry.language,
+		})),
+	);
 }
