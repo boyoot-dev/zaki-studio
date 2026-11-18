@@ -301,6 +301,7 @@ describe("a course's languages (task 225)", () => {
 			{
 				grade: 7,
 				subject: "science",
+				from: "en",
 				language: "ar",
 				support: ["native", "ar", "en"],
 			},
@@ -320,12 +321,24 @@ describe("a course's languages (task 225)", () => {
 		expect(createProject(root, project()).ok).toBe(true);
 		expect(
 			setCourseLanguages(root, [
-				{ grade: 8, subject: "science", language: "ar", support: [] },
+				{
+					grade: 8,
+					subject: "science",
+					from: "en",
+					language: "ar",
+					support: [],
+				},
 			]).ok,
 		).toBe(false);
 		expect(
 			setCourseLanguages(root, [
-				{ grade: 7, subject: "science", language: "Arabic", support: [] },
+				{
+					grade: 7,
+					subject: "science",
+					from: "en",
+					language: "Arabic",
+					support: [],
+				},
 			]).ok,
 		).toBe(false);
 		expect(setCourseLanguages(root, "not a list").ok).toBe(false);

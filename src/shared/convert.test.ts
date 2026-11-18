@@ -10,10 +10,17 @@ import {
 	convertProjectGrades,
 	legacySubject,
 	legacySupport,
+	settleLanguage,
+	tokenCourse,
 } from "./convert.ts";
 import { fillExamIds } from "./exam-changes.ts";
 import { newId } from "./ids.ts";
-import { parseModelCourse, toBundle, withProjectLanguages } from "./model.ts";
+import {
+	courseFile,
+	parseModelCourse,
+	toBundle,
+	withProjectLanguages,
+} from "./model.ts";
 import { parseProject } from "./project.ts";
 
 /** An old model course: no language, no ids, a string skill, an exam with one part id. */
@@ -231,7 +238,7 @@ describe("converting an old project file", () => {
 	});
 
 	it("gives the model the project's languages", () => {
-		const parsed = parseModelCourse(oldCourse("math", 3));
+		const parsed = parseModelCourse(oldCourse("math-ar", 3));
 		if (!parsed.ok) throw new Error("refused");
 		const project = parseProject(JSON.stringify(old));
 		if (!project.ok) throw new Error("refused");
@@ -329,5 +336,64 @@ describe("an exam's ids through a change set", () => {
 		expect(final?.papers[0]?.id).toBe("e1-p1");
 		expect(final?.papers[1]?.id).toMatch(/^[a-z0-9]{8}$/);
 		expect(mock?.id).toMatch(/^[a-z0-9]{8}$/);
+	});
+});
+
+describe("one subject in two languages in one grade (task 224, the Baccalaureate case)", () => {
+	it("keeps both courses through conversion, the model's files and export", () => {
+		const en = parseModelCourse(oldCourse("chemistry", 11));
+		const ar = parseModelCourse(oldCourse("chemistry-ar", 11));
+		if (!en.ok || !ar.ok) throw new Error("refused");
+		expect([en.course.language, ar.course.language]).toEqual(["en", "ar"]);
+		expect(courseFile(11, en.course.subject, en.course.language)).not.toBe(
+			courseFile(11, ar.course.subject, ar.course.language),
+		);
+		const bundle = toBundle(
+			{
+				curriculum: {
+					nameEn: "N",
+					nameAr: "N",
+					author: "A",
+					rights: "R",
+					periods: [],
+				},
+				courses: [en.course, ar.course],
+			},
+			{ id: "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10" } as Parameters<
+				typeof toBundle
+			>[1],
+			1,
+		);
+		expect(
+			bundle.courses.map((course) => [course.subject, course.language]),
+		).toEqual([
+			["chemistry", "ar"],
+			["chemistry", "en"],
+		]);
+	});
+
+	it("reads a subject token's language, and settles a plain one from the project", () => {
+		expect(tokenCourse("chemistry-ar")).toEqual({
+			subject: "chemistry",
+			language: "ar",
+		});
+		expect(tokenCourse("chemistry-fr")).toEqual({
+			subject: "chemistry",
+			language: "fr",
+		});
+		expect(tokenCourse("chemistry")).toEqual({
+			subject: "chemistry",
+			language: "",
+		});
+		expect(tokenCourse("social-studies")).toEqual({
+			subject: "social-studies",
+			language: "",
+		});
+		const one = [{ grade: 7, subject: "math", language: "ar" }];
+		const two = [...one, { grade: 7, subject: "math", language: "en" }];
+		const row = { grade: 7, subject: "math", language: "" };
+		expect(settleLanguage(row, one).language).toBe("ar");
+		// Two courses of the subject: the author says which.
+		expect(settleLanguage(row, two).language).toBe("");
 	});
 });

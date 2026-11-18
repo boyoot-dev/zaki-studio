@@ -43,6 +43,7 @@ function row(id: string, path: string): FileRow {
 		path,
 		grade: 7,
 		subject: "science",
+		language: "en",
 		block: "1",
 		kind: "book",
 		pages: 10,
@@ -241,7 +242,7 @@ describe("the project's cache", () => {
 		);
 
 		// One character longer: a plain change to a file the cache holds.
-		const courseFile = join(project, MODEL_DIR, "grade-7-science.json");
+		const courseFile = join(project, MODEL_DIR, "grade-7-science-en.json");
 		const course = JSON.parse(readFileSync(courseFile, "utf8")) as Record<
 			string,
 			unknown

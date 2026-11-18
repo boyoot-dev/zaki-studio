@@ -43,7 +43,11 @@ export function ExportDialog({
 	spec: ExportSpec;
 	onClose: () => void;
 	/** Opens the Curriculum tab at a course whose exam numbers don't add up. */
-	onOpenCourse: (course: { grade: number; subject: string }) => void;
+	onOpenCourse: (course: {
+		grade: number;
+		subject: string;
+		language: string;
+	}) => void;
 	onNotify: (text: string) => void;
 }) {
 	const say = useSay();

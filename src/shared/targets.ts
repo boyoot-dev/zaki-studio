@@ -11,7 +11,13 @@ import type { ModelCourse, ModelUnit } from "./model.ts";
 import { estimateTokens, gradeText } from "./notes.ts";
 
 /** The course and period a change set is for. */
-export type Target = { grade: number; subject: string; period: string };
+export type Target = {
+	grade: number;
+	subject: string;
+	/** The course's teaching language: with grade and subject, the course (task 224). */
+	language: string;
+	period: string;
+};
 
 /** A file's text and the day it was written, as the input names a note. */
 export type TargetNote = { id: string; text: string };
@@ -95,6 +101,7 @@ export function targetRows<
 	T extends {
 		grade: number | null;
 		subject: string;
+		language: string;
 		block: string;
 		dupOf: string;
 		error: string;
@@ -105,6 +112,7 @@ export function targetRows<
 		(row) =>
 			row.grade === target.grade &&
 			row.subject === target.subject &&
+			row.language === target.language &&
 			row.dupOf === "" &&
 			row.error === "" &&
 			(row.pages ?? 0) > 0 &&
@@ -120,25 +128,32 @@ export function notedRows<T extends { id: string }>(
 	return rows.filter((row) => noted.has(row.id));
 }
 
-/** A target as a name that is safe for a file and a folder: "7-science-block-3". */
+/** A target as a name that is safe for a file and a folder: "7-science-en-block-3". */
 export function changeName(target: Target): string | null {
 	// -1 is KG1, 0 is KG2, then 1 to 12, as app/src/lib/grades.ts has them.
 	if (!Number.isInteger(target.grade) || target.grade < -1 || target.grade > 12)
 		return null;
 	if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/.test(target.subject)) return null;
+	if (!/^[a-z]{2}$/.test(target.language)) return null;
 	if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/.test(target.period)) return null;
-	return `${target.grade}-${target.subject}-${target.period}`;
+	return `${target.grade}-${target.subject}-${target.language}-${target.period}`;
 }
 
 /** The target a change set is for, from the values a payload carries, or null. */
 export function targetOf(
 	grade: unknown,
 	subject: unknown,
+	language: unknown,
 	period: unknown,
 ): Target | null {
 	if (typeof grade !== "number" || !Number.isInteger(grade)) return null;
-	if (typeof subject !== "string" || typeof period !== "string") return null;
-	const target = { grade, subject, period };
+	if (
+		typeof subject !== "string" ||
+		typeof language !== "string" ||
+		typeof period !== "string"
+	)
+		return null;
+	const target = { grade, subject, language, period };
 	return changeName(target) === null ? null : target;
 }
 
@@ -153,10 +168,17 @@ export function periodUnits(course: ModelCourse, period: string): ModelUnit[] {
 export function courseNow(
 	course: ModelCourse,
 	period: string,
-): { grade: number; subject: string; period: string; units: ModelUnit[] } {
+): {
+	grade: number;
+	subject: string;
+	language: string;
+	period: string;
+	units: ModelUnit[];
+} {
 	return {
 		grade: course.grade,
 		subject: course.subject,
+		language: course.language,
 		period,
 		units: periodUnits(course, period),
 	};

@@ -172,6 +172,7 @@ function calls(root: string, deep: string, userData: string): BenchCall[] {
 					const target: Target = {
 						grade: course.grade,
 						subject: course.subject,
+						language: course.language,
 						period,
 					};
 					const units = periodUnits(course, period);

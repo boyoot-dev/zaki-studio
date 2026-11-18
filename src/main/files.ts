@@ -322,7 +322,11 @@ export const BACKUP_DIR = ".studio/backup-project-v1";
  * Studio keeps them; the model takes them from there when it is read. Each change is cleaned
  * first, and a course the project doesn't have is refused, so the page can't add one here.
  */
-export function setCourseLanguages(root: string, changes: unknown): Done {
+export function setCourseLanguages(
+	root: string,
+	changes: unknown,
+): { ok: true; renamed: CourseLanguage[] } | Failure {
+	const renamed: CourseLanguage[] = [];
 	if (!Array.isArray(changes) || changes.length === 0 || changes.length > 400)
 		return failure("invalidProject");
 	const project = readProject(root);
@@ -335,6 +339,7 @@ export function setCourseLanguages(root: string, changes: unknown): Done {
 		const change = cleanCourseLanguage({
 			grade: typeof given.grade === "number" ? given.grade : Number.NaN,
 			subject: typeof given.subject === "string" ? given.subject : "",
+			from: typeof given.from === "string" ? given.from : "",
 			language: typeof given.language === "string" ? given.language : "",
 			support: Array.isArray(given.support)
 				? given.support.filter(
@@ -343,14 +348,34 @@ export function setCourseLanguages(root: string, changes: unknown): Done {
 				: [],
 		} satisfies CourseLanguage);
 		if (change === null) return failure("invalidProject");
-		const entry = next.grades
-			.find((grade) => grade.grade === change.grade)
-			?.subjects.find((subject) => subject.subject === change.subject);
+		const subjects = next.grades.find(
+			(grade) => grade.grade === change.grade,
+		)?.subjects;
+		const entry = subjects?.find(
+			(subject) =>
+				subject.subject === change.subject && subject.language === change.from,
+		);
 		if (entry === undefined) return failure("missing");
+		// One subject may be taught twice in a grade, but never twice in one language.
+		if (
+			change.language !== change.from &&
+			subjects?.some(
+				(subject) =>
+					subject.subject === change.subject &&
+					subject.language === change.language,
+			)
+		)
+			return failure(
+				"refused",
+				"that course is already taught in that language",
+			);
 		entry.language = change.language;
 		entry.support = change.support;
+		if (change.language !== change.from) renamed.push(change);
 	}
-	return writeProject(root, next);
+	const written = writeProject(root, next);
+	if (!written.ok) return written;
+	return { ok: true, renamed };
 }
 
 /** The top-level folders of a folder that isn't a project yet, and their child folders. */

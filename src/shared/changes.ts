@@ -11,6 +11,7 @@
 // Today's Arabic text layers can be reversed, so a failed page check is a warning, not a
 // refusal (found 2026-10-25, docs/CURRICULA.md).
 
+import { rowCourse } from "./convert.ts";
 import type { ReviewExam } from "./exam-changes.ts";
 import { BUNDLE_LIMITS, type BundleSkill, checkText } from "./format/bundle.ts";
 import { newId } from "./ids.ts";
@@ -112,6 +113,7 @@ export type CleanUnit = {
 export type CleanSet = {
 	grade: number;
 	subject: string;
+	language: string;
 	period: string;
 	units: CleanUnit[];
 	open: string[];
@@ -260,10 +262,19 @@ export function parseChangeSet(value: unknown, given: Given): ParseOutcome {
 			ok: false,
 			issue: `the change set is not for Grade ${given.target.grade}`,
 		};
-	if (raw.subject !== given.target.subject)
+	// A set written before task 224 names a language copy (`chemistry-ar`): read it as its course.
+	const named =
+		typeof raw.subject === "string"
+			? rowCourse(raw.subject, raw.language ?? given.target.language)
+			: null;
+	if (
+		named === null ||
+		named.subject !== given.target.subject ||
+		named.language !== given.target.language
+	)
 		return {
 			ok: false,
-			issue: `the change set is not for ${given.target.subject}`,
+			issue: `the change set is not for ${given.target.subject} (${given.target.language})`,
 		};
 	if (raw.period !== given.target.period)
 		return {
@@ -292,6 +303,7 @@ export function parseChangeSet(value: unknown, given: Given): ParseOutcome {
 		set: {
 			grade: given.target.grade,
 			subject: given.target.subject,
+			language: given.target.language,
 			period: given.target.period,
 			units,
 			open,
@@ -620,10 +632,12 @@ export type ReviewUnit = {
 export type ChangeReview = {
 	/** "units" for units and lessons, "exams" for exam papers (task 177). */
 	kind: "units" | "exams";
-	/** "7-science-block-3", the set's name in .studio/changes. */
+	/** "7-science-en-block-3", the set's name in .studio/changes. */
 	key: string;
 	grade: number;
 	subject: string;
+	/** The course's teaching language (task 224). */
+	language: string;
 	/** The period for a units set, or "" for exams, which cover the whole course. */
 	period: string;
 	state: "pending" | "rejected";

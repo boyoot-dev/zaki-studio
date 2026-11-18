@@ -41,6 +41,7 @@ function row(id: string, pages: number, over: Partial<FileRow> = {}): FileRow {
 		path: `Grade 7/Science/${id}.pdf`,
 		grade: 7,
 		subject: "science",
+		language: "en",
 		block: "3",
 		kind: "sheet",
 		pages,
@@ -124,7 +125,7 @@ function course(): ModelCourse {
 /** Everything the checks need: the period's units, the register and its text. */
 function given(): Given {
 	return {
-		target: { grade: 7, subject: "science", period: "block-3" },
+		target: { grade: 7, subject: "science", language: "en", period: "block-3" },
 		units: course().units.filter((unit) => unit.period === "block-3"),
 		files: [row(ID, 8), row(OTHER, 3)],
 		page: (id, page) => PAGES[id]?.[page] ?? "",
@@ -139,6 +140,7 @@ function changeSet(
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
 		period: "block-3",
 		units: [
 			{
@@ -384,7 +386,12 @@ describe("a period with no unit yet", () => {
 	it("reads the units the model wrote from the notes alone", () => {
 		const parsed = parseChangeSet(newBlockSet(), {
 			...given(),
-			target: { grade: 7, subject: "science", period: "block-1" },
+			target: {
+				grade: 7,
+				subject: "science",
+				language: "en",
+				period: "block-1",
+			},
 			units: [],
 		});
 		if (!parsed.ok) throw new Error(parsed.issue);
@@ -394,7 +401,12 @@ describe("a period with no unit yet", () => {
 	it("adds the proposed units to an empty course, as one choice asks", () => {
 		const parsed = parseChangeSet(newBlockSet(), {
 			...given(),
-			target: { grade: 7, subject: "science", period: "block-1" },
+			target: {
+				grade: 7,
+				subject: "science",
+				language: "en",
+				period: "block-1",
+			},
 			units: [],
 		});
 		if (!parsed.ok) throw new Error(parsed.issue);

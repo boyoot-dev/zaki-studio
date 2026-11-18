@@ -34,6 +34,7 @@ import {
 	parseChangeSet,
 	reviewUnits,
 } from "../shared/changes.ts";
+import { rowCourse } from "../shared/convert.ts";
 import {
 	type ExamChoice,
 	type ExamGiven,
@@ -51,7 +52,7 @@ import { applyExamFix } from "../shared/exam-numbers.ts";
 import { GRADE_MAX, GRADE_MIN } from "../shared/format/grades.ts";
 import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
-import { emptyCourse } from "../shared/model.ts";
+import { emptyCourse, sameCourse } from "../shared/model.ts";
 import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes.ts";
 import {
 	type AcceptChoice,
@@ -112,14 +113,9 @@ export function writeUnitsSettings(
 /** The course a target names, or null when the model has no such course. */
 export function targetCourse(
 	model: CurriculumModel,
-	target: { grade: number; subject: string },
+	target: { grade: number; subject: string; language: string },
 ): ModelCourse | null {
-	return (
-		model.courses.find(
-			(course) =>
-				course.grade === target.grade && course.subject === target.subject,
-		) ?? null
-	);
+	return model.courses.find((course) => sameCourse(course, target)) ?? null;
 }
 
 /** A target the model may build, and whether it is a course the project has not got yet. */
@@ -146,10 +142,11 @@ export function allowedTarget(
 	model: CurriculumModel,
 	grade: unknown,
 	subject: unknown,
+	language: unknown,
 	period: unknown,
 	subjectIds: readonly string[],
 ): AllowedTarget | null {
-	const target = targetOf(grade, subject, period);
+	const target = targetOf(grade, subject, language, period);
 	if (target === null) return null;
 	if (target.grade < GRADE_MIN || target.grade > GRADE_MAX) return null;
 	if (!subjectIds.includes(target.subject)) return null;
@@ -165,9 +162,10 @@ export function allowedExamTarget(
 	model: CurriculumModel,
 	grade: unknown,
 	subject: unknown,
+	language: unknown,
 	subjectIds: readonly string[],
 ): AllowedExamTarget | null {
-	const target = examTargetOf(grade, subject);
+	const target = examTargetOf(grade, subject, language);
 	if (target === null) return null;
 	if (target.grade < GRADE_MIN || target.grade > GRADE_MAX) return null;
 	if (!subjectIds.includes(target.subject)) return null;
@@ -200,7 +198,8 @@ function givenFor(
 	allowNewUnits = false,
 ) {
 	const course =
-		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
+		targetCourse(model, target) ??
+		emptyCourse(target.grade, target.subject, target.language);
 	return {
 		target,
 		units: periodUnits(course, target.period),
@@ -219,7 +218,8 @@ function examGivenFor(
 	target: ExamTarget,
 ): ExamGiven {
 	const course =
-		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
+		targetCourse(model, target) ??
+		emptyCourse(target.grade, target.subject, target.language);
 	return {
 		target,
 		periods: [...periodIds(model.curriculum.periods)],
@@ -248,6 +248,8 @@ export type StoredChange = {
 	/** True when the set was written for a period with no unit yet, so accepting one of its
 	 * units leaves the rest acceptable (task 178). */
 	newUnits?: boolean;
+	/** The course's teaching language; a set from before task 224 has none and is converted. */
+	language?: string;
 	set: unknown;
 };
 
@@ -275,6 +277,7 @@ function storedAt(path: string | null): StoredChange | null {
 				? raw.accepted.filter((key): key is string => typeof key === "string")
 				: [],
 			newUnits: raw.newUnits === true,
+			...(typeof raw.language === "string" ? { language: raw.language } : {}),
 			set: raw.set,
 		};
 	} catch {
@@ -297,7 +300,11 @@ function saveStored(
 	if (path === null) return failure("invalidName");
 	try {
 		mkdirSync(join(root, CHANGES_DIR), { recursive: true });
-		writeFileSync(path, `${JSON.stringify(stored, null, "\t")}\n`, "utf8");
+		writeFileSync(
+			path,
+			`${JSON.stringify({ ...stored, language: target.language }, null, "\t")}\n`,
+			"utf8",
+		);
 		return { ok: true };
 	} catch {
 		return failure("unreadable");
@@ -305,45 +312,72 @@ function saveStored(
 }
 
 /** The exam change set's own file, or null when the course could not name one. */
-export function examFile(
-	root: string,
-	grade: number,
-	subject: string,
-): string | null {
-	const name = examName(grade, subject);
+export function examFile(root: string, target: ExamTarget): string | null {
+	const name = examName(target.grade, target.subject, target.language);
 	if (name === null) return null;
 	return safePath(root, `${CHANGES_DIR}/${name}-exams.json`);
 }
 
-/** The name an exam change set takes in .studio/changes and in the review's key: "9-arabic". */
-export function examKey(grade: number, subject: string): string | null {
-	return examName(grade, subject);
+/** The name an exam change set takes in .studio/changes and in the review's key: "9-arabic-ar". */
+export function examKey(target: ExamTarget): string | null {
+	return examName(target.grade, target.subject, target.language);
 }
 
 /** A stored exam change set for a course, or null. */
 export function readExamStored(
 	root: string,
-	grade: number,
-	subject: string,
+	target: ExamTarget,
 ): StoredChange | null {
-	return storedAt(examFile(root, grade, subject));
+	return storedAt(examFile(root, target));
 }
 
 /** Writes an exam change set under .studio/changes, replacing what was there. */
 function saveExamStored(
 	root: string,
-	grade: number,
-	subject: string,
+	target: ExamTarget,
 	stored: StoredChange,
 ): Failure | { ok: true } {
-	const path = examFile(root, grade, subject);
+	const path = examFile(root, target);
 	if (path === null) return failure("invalidName");
 	try {
 		mkdirSync(join(root, CHANGES_DIR), { recursive: true });
-		writeFileSync(path, `${JSON.stringify(stored, null, "\t")}\n`, "utf8");
+		writeFileSync(
+			path,
+			`${JSON.stringify({ ...stored, language: target.language }, null, "\t")}\n`,
+			"utf8",
+		);
 		return { ok: true };
 	} catch {
 		return failure("unreadable");
+	}
+}
+
+/**
+ * Moves a set from before task 224 to the name its course has now, with its language written
+ * in. Nothing is lost when it fails: the set is read again under its old name next time.
+ */
+function moveStored(
+	root: string,
+	from: string,
+	to: string,
+	language: string,
+): void {
+	const source = safePath(root, `${CHANGES_DIR}/${from}`);
+	const target = safePath(root, `${CHANGES_DIR}/${to}`);
+	if (source === null || target === null || existsSync(target)) return;
+	try {
+		const value = JSON.parse(readFileSync(source, "utf8")) as Record<
+			string,
+			unknown
+		>;
+		writeFileSync(
+			target,
+			`${JSON.stringify({ ...value, language }, null, "\t")}\n`,
+			"utf8",
+		);
+		rmSync(source, { force: true });
+	} catch {
+		// Left as it was.
 	}
 }
 
@@ -385,19 +419,30 @@ export function readChangeSets(
 			model: stored.model,
 			accepted: stored.accepted,
 		};
+		// A set from before task 224 names a language copy (`chemistry-ar`) and no language.
+		const named =
+			typeof raw.subject === "string"
+				? rowCourse(raw.subject, stored.language)
+				: null;
+		if (named === null) continue;
 		if (stored.kind === "exams") {
-			const target = examTargetOf(raw.grade, raw.subject);
+			const target = examTargetOf(raw.grade, named.subject, named.language);
 			if (target === null) continue;
-			if (`${examName(target.grade, target.subject)}-exams.json` !== name)
-				continue;
+			const key = examName(target.grade, target.subject, target.language);
+			if (key === null) continue;
+			if (`${key}-exams.json` !== name) {
+				// An old set under its old name moves to the new one, once.
+				if (stored.language !== undefined) continue;
+				moveStored(root, name, `${key}-exams.json`, target.language);
+			}
 			const course = targetCourse(model, target);
 			const given = examGivenFor(model, files, target);
-			const key = examName(target.grade, target.subject) ?? name;
 			const base = {
 				...common,
 				key,
 				grade: target.grade,
 				subject: target.subject,
+				language: target.language,
 				period: "",
 			};
 			const parsed = parseExamChangeSet(stored.set, given);
@@ -423,9 +468,19 @@ export function readChangeSets(
 			});
 			continue;
 		}
-		const target = targetOf(raw.grade, raw.subject, raw.period);
+		const target = targetOf(
+			raw.grade,
+			named.subject,
+			named.language,
+			raw.period,
+		);
 		if (target === null) continue;
-		if (`${changeName(target)}.json` !== name) continue;
+		const changeKey = changeName(target);
+		if (changeKey === null) continue;
+		if (`${changeKey}.json` !== name) {
+			if (stored.language !== undefined) continue;
+			moveStored(root, name, `${changeKey}.json`, target.language);
+		}
 		const given = givenFor(
 			root,
 			model,
@@ -435,9 +490,10 @@ export function readChangeSets(
 		);
 		const base = {
 			...common,
-			key: changeName(target) ?? name,
+			key: changeKey,
 			grade: target.grade,
 			subject: target.subject,
+			language: target.language,
 			period: target.period,
 		};
 		const parsed = parseChangeSet(stored.set, given);
@@ -525,16 +581,18 @@ export function acceptChange(input: {
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	const course =
 		targetCourse(input.model, input.target) ??
-		emptyCourse(input.target.grade, input.target.subject);
+		emptyCourse(
+			input.target.grade,
+			input.target.subject,
+			input.target.language,
+		);
 	const merged = mergeCourse(course, parsed.set, input.choice);
 	const exists = targetCourse(input.model, input.target) !== null;
 	const next: CurriculumModel = {
 		...input.model,
 		courses: exists
 			? input.model.courses.map((entry) =>
-					entry.grade === course.grade && entry.subject === course.subject
-						? merged
-						: entry,
+					sameCourse(entry, course) ? merged : entry,
 				)
 			: [...input.model.courses, merged],
 	};
@@ -603,7 +661,7 @@ export function saveExamChangeSet(
 	const given = examGivenFor(model, files, target);
 	const parsed = parseExamChangeSet(set, given);
 	if (!parsed.ok) return failure("refused", parsed.issue);
-	return saveExamStored(root, target.grade, target.subject, {
+	return saveExamStored(root, target, {
 		kind: "exams",
 		state: "pending",
 		at: isoDay(today),
@@ -625,11 +683,7 @@ export function acceptExamChange(input: {
 	target: ExamTarget;
 	choice: ExamChoice;
 }): Failure | { ok: true; left: number } {
-	const stored = readExamStored(
-		input.root,
-		input.target.grade,
-		input.target.subject,
-	);
+	const stored = readExamStored(input.root, input.target);
 	if (stored === null || stored.state !== "pending" || stored.kind !== "exams")
 		return failure("missing", "no exam change set to accept");
 	const given = examGivenFor(input.model, input.files, input.target);
@@ -637,22 +691,24 @@ export function acceptExamChange(input: {
 	if (!parsed.ok) return failure("refused", parsed.issue);
 	const course =
 		targetCourse(input.model, input.target) ??
-		emptyCourse(input.target.grade, input.target.subject);
+		emptyCourse(
+			input.target.grade,
+			input.target.subject,
+			input.target.language,
+		);
 	const merged = mergeExams(course, parsed.set, input.choice);
 	const exists = targetCourse(input.model, input.target) !== null;
 	const next: CurriculumModel = {
 		...input.model,
 		courses: exists
 			? input.model.courses.map((entry) =>
-					entry.grade === course.grade && entry.subject === course.subject
-						? merged
-						: entry,
+					sameCourse(entry, course) ? merged : entry,
 				)
 			: [...input.model.courses, merged],
 	};
 	const written = writeModel(input.root, next);
 	if (!written.ok) return written;
-	const path = examFile(input.root, input.target.grade, input.target.subject);
+	const path = examFile(input.root, input.target);
 	if (path === null) return failure("invalidName");
 	if (input.choice.kind === "all") {
 		rmSync(path, { force: true });
@@ -671,12 +727,10 @@ export function acceptExamChange(input: {
 		rmSync(path, { force: true });
 		return { ok: true, left };
 	}
-	const kept = saveExamStored(
-		input.root,
-		input.target.grade,
-		input.target.subject,
-		{ ...stored, accepted },
-	);
+	const kept = saveExamStored(input.root, input.target, {
+		...stored,
+		accepted,
+	});
 	return kept.ok ? { ok: true, left } : kept;
 }
 
@@ -695,11 +749,7 @@ export function fixExamChange(input: {
 	/** The number to set, or null to remove the field. */
 	value: number | null;
 }): Failure | { ok: true } {
-	const stored = readExamStored(
-		input.root,
-		input.target.grade,
-		input.target.subject,
-	);
+	const stored = readExamStored(input.root, input.target);
 	if (stored === null || stored.state !== "pending" || stored.kind !== "exams")
 		return failure("missing", "no exam change set to fix");
 	const fixed = applyExamFix(stored.set, input.path, input.value);
@@ -713,7 +763,7 @@ export function fixExamChange(input: {
 		examGivenFor(input.model, input.files, input.target),
 	);
 	if (!parsed.ok) return failure("refused", parsed.issue);
-	return saveExamStored(input.root, input.target.grade, input.target.subject, {
+	return saveExamStored(input.root, input.target, {
 		...stored,
 		set: fixed,
 	});
@@ -722,12 +772,11 @@ export function fixExamChange(input: {
 /** Keeps a rejected exam change set for reference until the author deletes it. */
 export function rejectExamChange(
 	root: string,
-	grade: number,
-	subject: string,
+	target: ExamTarget,
 ): Failure | { ok: true } {
-	const stored = readExamStored(root, grade, subject);
+	const stored = readExamStored(root, target);
 	if (stored === null) return failure("missing");
-	return saveExamStored(root, grade, subject, {
+	return saveExamStored(root, target, {
 		...stored,
 		state: "rejected",
 	});
@@ -736,10 +785,9 @@ export function rejectExamChange(
 /** Deletes an exam change set's file, rejected or not. */
 export function deleteExamChange(
 	root: string,
-	grade: number,
-	subject: string,
+	target: ExamTarget,
 ): Failure | { ok: true } {
-	const path = examFile(root, grade, subject);
+	const path = examFile(root, target);
 	if (path === null) return failure("invalidName");
 	try {
 		rmSync(path, { force: true });
@@ -783,7 +831,7 @@ export function prepareUnitsJob(
 	const courses = input.targets.flatMap((target) => {
 		const course =
 			targetCourse(input.model, target) ??
-			emptyCourse(target.grade, target.subject);
+			emptyCourse(target.grade, target.subject, target.language);
 		const folder = changeName(target);
 		if (folder === null) return [];
 		const notes = notesOrder(
@@ -856,7 +904,12 @@ export function collectUnitsJob(
 	if (record?.kind !== "units") return failure("invalidName");
 	const folders = new Map(
 		record.courses.flatMap((course) => {
-			const target = targetOf(course.grade, course.subject, course.period);
+			const target = targetOf(
+				course.grade,
+				course.subject,
+				course.language,
+				course.period,
+			);
 			if (target === null || changeName(target) !== course.folder) return [];
 			return [[course.folder, target] as const];
 		}),

@@ -105,6 +105,7 @@ export function writeExamsFolder(input: ExamsFolderInput): ExamsFolderResult {
 				folder: entry.folder,
 				grade: entry.course.grade,
 				subject: entry.course.subject,
+				language: entry.course.language,
 				exams: entry.course.exams.length,
 				notes: entry.notes.length,
 			});

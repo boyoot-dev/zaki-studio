@@ -180,7 +180,7 @@ export function writeModel(
 		);
 		for (const course of model.courses) {
 			writeFileSync(
-				join(dir, courseFile(course.grade, course.subject)),
+				join(dir, courseFile(course.grade, course.subject, course.language)),
 				modelFileText(course),
 				"utf8",
 			);
@@ -263,6 +263,50 @@ export function readModel(
 	return holder.model.value;
 }
 
+/**
+ * Moves courses to their new teaching language (task 225): the model's course and the
+ * register rows of that course take the new language, so the units and the files stay with
+ * it. The project file has already been written; this follows it.
+ */
+export function relabelCourses(
+	root: string,
+	renamed: readonly {
+		grade: number;
+		subject: string;
+		from: string;
+		language: string;
+	}[],
+): Failure | { ok: true } {
+	const model = readModel(root);
+	if (model.ok) {
+		const courses = model.model.courses.map((course) => {
+			const change = renamed.find(
+				(entry) =>
+					entry.grade === course.grade &&
+					entry.subject === course.subject &&
+					entry.from === course.language,
+			);
+			return change === undefined
+				? course
+				: { ...course, language: change.language };
+		});
+		const written = writeModel(root, { ...model.model, courses });
+		if (!written.ok) return written;
+	}
+	const files = readFiles(root);
+	if (!files.ok) return files.code === "missing" ? { ok: true } : files;
+	const rows = files.files.map((row) => {
+		const change = renamed.find(
+			(entry) =>
+				entry.grade === row.grade &&
+				entry.subject === row.subject &&
+				entry.from === row.language,
+		);
+		return change === undefined ? row : { ...row, language: change.language };
+	});
+	return writeFiles(root, rows);
+}
+
 /** Writes the register rows adoption keeps, so a fact can name the file it came from. */
 export function writeFiles(
 	root: string,
@@ -326,13 +370,19 @@ export function readFiles(
 			id: row.id,
 			path: row.path,
 			grade: typeof row.grade === "number" ? row.grade : null,
-			// An old row may name a language copy (`math-ar`), which is its subject now (task 224).
-			subject:
-				typeof row.subject === "string" && row.subject !== "unknown"
-					? legacySubject(row.subject).subject
-					: typeof row.subject === "string"
-						? row.subject
-						: "",
+			// A row from before task 224 has no language and may name a language copy
+			// (`math-ar`): it reads as subject + language. A newer row keeps its own, even "".
+			...(typeof row.language === "string"
+				? {
+						subject: typeof row.subject === "string" ? row.subject : "",
+						language: row.language,
+					}
+				: typeof row.subject === "string" && row.subject !== "unknown"
+					? legacySubject(row.subject)
+					: {
+							subject: typeof row.subject === "string" ? row.subject : "",
+							language: "",
+						}),
 			block: typeof row.block === "string" ? row.block : "",
 			kind: typeof row.kind === "string" ? row.kind : "",
 			pages: typeof row.pages === "number" ? row.pages : null,

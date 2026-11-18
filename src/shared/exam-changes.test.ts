@@ -37,6 +37,7 @@ function row(id: string, kind: string, over: Partial<FileRow> = {}): FileRow {
 		path: `Grade 9/Arabic/${id}.pdf`,
 		grade: 9,
 		subject: "arabic",
+		language: "en",
 		block: "1",
 		kind,
 		pages: 8,
@@ -166,7 +167,7 @@ function exam(over: Partial<BundleExam> = {}): BundleExam {
 /** The reader's view: the course, the periods, the register and today's exams. */
 function given(over: Partial<ExamGiven> = {}): ExamGiven {
 	return {
-		target: { grade: 9, subject: "arabic" },
+		target: { grade: 9, subject: "arabic", language: "en" },
 		periods: ["term-1"],
 		exams: [],
 		files: [
@@ -188,6 +189,7 @@ function changeSet(
 	return {
 		grade: 9,
 		subject: "arabic",
+		language: "en",
 		exams: [
 			examJson({
 				papers: [
@@ -257,6 +259,7 @@ describe("the format the model gets", () => {
 		const set = parsed({
 			grade: 9,
 			subject: "arabic",
+			language: "en",
 			exams: [
 				{
 					name: "Term 1",

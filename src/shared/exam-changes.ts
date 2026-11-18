@@ -11,6 +11,7 @@
 
 import type { ChangeRefusal } from "./changes.ts";
 import { textList } from "./changes.ts";
+import { rowCourse } from "./convert.ts";
 import {
 	BUNDLE_LIMITS,
 	type BundleExam,
@@ -56,7 +57,7 @@ export function fillExamIds(raw: unknown, now: readonly BundleExam[]): void {
 }
 
 /** One course an exam change set is for. An exam covers the whole course, not one period. */
-export type ExamTarget = { grade: number; subject: string };
+export type ExamTarget = { grade: number; subject: string; language: string };
 
 /** Everything an exam change set is checked against: the register and the course as it is now. */
 export type ExamGiven = {
@@ -175,11 +176,13 @@ export function examPeriodList(periods: readonly BundlePeriod[]): string {
 export function examCourseNow(course: {
 	grade: number;
 	subject: string;
+	language: string;
 	exams: readonly BundleExam[];
-}): { grade: number; subject: string; exams: BundleExam[] } {
+}): { grade: number; subject: string; language: string; exams: BundleExam[] } {
 	return {
 		grade: course.grade,
 		subject: course.subject,
+		language: course.language,
 		exams: course.exams.map((exam) => ({
 			...exam,
 			papers: exam.papers.map((paper) => ({
@@ -194,26 +197,35 @@ export function examCourseNow(course: {
 export function examCourseJson(course: {
 	grade: number;
 	subject: string;
+	language: string;
 	exams: readonly BundleExam[];
 }): string {
 	return `${JSON.stringify(examCourseNow(course), null, "\t")}\n`;
 }
 
-/** The name an exam change set's file and job folder take: "9-arabic". */
-export function examName(grade: number, subject: string): string | null {
+/** The name an exam change set's file and job folder take: "9-arabic-ar". */
+export function examName(
+	grade: number,
+	subject: string,
+	language: string,
+): string | null {
 	if (!Number.isInteger(grade) || grade < -1 || grade > 12) return null;
 	if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/.test(subject)) return null;
-	return `${grade}-${subject}`;
+	if (!/^[a-z]{2}$/.test(language)) return null;
+	return `${grade}-${subject}-${language}`;
 }
 
 /** The target an exam change set is for, from the values a payload carries, or null. */
 export function examTargetOf(
 	grade: unknown,
 	subject: unknown,
+	language: unknown,
 ): ExamTarget | null {
 	if (typeof grade !== "number" || !Number.isInteger(grade)) return null;
-	if (typeof subject !== "string") return null;
-	return examName(grade, subject) === null ? null : { grade, subject };
+	if (typeof subject !== "string" || typeof language !== "string") return null;
+	return examName(grade, subject, language) === null
+		? null
+		: { grade, subject, language };
 }
 
 /**
@@ -238,10 +250,19 @@ export function parseExamChangeSet(
 			issue: `the exam change set is not for Grade ${given.target.grade}`,
 			refused: [],
 		};
-	if (raw.subject !== given.target.subject)
+	// A set written before task 224 names a language copy (`chemistry-ar`): read it as its course.
+	const named =
+		typeof raw.subject === "string"
+			? rowCourse(raw.subject, raw.language ?? given.target.language)
+			: null;
+	if (
+		named === null ||
+		named.subject !== given.target.subject ||
+		named.language !== given.target.language
+	)
 		return {
 			ok: false,
-			issue: `the exam change set is not for ${given.target.subject}`,
+			issue: `the exam change set is not for ${given.target.subject} (${given.target.language})`,
 			refused: [],
 		};
 	if (!Array.isArray(raw.exams) || raw.exams.length === 0)
@@ -347,7 +368,8 @@ function parseSources(
 						(file) =>
 							file.id === entry &&
 							file.grade === given.target.grade &&
-							file.subject === given.target.subject,
+							file.subject === given.target.subject &&
+							file.language === given.target.language,
 					);
 					if (row === undefined) {
 						add(at, `"${entry}" is not a file of this course`);

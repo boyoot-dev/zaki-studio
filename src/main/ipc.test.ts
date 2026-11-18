@@ -59,6 +59,7 @@ function row(): FileRow {
 		path: "Grade 3/Math/sheet.pdf",
 		grade: 3,
 		subject: "math",
+		language: "en",
 		block: "1",
 		kind: "sheet",
 		pages: 0,
@@ -283,6 +284,7 @@ describe("the key on the IPC surface", () => {
 																								{
 																									grade: 3,
 																									subject: "math",
+																									language: "en",
 																									period: "block-1",
 																								},
 																							],

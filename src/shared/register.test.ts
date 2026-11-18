@@ -44,6 +44,7 @@ function row(path: string, id: string, over: Partial<FileRow> = {}): FileRow {
 		path,
 		grade: 3,
 		subject: "math",
+		language: "en",
 		block: "1",
 		kind: "sheet",
 		pages: 4,
@@ -283,6 +284,7 @@ describe("a register row", () => {
 			year: "current",
 			academicYear: "2026-27",
 			subject: "math",
+			language: "",
 			block: "1",
 			kind: "sheet",
 			pages: 4,
@@ -316,6 +318,8 @@ describe("a register row", () => {
 		expect(corrected).toMatchObject({
 			grade: 4,
 			subject: "physics",
+			// A plain subject says no language; the scan takes it from the project's course.
+			language: "",
 			block: "7",
 			kind: "exam",
 			authority: 1,
@@ -370,6 +374,7 @@ describe("the units new material touches", () => {
 		{
 			grade: 3,
 			subject: "math",
+			language: "en",
 			units: [
 				{
 					number: 1,
@@ -502,6 +507,7 @@ describe("the work folder's own files", () => {
 			path: "Grade 7/Science/sheet.pdf",
 			grade: 7,
 			subject: "science",
+			language: "en",
 			block: "1",
 			kind: "sheet",
 			pages: 8,

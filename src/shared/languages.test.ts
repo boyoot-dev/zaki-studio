@@ -29,18 +29,38 @@ describe("language warnings", () => {
 	it("name a course taught or helped in a language Mr. Zaki can't use yet", () => {
 		expect(
 			languageWarnings([
-				{ grade: 7, subject: "physics", language: "de", support: [] },
+				{
+					grade: 7,
+					subject: "physics",
+					language: "de",
+					support: [],
+				},
 				{
 					grade: 3,
 					subject: "english",
 					language: "en",
 					support: ["native", "tr"],
 				},
-				{ grade: 8, subject: "french", language: "fr", support: ["ar"] },
+				{
+					grade: 8,
+					subject: "french",
+					language: "fr",
+					support: ["ar"],
+				},
 			]),
 		).toEqual([
-			{ grade: 7, subject: "physics", language: "de", kind: "teach" },
-			{ grade: 3, subject: "english", language: "tr", kind: "help" },
+			{
+				grade: 7,
+				subject: "physics",
+				language: "de",
+				kind: "teach",
+			},
+			{
+				grade: 3,
+				subject: "english",
+				language: "tr",
+				kind: "help",
+			},
 		]);
 	});
 });
@@ -51,12 +71,14 @@ describe("a course's languages as the window sends them", () => {
 			cleanCourseLanguage({
 				grade: 3,
 				subject: "english",
+				from: "en",
 				language: "en",
 				support: ["native", "en", "ar", "native", "xx", "fr", "de"],
 			}),
 		).toEqual({
 			grade: 3,
 			subject: "english",
+			from: "en",
 			language: "en",
 			support: ["native", "ar", "fr"],
 		});
@@ -67,6 +89,7 @@ describe("a course's languages as the window sends them", () => {
 			cleanCourseLanguage({
 				grade: 3,
 				subject: "math",
+				from: "en",
 				language: "Arabic",
 				support: [],
 			}),

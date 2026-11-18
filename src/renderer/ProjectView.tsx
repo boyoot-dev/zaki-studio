@@ -99,6 +99,7 @@ export function ProjectView({
 	const [coursePick, setCoursePick] = useState<{
 		grade: number;
 		subject: string;
+		language: string;
 		key: number;
 	} | null>(null);
 	const [exportSpec, setExportSpec] = useState<ExportSpec | null>(null);
@@ -218,7 +219,11 @@ export function ProjectView({
 	};
 
 	/** Opens the Curriculum tab at one course, from the export's exam warning line. */
-	const openCourse = (course: { grade: number; subject: string }) => {
+	const openCourse = (course: {
+		grade: number;
+		subject: string;
+		language: string;
+	}) => {
 		setCoursePick({ ...course, key: Date.now() });
 		setTab("curriculum");
 	};

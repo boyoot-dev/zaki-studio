@@ -249,6 +249,7 @@ describe("a scan of a project", { timeout: 30_000 }, () => {
 			path: "Grade 3/2026-2027/Math/Math-B1-Sheet1 - Main.pdf",
 			grade: 3,
 			subject: "math",
+			language: "",
 			block: "1",
 			kind: "sheet",
 			year: "current",

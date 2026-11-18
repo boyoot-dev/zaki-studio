@@ -110,10 +110,11 @@ export function emptyCourse(
 }
 
 /**
- * The model with each course's language and help languages taken from the project file,
- * which is where the author sets them (task 225): the project is the one source, and the
- * model's copies are refreshed from it whenever the model is read or written. A course the
- * project has no entry for keeps its own.
+ * The model with each course's help languages taken from the project file, which is where the
+ * author sets them (task 225): the project is the one source, and the model's copies are
+ * refreshed from it whenever the model is read or written. The teaching language is part of
+ * the course's identity, so a course is found by grade, subject and language; one the project
+ * has no entry for keeps its own.
  */
 export function withProjectLanguages(
 	model: CurriculumModel,
@@ -124,12 +125,26 @@ export function withProjectLanguages(
 		courses: model.courses.map((course) => {
 			const entry = project.grades
 				.find((grade) => grade.grade === course.grade)
-				?.subjects.find((subject) => subject.subject === course.subject);
+				?.subjects.find(
+					(subject) =>
+						subject.subject === course.subject &&
+						subject.language === course.language,
+				);
 			return entry === undefined
 				? course
-				: { ...course, language: entry.language, support: [...entry.support] };
+				: { ...course, support: [...entry.support] };
 		}),
 	};
+}
+
+/** True when two values name the same course: grade, subject and teaching language (task 224). */
+export function sameCourse(
+	a: { grade: number | null; subject: string; language: string },
+	b: { grade: number | null; subject: string; language: string },
+): boolean {
+	return (
+		a.grade === b.grade && a.subject === b.subject && a.language === b.language
+	);
 }
 
 /** `.studio/model/curriculum.json`: what a bundle's header says, before it is exported. */
@@ -166,6 +181,8 @@ export type FileRow = {
 	path: string;
 	grade: number | null;
 	subject: string;
+	/** The teaching language of the file's course; "" when the scan could not tell (task 224). */
+	language: string;
 	block: string;
 	kind: string;
 	pages: number | null;
@@ -204,9 +221,16 @@ export type ModelSummary = {
 	exams: number;
 };
 
-/** The file name of one course in `.studio/model/`, e.g. "grade-7-science.json". */
-export function courseFile(grade: number, subject: string): string {
-	return `grade-${grade}-${subject}.json`;
+/**
+ * The file name of one course in `.studio/model/`, e.g. "grade-7-science-en.json": the
+ * language is part of the course (task 224), so one subject in two languages is two files.
+ */
+export function courseFile(
+	grade: number,
+	subject: string,
+	language: string,
+): string {
+	return `grade-${grade}-${subject}-${language}.json`;
 }
 
 /**

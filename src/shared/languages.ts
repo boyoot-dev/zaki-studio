@@ -74,10 +74,15 @@ function pick(course: { grade: number; subject: string }) {
 /** The help languages a menu offers beside the teaching language: the child's own first. */
 export const HELP_CHOICES: readonly string[] = [NATIVE, "ar", "en", "fr"];
 
-/** One course's new teaching and help languages, as the window sends them. */
+/**
+ * One course's new teaching and help languages, as the window sends them. `from` is the
+ * course's teaching language now, which with grade and subject names the course; it is the
+ * same as `language` unless the teaching language changes.
+ */
 export type CourseLanguage = {
 	grade: number;
 	subject: string;
+	from: string;
 	language: string;
 	support: string[];
 };
@@ -100,6 +105,7 @@ export function cleanCourseLanguage(
 	return {
 		grade: value.grade,
 		subject: value.subject,
+		from: LANGUAGE_CODES.includes(value.from) ? value.from : value.language,
 		language: value.language,
 		support,
 	};

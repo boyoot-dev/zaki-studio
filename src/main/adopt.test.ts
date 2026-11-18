@@ -95,10 +95,11 @@ beforeEach(() => {
 		}),
 	);
 	write(
-		join(curriculum, "grade-7-science.json"),
+		join(curriculum, "grade-7-science-en.json"),
 		JSON.stringify({
 			curriculum: "kestrel",
 			subject: "science",
+			language: "en",
 			grade: 7,
 			examStyle: "One paper, short answers.",
 			exams: [
@@ -289,7 +290,7 @@ describe("adopting a material folder", () => {
 
 	it("writes nothing when the curriculum folder is broken", () => {
 		const before = snapshot(materials);
-		write(join(curriculum, "grade-7-science.json"), "{ not json");
+		write(join(curriculum, "grade-7-science-en.json"), "{ not json");
 		const outcome = adoptMaterial(materials, work, curriculum, ID);
 		expect(outcome.ok).toBe(false);
 		expect(snapshot(materials)).toEqual(before);

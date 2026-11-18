@@ -7,6 +7,8 @@
 // 226) gives the same rows the same ids and children keep their progress. Pure and tested;
 // main/model.ts and main/project files write the converted files back once, with a backup.
 
+import { LANGUAGE_CODES } from "./format/bundle.ts";
+
 /** The old subject ids, as subject + teaching language. The table never grows. */
 export const LEGACY_SUBJECTS: Readonly<
 	Record<string, { subject: string; language: string }>
@@ -31,12 +33,70 @@ export const LEGACY_SUBJECTS: Readonly<
 	french: { subject: "french", language: "fr" },
 };
 
-/** An old subject id as subject + language; an id the table doesn't know stays, in English. */
+/**
+ * An old subject id as subject + language. Besides the table, any `<subject>-<code>` reads as
+ * that subject in that language (a register's `_subjects.csv` names `chemistry-fr`, which the
+ * old list never had). An id the table doesn't know stays, in English.
+ */
 export function legacySubject(id: string): {
 	subject: string;
 	language: string;
 } {
-	return LEGACY_SUBJECTS[id] ?? { subject: id, language: "en" };
+	const known = LEGACY_SUBJECTS[id];
+	if (known !== undefined) return known;
+	const split = /^(.+)-([a-z]{2})$/.exec(id);
+	if (split !== null && LANGUAGE_CODES.includes(split[2] ?? ""))
+		return { subject: split[1] ?? id, language: split[2] ?? "en" };
+	return { subject: id, language: "en" };
+}
+
+/**
+ * A subject token as a folder map or a guess gives it: `chemistry-ar` is chemistry taught in
+ * Arabic; a plain `chemistry` says no language, which stays "" for the scan to settle from the
+ * project's courses (task 224).
+ */
+export function tokenCourse(token: string): {
+	subject: string;
+	language: string;
+} {
+	const known = LEGACY_SUBJECTS[token];
+	if (known !== undefined && token.endsWith(`-${known.language}`)) return known;
+	const split = /^(.+)-([a-z]{2})$/.exec(token);
+	if (split !== null && LANGUAGE_CODES.includes(split[2] ?? ""))
+		return { subject: split[1] ?? token, language: split[2] ?? "" };
+	return { subject: token, language: "" };
+}
+
+/**
+ * The language of a row that says none, from the project: the one course of that subject in
+ * that grade. Two courses (in two languages) leave it "", for the author to settle.
+ */
+export function settleLanguage<
+	T extends { grade: number | null; subject: string; language: string },
+>(
+	row: T,
+	courses: readonly { grade: number; subject: string; language: string }[],
+): T {
+	if (row.language !== "") return row;
+	const found = courses.filter(
+		(course) => course.grade === row.grade && course.subject === row.subject,
+	);
+	return found.length === 1 && found[0] !== undefined
+		? { ...row, language: found[0].language }
+		: row;
+}
+
+/**
+ * A subject and language as a register row or a stored set names them: a new row says both;
+ * an old one names a language copy (`chemistry-ar`) and no language, which is converted.
+ */
+export function rowCourse(
+	subject: string,
+	language: unknown,
+): { subject: string; language: string } {
+	if (typeof language === "string" && language !== "")
+		return { subject, language };
+	return legacySubject(subject);
 }
 
 /**

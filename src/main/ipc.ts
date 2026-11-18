@@ -61,7 +61,11 @@ import type {
 import type { ExamTarget } from "../shared/exam-changes.ts";
 import type { JobTool } from "../shared/job.ts";
 import { reportMeta } from "../shared/lists.ts";
-import type { CurriculumModel, FileRow } from "../shared/model.ts";
+import {
+	type CurriculumModel,
+	type FileRow,
+	sameCourse,
+} from "../shared/model.ts";
 import { notingOrder } from "../shared/notes.ts";
 import { ALL_NOTES, notesFilterOf } from "../shared/notes-filter.ts";
 import { rememberRecent } from "../shared/recent.ts";
@@ -148,6 +152,7 @@ import {
 	readModel,
 	readPageText,
 	readReport,
+	relabelCourses,
 	setFileFields,
 } from "./model.ts";
 import {
@@ -435,6 +440,7 @@ function changeContext(
 	where: string,
 	grade: unknown,
 	subject: unknown,
+	language: unknown,
 	period: unknown,
 ): { model: CurriculumModel; rows: FileRow[]; target: Target } | Failure {
 	const model = readModel(where);
@@ -443,6 +449,7 @@ function changeContext(
 		model.model,
 		grade,
 		subject,
+		language,
 		period,
 		SUBJECT_IDS,
 	);
@@ -458,10 +465,17 @@ function examContext(
 	where: string,
 	grade: unknown,
 	subject: unknown,
+	language: unknown,
 ): { model: CurriculumModel; rows: FileRow[]; target: ExamTarget } | Failure {
 	const model = readModel(where);
 	if (!model.ok) return model;
-	const target = allowedExamTarget(model.model, grade, subject, SUBJECT_IDS);
+	const target = allowedExamTarget(
+		model.model,
+		grade,
+		subject,
+		language,
+		SUBJECT_IDS,
+	);
 	if (target === null)
 		return { ok: false, code: "missing", detail: "no such course" };
 	const files = readFiles(where);
@@ -617,7 +631,12 @@ export function registerIpc(): void {
 		(event, root: unknown, changes: unknown): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			return setCourseLanguages(where, changes);
+			const set = setCourseLanguages(where, changes);
+			if (!set.ok) return set;
+			// A course taught in another language is relabelled with its units and its files.
+			return set.renamed.length === 0
+				? { ok: true }
+				: relabelCourses(where, set.renamed);
 		},
 	);
 
@@ -645,7 +664,13 @@ export function registerIpc(): void {
 
 	ipcMain.handle(
 		"studio:course",
-		(event, root: unknown, grade: unknown, subject: unknown) => {
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		) => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
 			const model = readModel(where);
@@ -654,10 +679,13 @@ export function registerIpc(): void {
 				typeof grade === "number" && Number.isInteger(grade)
 					? grade
 					: Number.NaN;
-			const wantedSubject = text(subject, 60);
-			const course = model.model.courses.find(
-				(entry) =>
-					entry.grade === wantedGrade && entry.subject === wantedSubject,
+			const wanted = {
+				grade: wantedGrade,
+				subject: text(subject, 60),
+				language: text(language, 3),
+			};
+			const course = model.model.courses.find((entry) =>
+				sameCourse(entry, wanted),
 			);
 			if (course === undefined)
 				return { ok: false as const, code: "missing" as const };
@@ -1341,7 +1369,7 @@ export function registerIpc(): void {
 			// per course and period (task 168).
 			const byCourse = new Map<string, FileRow[]>();
 			for (const row of files.files) {
-				const key = `${row.grade ?? "?"}|${row.subject}`;
+				const key = `${row.grade ?? "?"}|${row.subject}|${row.language}`;
 				const bucket = byCourse.get(key);
 				if (bucket === undefined) byCourse.set(key, [row]);
 				else bucket.push(row);
@@ -1358,6 +1386,7 @@ export function registerIpc(): void {
 					const target: Target = {
 						grade: course.grade,
 						subject: course.subject,
+						language: course.language,
 						period,
 					};
 					const key = changeName(target);
@@ -1367,10 +1396,13 @@ export function registerIpc(): void {
 			for (const row of files.files) {
 				if (row.grade === null || !noted.has(row.id)) continue;
 				for (const period of blockPeriods(row.block)) {
+					// A row whose language is not settled yet can't name its course.
+					if (row.language === "") continue;
 					const known = allowedTarget(
 						model.model,
 						row.grade,
 						row.subject,
+						row.language,
 						period,
 						SUBJECT_IDS,
 					);
@@ -1382,7 +1414,9 @@ export function registerIpc(): void {
 			for (const target of unitTargets.values()) {
 				const course = targetCourse(model.model, target);
 				const courseRows =
-					byCourse.get(`${target.grade}|${target.subject}`) ?? [];
+					byCourse.get(
+						`${target.grade}|${target.subject}|${target.language}`,
+					) ?? [];
 				const units = course === null ? [] : periodUnits(course, target.period);
 				const rows = targetRows(courseRows, target);
 				const key = changeName(target);
@@ -1409,26 +1443,37 @@ export function registerIpc(): void {
 
 			const examTargetsNow = new Map<string, ExamTarget>();
 			for (const course of model.model.courses) {
-				examTargetsNow.set(`${course.grade}|${course.subject}`, {
-					grade: course.grade,
-					subject: course.subject,
-				});
+				examTargetsNow.set(
+					`${course.grade}|${course.subject}|${course.language}`,
+					{
+						grade: course.grade,
+						subject: course.subject,
+						language: course.language,
+					},
+				);
 			}
 			for (const row of files.files) {
 				if (row.grade === null || !noted.has(row.id)) continue;
 				if (row.kind !== "exam" && row.kind !== "mark-scheme") continue;
+				if (row.language === "") continue;
 				const known = allowedExamTarget(
 					model.model,
 					row.grade,
 					row.subject,
+					row.language,
 					SUBJECT_IDS,
 				);
 				if (known !== null)
-					examTargetsNow.set(`${known.grade}|${known.subject}`, known);
+					examTargetsNow.set(
+						`${known.grade}|${known.subject}|${known.language}`,
+						known,
+					);
 			}
 			for (const examTarget of examTargetsNow.values()) {
 				const courseRows =
-					byCourse.get(`${examTarget.grade}|${examTarget.subject}`) ?? [];
+					byCourse.get(
+						`${examTarget.grade}|${examTarget.subject}|${examTarget.language}`,
+					) ?? [];
 				const examRowsNow = examRows(courseRows, examTarget);
 				if (examRowsNow.length === 0) continue;
 				const years = examYears(courseRows, examTarget, noted);
@@ -1443,9 +1488,7 @@ export function registerIpc(): void {
 					),
 					yearsLeftOut: years.leftOut,
 					pending: sets.sets.some(
-						(set) =>
-							set.key === examKey(examTarget.grade, examTarget.subject) &&
-							set.state === "pending",
+						(set) => set.key === examKey(examTarget) && set.state === "pending",
 					),
 					newCourse: course === null,
 				});
@@ -1454,10 +1497,14 @@ export function registerIpc(): void {
 				(a, b) =>
 					a.grade - b.grade ||
 					a.subject.localeCompare(b.subject) ||
+					a.language.localeCompare(b.language) ||
 					a.period.localeCompare(b.period),
 			);
 			examTargets.sort(
-				(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),
+				(a, b) =>
+					a.grade - b.grade ||
+					a.subject.localeCompare(b.subject) ||
+					a.language.localeCompare(b.language),
 			);
 			return {
 				ok: true,
@@ -1480,11 +1527,12 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			period: unknown,
 		): Promise<UnitsPlanView> => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = changeContext(where, grade, subject, period);
+			const context = changeContext(where, grade, subject, language, period);
 			if ("ok" in context) return context;
 			const rules = unitsRulesText();
 			if (rules === "") return failure("missing");
@@ -1513,12 +1561,13 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			period: unknown,
 			limit: unknown,
 		): Promise<ChangesWritten> => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = changeContext(where, grade, subject, period);
+			const context = changeContext(where, grade, subject, language, period);
 			if ("ok" in context) return context;
 			const key = loadKey(userData(), secrets);
 			if (key === null) return { ok: false, code: "noKey" };
@@ -1568,6 +1617,7 @@ export function registerIpc(): void {
 					model.model,
 					raw.grade,
 					raw.subject,
+					raw.language,
 					raw.period,
 					SUBJECT_IDS,
 				);
@@ -1651,13 +1701,14 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			period: unknown,
 			unit: unknown,
 			lesson: unknown,
 		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = changeContext(where, grade, subject, period);
+			const context = changeContext(where, grade, subject, language, period);
 			if ("ok" in context) return context;
 			const wantedUnit =
 				typeof unit === "number" && Number.isInteger(unit) ? unit : undefined;
@@ -1694,11 +1745,12 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			period: unknown,
 		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = changeContext(where, grade, subject, period);
+			const context = changeContext(where, grade, subject, language, period);
 			if ("ok" in context) return context;
 			return rejectChange(where, context.target);
 		},
@@ -1711,11 +1763,12 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			period: unknown,
 		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = changeContext(where, grade, subject, period);
+			const context = changeContext(where, grade, subject, language, period);
 			if ("ok" in context) return context;
 			return deleteChange(where, context.target);
 		},
@@ -1744,10 +1797,11 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 		): Promise<ExamsPlanView> => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = examContext(where, grade, subject);
+			const context = examContext(where, grade, subject, language);
 			if ("ok" in context) return context;
 			const rules = examRulesText();
 			if (rules === "") return failure("missing");
@@ -1776,11 +1830,12 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			limit: unknown,
 		): Promise<ChangesWritten> => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = examContext(where, grade, subject);
+			const context = examContext(where, grade, subject, language);
 			if ("ok" in context) return context;
 			const key = loadKey(userData(), secrets);
 			if (key === null) return { ok: false, code: "noKey" };
@@ -1830,10 +1885,10 @@ export function registerIpc(): void {
 					model.model,
 					raw.grade,
 					raw.subject,
+					raw.language,
 					SUBJECT_IDS,
 				);
-				const key =
-					target === null ? null : examKey(target.grade, target.subject);
+				const key = target === null ? null : examKey(target);
 				if (target !== null && key !== null && !chosen.has(key))
 					chosen.set(key, target);
 			}
@@ -1913,12 +1968,13 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			exam: unknown,
 			paper: unknown,
 		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = examContext(where, grade, subject);
+			const context = examContext(where, grade, subject, language);
 			if ("ok" in context) return context;
 			const wantedExam =
 				typeof exam === "number" && Number.isInteger(exam) ? exam : undefined;
@@ -1952,12 +2008,13 @@ export function registerIpc(): void {
 			root: unknown,
 			grade: unknown,
 			subject: unknown,
+			language: unknown,
 			path: unknown,
 			value: unknown,
 		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = examContext(where, grade, subject);
+			const context = examContext(where, grade, subject, language);
 			if ("ok" in context) return context;
 			const wantedPath = text(path, 200);
 			if (!/^exams\[\d{1,3}\]\./.test(wantedPath))
@@ -1982,31 +2039,35 @@ export function registerIpc(): void {
 
 	ipcMain.handle(
 		"studio:rejectExams",
-		(event, root: unknown, grade: unknown, subject: unknown): Done => {
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = examContext(where, grade, subject);
+			const context = examContext(where, grade, subject, language);
 			if ("ok" in context) return context;
-			return rejectExamChange(
-				where,
-				context.target.grade,
-				context.target.subject,
-			);
+			return rejectExamChange(where, context.target);
 		},
 	);
 
 	ipcMain.handle(
 		"studio:deleteExams",
-		(event, root: unknown, grade: unknown, subject: unknown): Done => {
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		): Done => {
 			const where = text(root, 400);
 			if (!allowed(event, where)) return notOpen();
-			const context = examContext(where, grade, subject);
+			const context = examContext(where, grade, subject, language);
 			if ("ok" in context) return context;
-			return deleteExamChange(
-				where,
-				context.target.grade,
-				context.target.subject,
-			);
+			return deleteExamChange(where, context.target);
 		},
 	);
 }

@@ -7,6 +7,7 @@
 // same register on the owner's material (scripts/material-check.ts compares them). Nothing here
 // imports the app or Electron, so the check script can run it with plain Node.
 
+import { rowCourse, tokenCourse } from "./convert.ts";
 import type { FileField, FileRow } from "./model.ts";
 
 /** One row of a work folder's index.csv, as the file writes it (every value a text). */
@@ -235,7 +236,8 @@ export function registerRows(
 				? row.path.slice(curriculumId.length + 1)
 				: row.path,
 			grade: numberOrNull(row.grade),
-			subject: row.subject,
+			// The work folder's ids are the old ones (`chemistry-ar`): read as subject + language.
+			...rowCourse(row.subject, undefined),
 			block: row.block,
 			kind: row.kind,
 			pages: numberOrNull(row.pages),
@@ -515,9 +517,10 @@ export function fileRow(input: RowInput): FileRow {
 			parts.length > 1 && gradeFolder !== undefined
 				? gradeOf(gradeFolder)
 				: null,
-		subject:
+		...tokenCourse(
 			subjectFromFolders(parts.slice(1), input.folders) ||
-			subjectOf(parts.slice(1)),
+				subjectOf(parts.slice(1)),
+		),
 		block: blockOf(inside),
 		kind,
 		pages: read.pages,
@@ -554,7 +557,12 @@ function applyFixed(
 ): void {
 	if (fixed.grade !== undefined)
 		row.grade = typeof fixed.grade === "number" ? fixed.grade : null;
-	if (typeof fixed.subject === "string") row.subject = fixed.subject;
+	if (typeof fixed.subject === "string") {
+		// A corrected subject may name its language too (`chemistry-ar`).
+		const course = tokenCourse(fixed.subject);
+		row.subject = course.subject;
+		if (course.language !== "") row.language = course.language;
+	}
 	if (typeof fixed.block === "string") row.block = fixed.block;
 	if (typeof fixed.kind === "string") row.kind = fixed.kind;
 	if (typeof fixed.authority === "number") row.authority = fixed.authority;
@@ -628,6 +636,7 @@ export function lookReasons(row: FileRow): LookReason[] {
 export type ReportCourse = {
 	grade: number;
 	subject: string;
+	language: string;
 	units: {
 		number: number;
 		period: string;

@@ -172,6 +172,8 @@ export type UnitsJobCourse = {
 	folder: string;
 	grade: number;
 	subject: string;
+	/** The course's teaching language (task 224). */
+	language: string;
 	period: string;
 	/** How many units of that period the course has now. */
 	units: number;
@@ -266,10 +268,12 @@ the number of change sets written.`;
 
 /** One course folder of an exams job, as its README lists it. */
 export type ExamsJobCourse = {
-	/** The folder under courses/, e.g. "9-arabic". */
+	/** The folder under courses/, e.g. "9-arabic-ar". */
 	folder: string;
 	grade: number;
 	subject: string;
+	/** The course's teaching language (task 224). */
+	language: string;
 	/** How many exams the course has now. */
 	exams: number;
 	/** How many notes the folder carries. */

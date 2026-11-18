@@ -255,10 +255,10 @@ describe("a whole course", () => {
 		});
 		expect(
 			courseNumberWarnings([
-				{ grade: 9, subject: "arabic", exams: [graded] },
-				{ grade: 8, subject: "french", exams: [exam()] },
+				{ grade: 9, subject: "arabic", language: "en", exams: [graded] },
+				{ grade: 8, subject: "french", language: "en", exams: [exam()] },
 			]),
-		).toEqual([{ grade: 9, subject: "arabic", warnings: 1 }]);
+		).toEqual([{ grade: 9, subject: "arabic", language: "en", warnings: 1 }]);
 	});
 });
 

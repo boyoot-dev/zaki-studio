@@ -35,6 +35,7 @@ function gradeFile(over: Record<string, unknown> = {}): unknown {
 	return {
 		curriculum: "kestrel",
 		subject: "science",
+		language: "en",
 		grade: 7,
 		examStyle: "One paper, short answers.",
 		units: [
@@ -82,6 +83,7 @@ function rowOf(row: Partial<FileRow> & { id: string; path: string }): FileRow {
 	return {
 		grade: null,
 		subject: "",
+		language: "",
 		block: "",
 		kind: "",
 		pages: null,
@@ -109,6 +111,7 @@ function rows(): FileRow[] {
 			path: "Grade 7/Science/Units/Science sheet 1.pdf",
 			grade: 7,
 			subject: "science",
+			language: "en",
 			block: "1",
 			kind: "sheet",
 			pages: 8,
@@ -153,6 +156,7 @@ describe("reading the register", () => {
 				path: "Grade 7/Science/sheet.pdf",
 				grade: 7,
 				subject: "science",
+				language: "en",
 				block: "1",
 				kind: "sheet",
 				pages: 8,
@@ -173,7 +177,11 @@ describe("reading the register", () => {
 
 describe("a built-in course file", () => {
 	it("keeps each fact's pages and status, and a reviewed fact is the author's", () => {
-		const read = courseFromFile(gradeFile(), "kestrel", "grade-7-science.json");
+		const read = courseFromFile(
+			gradeFile(),
+			"kestrel",
+			"grade-7-science-en.json",
+		);
 		expect(read.ok).toBe(true);
 		if (!read.ok) return;
 		const facts = read.course.units[0]?.lessons[0]?.facts;
@@ -209,11 +217,11 @@ describe("a built-in course file", () => {
 		const read = courseFromFile(
 			gradeFile({ curriculum: "sunrise" }),
 			"kestrel",
-			"grade-7-science.json",
+			"grade-7-science-en.json",
 		);
 		expect(read.ok).toBe(false);
 		if (!read.ok)
-			expect(read.issues[0]?.path).toBe("grade-7-science.json.curriculum");
+			expect(read.issues[0]?.path).toBe("grade-7-science-en.json.curriculum");
 	});
 
 	it("reads the curriculum's names and periods, with no author yet", () => {
@@ -285,6 +293,7 @@ describe("the project adoption makes", () => {
 					path: "Grade 11/2026-2027/Ministry/Biology/book.pdf",
 					grade: 11,
 					subject: "biology",
+					language: "en",
 					block: "",
 					kind: "book",
 					pages: 200,
@@ -338,6 +347,7 @@ describe("the project adoption makes", () => {
 					path: "Grade 7/Science: A/B.pdf",
 					grade: 7,
 					subject: "science",
+					language: "en",
 					block: "",
 					kind: "sheet",
 					pages: 1,

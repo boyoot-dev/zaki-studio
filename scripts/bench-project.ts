@@ -166,7 +166,7 @@ function build(root: string, files: number): void {
 	const rand = prng(168);
 	const grades = gradesFor(files);
 	const courses = grades.flatMap((grade) =>
-		SUBJECT_IDS.map((subject) => ({ grade, subject })),
+		SUBJECT_IDS.map((subject) => ({ grade, subject, language: "en" })),
 	);
 	const perCourse = Math.floor(files / courses.length);
 	let remainder = files - perCourse * courses.length;
@@ -246,6 +246,7 @@ function build(root: string, files: number): void {
 			id,
 			path: rel,
 			grade: null,
+			language: "",
 			subject,
 			block: String((made % 6) + 1),
 			kind,
@@ -467,6 +468,7 @@ function build(root: string, files: number): void {
 		reportCourses.push({
 			grade: course.grade,
 			subject: course.subject,
+			language: course.language,
 			units: units.map((unit) => ({
 				number: unit.number,
 				period: unit.period,
