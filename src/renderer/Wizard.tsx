@@ -12,6 +12,7 @@ import {
 } from "../shared/format/bundle";
 import { GRADE_MAX, GRADE_MIN } from "../shared/format/grades";
 import { gradeLabel, type Lang } from "../shared/i18n";
+import { languageChoices } from "../shared/languages.ts";
 import {
 	guessGrades,
 	PERIOD_PRESETS,
@@ -80,6 +81,8 @@ export function Wizard({
 		presetPeriods("terms-blocks"),
 	);
 	const [withFinalExam, setWithFinalExam] = useState(true);
+	// The language most courses are taught in (task 225); language subjects keep their own.
+	const [mainLanguage, setMainLanguage] = useState("en");
 	const [busy, setBusy] = useState(false);
 	const [id] = useState(() => crypto.randomUUID());
 
@@ -91,6 +94,7 @@ export function Wizard({
 		grades,
 		periods,
 		finalExam: withFinalExam,
+		language: mainLanguage,
 	};
 	const made = wizardProject(answers, subjects, id);
 	const issues = made.ok ? [] : made.issues;
@@ -222,6 +226,20 @@ export function Wizard({
 				{step === 2 && (
 					<div>
 						<p className="muted">{say("wizard.grades.hint")}</p>
+						<label className="course-language">
+							<span>{say("wizard.language")}</span>
+							<select
+								value={mainLanguage}
+								onChange={(event) => setMainLanguage(event.target.value)}
+							>
+								{languageChoices(lang).map((choice) => (
+									<option key={choice.code} value={choice.code}>
+										{choice.name}
+									</option>
+								))}
+							</select>
+						</label>
+						<p className="muted">{say("wizard.languageHint")}</p>
 						<div className="chips grade-picks">
 							{GRADES.map((grade) => {
 								const on = grades.some((entry) => entry.grade === grade);

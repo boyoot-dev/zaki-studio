@@ -5,6 +5,7 @@
 
 import type { CourseNumberWarnings } from "./exam-numbers.ts";
 import type { JobSummary, JobTool } from "./job.ts";
+import type { LanguageWarning } from "./languages.ts";
 import type {
 	ItemsPage,
 	NotesListItem,
@@ -140,7 +141,13 @@ export type Scanned =
 	| Failure;
 
 /** One course of the model, as the curriculum's nav lists it (no units; task 168). */
-export type CourseHead = { grade: number; subject: string };
+export type CourseHead = {
+	grade: number;
+	subject: string;
+	/** The course's teaching language and help languages, from the project (task 225). */
+	language: string;
+	support: string[];
+};
 
 /** The curriculum's header and its courses' heads, for the Curriculum tab's nav. */
 export type ModelOverview =
@@ -166,6 +173,8 @@ export type ExportCheck =
 			rights: string;
 			/** The accepted exams whose numbers don't add up, per course; the export still works. */
 			examWarnings: CourseNumberWarnings[];
+			/** Courses in a language Mr. Zaki can't use yet (task 225); the export still works. */
+			languageWarnings: LanguageWarning[];
 	  }
 	| Failure;
 
@@ -389,6 +398,16 @@ export type StudioApi = {
 	readModel(root: string): Promise<ModelOverview>;
 	/** One course in full, for the Curriculum tab's chosen course (task 168). */
 	course(root: string, grade: number, subject: string): Promise<CourseOpen>;
+	/** Sets courses' teaching and help languages in the project file (task 225). */
+	setCourseLanguages(
+		root: string,
+		changes: {
+			grade: number;
+			subject: string;
+			language: string;
+			support: string[];
+		}[],
+	): Promise<Done>;
 	/** The register's row for one path, for the file's details pane (task 168). */
 	fileRow(
 		root: string,

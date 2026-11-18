@@ -38,6 +38,7 @@ import {
 	renameEntry,
 	safePath,
 	savePastedImage,
+	setCourseLanguages,
 	stamp,
 } from "./files.ts";
 
@@ -290,5 +291,43 @@ describe("reading a project back", () => {
 		);
 		expect(written.nameAr).toBe("منهج الشروق");
 		expect(written.formatVersion).toBe(2);
+	});
+});
+
+describe("a course's languages (task 225)", () => {
+	it("are written to curriculum.json, cleaned, and read back", () => {
+		expect(createProject(root, project()).ok).toBe(true);
+		const done = setCourseLanguages(root, [
+			{
+				grade: 7,
+				subject: "science",
+				language: "ar",
+				support: ["native", "ar", "en"],
+			},
+		]);
+		expect(done.ok).toBe(true);
+		const read = readProject(root);
+		if (!read.ok) throw new Error("unreadable");
+		expect(read.project.grades[0]?.subjects[0]).toMatchObject({
+			subject: "science",
+			language: "ar",
+			// The teaching language is never its own help.
+			support: ["native", "en"],
+		});
+	});
+
+	it("refuses a course the project doesn't have, and a language that isn't a code", () => {
+		expect(createProject(root, project()).ok).toBe(true);
+		expect(
+			setCourseLanguages(root, [
+				{ grade: 8, subject: "science", language: "ar", support: [] },
+			]).ok,
+		).toBe(false);
+		expect(
+			setCourseLanguages(root, [
+				{ grade: 7, subject: "science", language: "Arabic", support: [] },
+			]).ok,
+		).toBe(false);
+		expect(setCourseLanguages(root, "not a list").ok).toBe(false);
 	});
 });

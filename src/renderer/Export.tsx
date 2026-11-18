@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import type { CourseNumberWarnings } from "../shared/exam-numbers";
 import { gradeLabel, type Lang } from "../shared/i18n";
+import { type LanguageWarning, languageName } from "../shared/languages";
 import type { ModelSummary } from "../shared/model";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
@@ -20,6 +21,8 @@ export type ExportSpec = {
 	rights: string;
 	/** The accepted exams whose numbers don't add up, per course; the export still works. */
 	examWarnings: CourseNumberWarnings[];
+	/** Courses in a language Mr. Zaki can't use yet (task 225); the export still works. */
+	languageWarnings: LanguageWarning[];
 };
 
 /** The subject's own name, in the window's language. */
@@ -138,6 +141,28 @@ export function ExportDialog({
 							))}
 						</ul>
 					</div>
+				)}
+
+				{spec.languageWarnings.length > 0 && (
+					<ul className="exam-warn">
+						{spec.languageWarnings.map((entry) => (
+							<li
+								key={`${entry.grade}|${entry.subject}|${entry.kind}|${entry.language}`}
+							>
+								<span>
+									{say("export.languageWarn", {
+										course: `${gradeLabel(lang, entry.grade)} · ${subjectName(entry.subject, lang)}`,
+										text: say(
+											entry.kind === "teach"
+												? "language.notYet"
+												: "language.helpNotYet",
+											{ language: languageName(entry.language, lang) },
+										),
+									})}
+								</span>
+							</li>
+						))}
+					</ul>
 				)}
 
 				{(spec.needsAuthor || author !== "" || rights !== "") && (

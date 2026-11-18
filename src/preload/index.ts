@@ -13,6 +13,8 @@ const api: StudioApi = {
 	openProject: (root) => ipcRenderer.invoke("studio:openProject", root),
 	adoptProject: () => ipcRenderer.invoke("studio:adoptProject"),
 	readModel: (root) => ipcRenderer.invoke("studio:model", root),
+	setCourseLanguages: (root, changes) =>
+		ipcRenderer.invoke("studio:setCourseLanguages", root, changes),
 	readPageText: (root, id, page) =>
 		ipcRenderer.invoke("studio:pageText", root, id, page),
 	exportSummary: (root) => ipcRenderer.invoke("studio:exportSummary", root),

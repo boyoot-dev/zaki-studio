@@ -14,6 +14,7 @@ import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
 import { fileLabel, parseSource } from "../shared/model.ts";
 import { failureText } from "./App";
+import { CourseLanguages } from "./CourseLanguages";
 import { useLang, useSay } from "./i18n";
 import { Divider, usePanes } from "./Panes";
 import { Viewer } from "./Viewer";
@@ -114,10 +115,13 @@ export function Curriculum({
 	onNotify,
 	reloadKey,
 	openCourse,
+	onChanged,
 }: {
 	root: string;
 	project: { periods: BundlePeriod[] };
 	onNotify: (text: string) => void;
+	/** Called after the author changed a course's languages, so the project is read again. */
+	onChanged: () => void;
 	/** Bumped when the project changed (accepted changes, a scan): the tab stays open now. */
 	reloadKey: number;
 	/** A course the export's exam warning line asked for; `key` bumps on every click. */
@@ -309,6 +313,14 @@ export function Curriculum({
 							: 0,
 					})}
 				</p>
+
+				<CourseLanguages
+					root={root}
+					course={chosenCourse}
+					courses={courses}
+					onChanged={onChanged}
+					onNotify={onNotify}
+				/>
 
 				{course === null && courseFailed === "" && (
 					<p className="muted curriculum-note">{say("curriculum.loading")}</p>

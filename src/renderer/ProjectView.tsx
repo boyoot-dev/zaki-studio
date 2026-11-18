@@ -212,6 +212,7 @@ export function ProjectView({
 				author: result.author,
 				rights: result.rights,
 				examWarnings: result.examWarnings,
+				languageWarnings: result.languageWarnings,
 			});
 		})();
 	};
@@ -479,6 +480,7 @@ export function ProjectView({
 						onNotify={onNotify}
 						reloadKey={reloadKey}
 						openCourse={coursePick}
+						onChanged={reload}
 					/>
 				</div>
 			)}

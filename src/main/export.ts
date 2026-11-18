@@ -19,6 +19,7 @@ import {
 	issueLines,
 } from "../shared/export.ts";
 import { writeZaki } from "../shared/format/container.ts";
+import { languageWarnings } from "../shared/languages.ts";
 import { modelSummary, nextVersion } from "../shared/model.ts";
 import { readProject, writeProject } from "./files.ts";
 import {
@@ -48,6 +49,7 @@ export function summaryFor(root: string): ExportCheck {
 		version: nextVersion(exportNames(root)),
 		summary,
 		examWarnings: courseNumberWarnings(model.model.courses),
+		languageWarnings: languageWarnings(model.model.courses),
 		needsAuthor:
 			model.model.curriculum.author.trim() === "" ||
 			model.model.curriculum.rights.trim() === "",

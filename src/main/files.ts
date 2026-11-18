@@ -37,6 +37,10 @@ import type {
 } from "../shared/api.ts";
 import { insideProject, isProjectRoot } from "../shared/inside.ts";
 import {
+	type CourseLanguage,
+	cleanCourseLanguage,
+} from "../shared/languages.ts";
+import {
 	INBOX_DIR,
 	nextUnitFolder,
 	PROJECT_FILE,
@@ -312,6 +316,42 @@ export function readProject(
 
 /** Where the conversion of an old project keeps the files it replaced (task 224). */
 export const BACKUP_DIR = ".studio/backup-project-v1";
+
+/**
+ * Sets courses' teaching and help languages in curriculum.json (task 225), which is where the
+ * Studio keeps them; the model takes them from there when it is read. Each change is cleaned
+ * first, and a course the project doesn't have is refused, so the page can't add one here.
+ */
+export function setCourseLanguages(root: string, changes: unknown): Done {
+	if (!Array.isArray(changes) || changes.length === 0 || changes.length > 400)
+		return failure("invalidProject");
+	const project = readProject(root);
+	if (!project.ok) return project;
+	const next = structuredClone(project.project);
+	for (const raw of changes) {
+		if (typeof raw !== "object" || raw === null)
+			return failure("invalidProject");
+		const given = raw as Record<string, unknown>;
+		const change = cleanCourseLanguage({
+			grade: typeof given.grade === "number" ? given.grade : Number.NaN,
+			subject: typeof given.subject === "string" ? given.subject : "",
+			language: typeof given.language === "string" ? given.language : "",
+			support: Array.isArray(given.support)
+				? given.support.filter(
+						(code): code is string => typeof code === "string",
+					)
+				: [],
+		} satisfies CourseLanguage);
+		if (change === null) return failure("invalidProject");
+		const entry = next.grades
+			.find((grade) => grade.grade === change.grade)
+			?.subjects.find((subject) => subject.subject === change.subject);
+		if (entry === undefined) return failure("missing");
+		entry.language = change.language;
+		entry.support = change.support;
+	}
+	return writeProject(root, next);
+}
 
 /** The top-level folders of a folder that isn't a project yet, and their child folders. */
 export function guessFolders(root: string): GuessFolder[] {

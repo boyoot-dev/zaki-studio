@@ -117,6 +117,7 @@ import {
 	renameEntry,
 	safePath,
 	savePastedImage,
+	setCourseLanguages,
 } from "./files.ts";
 import {
 	makeFromBundle,
@@ -611,6 +612,15 @@ export function registerIpc(): void {
 
 	ipcMain.handle("studio:recentProjects", (): RecentProject[] => readRecents());
 
+	ipcMain.handle(
+		"studio:setCourseLanguages",
+		(event, root: unknown, changes: unknown): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			return setCourseLanguages(where, changes);
+		},
+	);
+
 	ipcMain.handle("studio:model", (event, root: unknown): ModelOverview => {
 		const where = text(root, 400);
 		if (!allowed(event, where)) return notOpen();
@@ -624,6 +634,8 @@ export function registerIpc(): void {
 		const courses: CourseHead[] = model.model.courses.map((course) => ({
 			grade: course.grade,
 			subject: course.subject,
+			language: course.language,
+			support: [...course.support],
 		}));
 		courses.sort(
 			(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),

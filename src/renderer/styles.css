@@ -1514,3 +1514,65 @@ mark {
 .tab-panel[hidden] {
 	display: none;
 }
+
+/* A course's teaching and help languages (task 225) -------------------------------- */
+
+.course-languages {
+	display: grid;
+	gap: 8px;
+	margin: 12px 0;
+	padding: 12px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+}
+
+.course-languages h3 {
+	margin: 0;
+	font-size: 0.95rem;
+}
+
+.course-language {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.course-help {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 14px;
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+.course-help legend {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.course-help .muted {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.course-apply {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 14px;
+}
+
+.course-apply .muted {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.course-apply-buttons {
+	display: flex;
+	gap: 8px;
+	flex-basis: 100%;
+}
+
+.course-languages > .btn {
+	justify-self: start;
+}
