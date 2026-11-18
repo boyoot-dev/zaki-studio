@@ -15,7 +15,6 @@
 // Nothing is copied into the repository: the output folder is the architect's, and the project
 // and work folders are only read. No model is called.
 
-import { rowCourse } from "../src/shared/convert.ts";
 import {
 	existsSync,
 	mkdirSync,
@@ -25,8 +24,8 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { writeUnitsFolder } from "../src/main/unitfolder.ts";
+import { rowCourse } from "../src/shared/convert.ts";
 import { jobNameOf } from "../src/shared/job.ts";
 import type { FileRow, ModelCourse, ModelFact } from "../src/shared/model.ts";
 import {
