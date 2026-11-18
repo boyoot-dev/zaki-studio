@@ -99,6 +99,7 @@ export function ProjectView({
 	const [coursePick, setCoursePick] = useState<{
 		grade: number;
 		subject: string;
+		language: string;
 		key: number;
 	} | null>(null);
 	const [exportSpec, setExportSpec] = useState<ExportSpec | null>(null);
@@ -212,12 +213,17 @@ export function ProjectView({
 				author: result.author,
 				rights: result.rights,
 				examWarnings: result.examWarnings,
+				languageWarnings: result.languageWarnings,
 			});
 		})();
 	};
 
 	/** Opens the Curriculum tab at one course, from the export's exam warning line. */
-	const openCourse = (course: { grade: number; subject: string }) => {
+	const openCourse = (course: {
+		grade: number;
+		subject: string;
+		language: string;
+	}) => {
 		setCoursePick({ ...course, key: Date.now() });
 		setTab("curriculum");
 	};
@@ -479,6 +485,7 @@ export function ProjectView({
 						onNotify={onNotify}
 						reloadKey={reloadKey}
 						openCourse={coursePick}
+						onChanged={reload}
 					/>
 				</div>
 			)}

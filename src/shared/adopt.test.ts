@@ -35,10 +35,12 @@ function gradeFile(over: Record<string, unknown> = {}): unknown {
 	return {
 		curriculum: "kestrel",
 		subject: "science",
+		language: "en",
 		grade: 7,
 		examStyle: "One paper, short answers.",
 		units: [
 			{
+				id: "u4",
 				number: 1,
 				period: "b1",
 				title: "Classification",
@@ -47,10 +49,11 @@ function gradeFile(over: Record<string, unknown> = {}): unknown {
 				evidence: [],
 				lessons: [
 					{
+						id: "l5",
 						number: 1,
 						title: "Living things",
 						skills: [
-							{ code: "7-1-1", text: "Sort living things." },
+							{ id: "s1", code: "7-1-1", text: "Sort living things." },
 							"Name the five kingdoms.",
 						],
 						facts: [
@@ -80,6 +83,7 @@ function rowOf(row: Partial<FileRow> & { id: string; path: string }): FileRow {
 	return {
 		grade: null,
 		subject: "",
+		language: "",
 		block: "",
 		kind: "",
 		pages: null,
@@ -107,6 +111,7 @@ function rows(): FileRow[] {
 			path: "Grade 7/Science/Units/Science sheet 1.pdf",
 			grade: 7,
 			subject: "science",
+			language: "en",
 			block: "1",
 			kind: "sheet",
 			pages: 8,
@@ -151,6 +156,7 @@ describe("reading the register", () => {
 				path: "Grade 7/Science/sheet.pdf",
 				grade: 7,
 				subject: "science",
+				language: "en",
 				block: "1",
 				kind: "sheet",
 				pages: 8,
@@ -171,7 +177,11 @@ describe("reading the register", () => {
 
 describe("a built-in course file", () => {
 	it("keeps each fact's pages and status, and a reviewed fact is the author's", () => {
-		const read = courseFromFile(gradeFile(), "kestrel", "grade-7-science.json");
+		const read = courseFromFile(
+			gradeFile(),
+			"kestrel",
+			"grade-7-science-en.json",
+		);
 		expect(read.ok).toBe(true);
 		if (!read.ok) return;
 		const facts = read.course.units[0]?.lessons[0]?.facts;
@@ -195,10 +205,11 @@ describe("a built-in course file", () => {
 				own: false,
 			},
 		]);
-		// A skill may be a plain string, and both shapes become the bundle's.
+		// A skill may be a plain string, and both shapes become the bundle's, each with an
+		// id: kept when the file has one, else made from its place (task 224).
 		expect(read.course.units[0]?.lessons[0]?.skills).toEqual([
-			{ code: "7-1-1", text: "Sort living things." },
-			{ code: null, text: "Name the five kingdoms." },
+			{ id: "s1", code: "7-1-1", text: "Sort living things." },
+			{ id: "u1-l1-s2", code: null, text: "Name the five kingdoms." },
 		]);
 	});
 
@@ -206,11 +217,11 @@ describe("a built-in course file", () => {
 		const read = courseFromFile(
 			gradeFile({ curriculum: "sunrise" }),
 			"kestrel",
-			"grade-7-science.json",
+			"grade-7-science-en.json",
 		);
 		expect(read.ok).toBe(false);
 		if (!read.ok)
-			expect(read.issues[0]?.path).toBe("grade-7-science.json.curriculum");
+			expect(read.issues[0]?.path).toBe("grade-7-science-en.json.curriculum");
 	});
 
 	it("reads the curriculum's names and periods, with no author yet", () => {
@@ -244,7 +255,14 @@ describe("the project adoption makes", () => {
 			{
 				grade: 7,
 				folder: "Grade 7",
-				subjects: [{ subject: "science", folder: "Science" }],
+				subjects: [
+					{
+						subject: "science",
+						folder: "Science",
+						language: "en",
+						support: [],
+					},
+				],
 			},
 		]);
 		expect(plan.plan.model.curriculum.author).toBe("");
@@ -275,6 +293,7 @@ describe("the project adoption makes", () => {
 					path: "Grade 11/2026-2027/Ministry/Biology/book.pdf",
 					grade: 11,
 					subject: "biology",
+					language: "en",
 					block: "",
 					kind: "book",
 					pages: 200,
@@ -288,7 +307,14 @@ describe("the project adoption makes", () => {
 			expect(plan.plan.project.grades[0]).toEqual({
 				grade: 11,
 				folder: "Grade 11",
-				subjects: [{ subject: "biology", folder: "Biology" }],
+				subjects: [
+					{
+						subject: "biology",
+						folder: "Biology",
+						language: "en",
+						support: [],
+					},
+				],
 			});
 	});
 
@@ -321,6 +347,7 @@ describe("the project adoption makes", () => {
 					path: "Grade 7/Science: A/B.pdf",
 					grade: 7,
 					subject: "science",
+					language: "en",
 					block: "",
 					kind: "sheet",
 					pages: 1,

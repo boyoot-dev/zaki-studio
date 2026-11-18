@@ -29,6 +29,7 @@ function row(id: string, over: Partial<FileRow> = {}): FileRow {
 		path: `Grade 7/Science/${id}.pdf`,
 		grade: 7,
 		subject: "science",
+		language: "en",
 		block: "2",
 		kind: "sheet",
 		pages: 4,
@@ -54,10 +55,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [],
 		units: [
 			{
+				id: "u3",
 				number: 5,
 				period: "block-3",
 				title: "Breathing",
@@ -66,22 +70,25 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l5",
 						number: 1,
 						title: "The lungs",
-						skills: [{ code: null, text: "name the parts" }],
+						skills: [{ id: "s1", code: null, text: "name the parts" }],
 						facts: [],
 						activity: null,
 					},
 					{
+						id: "l6",
 						number: 2,
 						title: "The blood",
-						skills: [{ code: null, text: "describe the heart" }],
+						skills: [{ id: "s2", code: null, text: "describe the heart" }],
 						facts: [],
 						activity: null,
 					},
 				],
 			},
 			{
+				id: "u4",
 				number: 4,
 				period: "block-2",
 				title: "Cells",
@@ -157,6 +164,7 @@ describe("the notes a period's change set is written from", () => {
 		const got = targetRows(rows, {
 			grade: 7,
 			subject: "science",
+			language: "en",
 			period: "block-2",
 		});
 		expect(got.map((entry) => entry.id)).toEqual(["aaaaaaaaaaaa"]);
@@ -170,20 +178,26 @@ describe("the notes a period's change set is written from", () => {
 describe("a target's name and the course as it is now", () => {
 	it("names a change set by grade, subject and period, and refuses anything else", () => {
 		expect(
-			changeName({ grade: 7, subject: "science", period: "block-3" }),
-		).toBe("7-science-block-3");
+			changeName({
+				grade: 7,
+				subject: "science",
+				language: "en",
+				period: "block-3",
+			}),
+		).toBe("7-science-en-block-3");
 		for (const target of [
-			{ grade: 7, subject: "../etc", period: "block-3" },
-			{ grade: 7, subject: "science", period: "block-3/../x" },
-			{ grade: 99, subject: "science", period: "block-3" },
+			{ grade: 7, subject: "../etc", language: "en", period: "block-3" },
+			{ grade: 7, subject: "science", language: "en", period: "block-3/../x" },
+			{ grade: 99, subject: "science", language: "en", period: "block-3" },
 		])
 			expect(changeName(target)).toBeNull();
-		expect(targetOf(7, "science", "block-3")).toEqual({
+		expect(targetOf(7, "science", "en", "block-3")).toEqual({
 			grade: 7,
 			subject: "science",
+			language: "en",
 			period: "block-3",
 		});
-		expect(targetOf("7", "science", "block-3")).toBeNull();
+		expect(targetOf("7", "science", "en", "block-3")).toBeNull();
 	});
 
 	it("takes one period's units, in number order, with the rest of the course left out", () => {

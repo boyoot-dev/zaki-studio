@@ -39,8 +39,13 @@ import { saveNote } from "./notes.ts";
 const ID = "9a010f4b4816";
 const OTHER = "abcdef012345";
 const TODAY = new Date(2026, 10, 13, 8, 30);
-const TARGET = { grade: 7, subject: "science", period: "block-3" };
-const FOLDER = "7-science-block-3";
+const TARGET = {
+	grade: 7,
+	subject: "science",
+	language: "en",
+	period: "block-3",
+};
+const FOLDER = "7-science-en-block-3";
 
 /** A register row of made-up material. */
 function row(id: string, over: Partial<FileRow> = {}): FileRow {
@@ -49,6 +54,7 @@ function row(id: string, over: Partial<FileRow> = {}): FileRow {
 		path: `Grade 7/Science/${id}.pdf`,
 		grade: 7,
 		subject: "science",
+		language: "en",
 		block: "3",
 		kind: "sheet",
 		pages: 8,
@@ -74,10 +80,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [],
 		units: [
 			{
+				id: "u7",
 				number: 5,
 				period: "block-3",
 				title: "Breathing (provisional)",
@@ -86,9 +95,10 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l10",
 						number: 1,
 						title: "Last year's title",
-						skills: [{ code: null, text: "an old skill" }],
+						skills: [{ id: "s1", code: null, text: "an old skill" }],
 						facts: [
 							{
 								text: "The author's own fact stays.",
@@ -108,6 +118,7 @@ function course(): ModelCourse {
 				],
 			},
 			{
+				id: "u8",
 				number: 6,
 				period: "block-3",
 				title: "Digestion (provisional)",
@@ -116,15 +127,17 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l11",
 						number: 1,
 						title: "The stomach",
-						skills: [{ code: null, text: "an old skill" }],
+						skills: [{ id: "s2", code: null, text: "an old skill" }],
 						facts: [],
 						activity: null,
 					},
 				],
 			},
 			{
+				id: "u9",
 				number: 4,
 				period: "block-2",
 				title: "Cells",
@@ -133,9 +146,12 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l12",
 						number: 1,
 						title: "The cell",
-						skills: [{ code: null, text: "name the parts of a cell" }],
+						skills: [
+							{ id: "s3", code: null, text: "name the parts of a cell" },
+						],
 						facts: [],
 						activity: null,
 					},
@@ -186,6 +202,7 @@ function changeSet(): Record<string, unknown> {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
 		period: "block-3",
 		units: [
 			{
@@ -199,7 +216,7 @@ function changeSet(): Record<string, unknown> {
 						number: 1,
 						title: "The lungs",
 						activity: null,
-						skills: [{ code: null, text: "name the parts" }],
+						skills: [{ id: "s4", code: null, text: "name the parts" }],
 						facts: [
 							{
 								text: "The lungs take oxygen from the air.",
@@ -220,7 +237,7 @@ function changeSet(): Record<string, unknown> {
 						number: 1,
 						title: "The stomach",
 						activity: null,
-						skills: [{ code: null, text: "describe digestion" }],
+						skills: [{ id: "s5", code: null, text: "describe digestion" }],
 						facts: [
 							{
 								text: "The stomach breaks food down.",
@@ -239,7 +256,7 @@ function changeSet(): Record<string, unknown> {
 function projectFile(): Project {
 	return {
 		format: "mr-zaki-studio-project",
-		formatVersion: 1,
+		formatVersion: 2,
 		id: "6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10",
 		nameEn: "Made-up Curriculum",
 		nameAr: "منهج مُختلق",
@@ -250,7 +267,14 @@ function projectFile(): Project {
 			{
 				grade: 7,
 				folder: "Grade 7",
-				subjects: [{ subject: "science", folder: "Science" }],
+				subjects: [
+					{
+						subject: "science",
+						folder: "Science",
+						language: "en",
+						support: [],
+					},
+				],
 			},
 		],
 	};
@@ -401,6 +425,7 @@ describe("collecting a units job", () => {
 			source: "job",
 			grade: 7,
 			subject: "science",
+			language: "en",
 			period: "block-3",
 		});
 		expect(sets.sets[0]?.units[0]?.proposed.title).toBe("Breathing");
@@ -435,7 +460,7 @@ describe("collecting a units job", () => {
 		};
 
 		out(folder, "note.json", changeSet());
-		out(folder, "8-math-block-3.json", changeSet());
+		out(folder, "8-math-en-block-3.json", changeSet());
 		out(folder, `${FOLDER}.txt`, changeSet());
 		mkdirSync(join(folder, "out", "folder.json"));
 		writeFileSync(
@@ -444,12 +469,12 @@ describe("collecting a units job", () => {
 		);
 		const named = codes();
 		expect(named).toContain("note.json:name");
-		expect(named).toContain("8-math-block-3.json:name");
+		expect(named).toContain("8-math-en-block-3.json:name");
 		expect(named).toContain(`${FOLDER}.txt:name`);
 		expect(named).toContain("huge.json:tooLarge");
 		expect(named).toContain("folder.json:notFile");
 		rmSync(join(folder, "out", "note.json"));
-		rmSync(join(folder, "out", "8-math-block-3.json"));
+		rmSync(join(folder, "out", "8-math-en-block-3.json"));
 		rmSync(join(folder, "out", `${FOLDER}.txt`));
 		rmSync(join(folder, "out", "folder.json"), { recursive: true });
 		rmSync(join(folder, "out", "huge.json"));
@@ -648,7 +673,12 @@ describe("review and acceptance", () => {
 				source: "job",
 				model: "x",
 				accepted: [],
-				set: { grade: 7, subject: "science", period: "block-3" },
+				set: {
+					grade: 7,
+					subject: "science",
+					language: "en",
+					period: "block-3",
+				},
 			}),
 		);
 		const sets = readChangeSets(project, model(), [row(ID)]);
@@ -679,27 +709,36 @@ describe("the targets a change set may be built for (task 178)", () => {
 	const SUBJECTS = ["science", "arabic"];
 
 	it("allows a course that has a unit in the period, and does not call it new", () => {
-		expect(allowedTarget(model(), 7, "science", "block-3", SUBJECTS)).toEqual({
+		expect(
+			allowedTarget(model(), 7, "science", "en", "block-3", SUBJECTS),
+		).toEqual({
 			grade: 7,
 			subject: "science",
+			language: "en",
 			period: "block-3",
 			isNew: false,
 		});
 	});
 
 	it("allows a block the course has no unit in yet", () => {
-		expect(allowedTarget(model(), 7, "science", "block-1", SUBJECTS)).toEqual({
+		expect(
+			allowedTarget(model(), 7, "science", "en", "block-1", SUBJECTS),
+		).toEqual({
 			grade: 7,
 			subject: "science",
+			language: "en",
 			period: "block-1",
 			isNew: false,
 		});
 	});
 
 	it("allows a grade and subject the project has no course for", () => {
-		expect(allowedTarget(model(), 8, "arabic", "block-1", SUBJECTS)).toEqual({
+		expect(
+			allowedTarget(model(), 8, "arabic", "en", "block-1", SUBJECTS),
+		).toEqual({
 			grade: 8,
 			subject: "arabic",
+			language: "en",
 			period: "block-1",
 			isNew: true,
 		});
@@ -707,26 +746,38 @@ describe("the targets a change set may be built for (task 178)", () => {
 
 	it("refuses an unknown subject, an impossible grade or a period the year lacks", () => {
 		expect(
-			allowedTarget(model(), 8, "wizardry", "block-1", SUBJECTS),
+			allowedTarget(model(), 8, "wizardry", "en", "block-1", SUBJECTS),
 		).toBeNull();
 		expect(
-			allowedTarget(model(), 15, "science", "block-1", SUBJECTS),
+			allowedTarget(model(), 15, "science", "en", "block-1", SUBJECTS),
 		).toBeNull();
 		expect(
-			allowedTarget(model(), 7, "science", "block-9", SUBJECTS),
+			allowedTarget(model(), 7, "science", "en", "block-9", SUBJECTS),
 		).toBeNull();
-		expect(allowedTarget(model(), 7, "science", "term-1", SUBJECTS)).toBeNull();
+		expect(
+			allowedTarget(model(), 7, "science", "en", "term-1", SUBJECTS),
+		).toBeNull();
 	});
 });
 
 describe("a new course built from the notes (task 178)", () => {
-	const EIGHT = { grade: 8, subject: "arabic", period: "block-1" };
-	const FOLDER_EIGHT = "8-arabic-block-1";
+	const EIGHT = {
+		grade: 8,
+		subject: "arabic",
+		language: "en",
+		period: "block-1",
+	};
+	const FOLDER_EIGHT = "8-arabic-en-block-1";
 	const ARAB = "111111111111";
 
 	/** The register row of the new course's one made-up sheet. */
 	function arabRow(): FileRow {
-		return row(ARAB, { grade: 8, subject: "arabic", block: "1" });
+		return row(ARAB, {
+			grade: 8,
+			subject: "arabic",
+			language: "en",
+			block: "1",
+		});
 	}
 
 	/** A set with the two units the model writes for a course that has none. */
@@ -734,6 +785,7 @@ describe("a new course built from the notes (task 178)", () => {
 		return {
 			grade: 8,
 			subject: "arabic",
+			language: "en",
 			period: "block-1",
 			units: [1, 2].map((number) => ({
 				number,
@@ -746,7 +798,7 @@ describe("a new course built from the notes (task 178)", () => {
 						number: 1,
 						title: "First lesson",
 						activity: null,
-						skills: [{ code: null, text: "say a word" }],
+						skills: [{ id: "s6", code: null, text: "say a word" }],
 						facts: [
 							{
 								text: `A made-up fact of unit ${number}.`,
@@ -788,6 +840,7 @@ describe("a new course built from the notes (task 178)", () => {
 			state: "pending",
 			grade: 8,
 			subject: "arabic",
+			language: "en",
 			period: "block-1",
 			units: [{ number: 1 }, { number: 2 }],
 		});
@@ -819,7 +872,7 @@ describe("a new course built from the notes (task 178)", () => {
 		expect(course?.units[0]?.period).toBe("block-1");
 		// The course has its own file, as every course of the model does.
 		expect(
-			existsSync(join(project, ".studio", "model", "grade-8-arabic.json")),
+			existsSync(join(project, ".studio", "model", "grade-8-arabic-en.json")),
 		).toBe(true);
 	});
 

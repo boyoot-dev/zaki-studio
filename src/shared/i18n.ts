@@ -92,6 +92,27 @@ const en = {
 
 	// The Curriculum view.
 	"curriculum.loading": "Reading the curriculum…",
+	"language.title": "Language and help",
+	"language.teaching": "Taught in",
+	"language.help": "Help in",
+	"language.helpHint":
+		"Mr. Zaki may explain in these languages when the child is stuck, and understands the child who writes in them.",
+	"language.changeWarn":
+		"Mr. Zaki treats a course in another language as a different course, so children's progress on it won't carry over. Change it?",
+	"language.notYet":
+		"Mr. Zaki can't teach in {language} yet. Families will see this course as not available until it can.",
+	"language.helpNotYet":
+		"Mr. Zaki can't help in {language} yet; the course works without it.",
+	"language.applyOthers": "Apply help to other grades…",
+	"language.applyHint":
+		"The same subject in the grades you tick gets these help languages.",
+	"language.apply": "Apply",
+	"language.noOthers": "No other grade has this subject.",
+	"language.saved": "Saved.",
+	"wizard.language": "Most of this curriculum is taught in",
+	"wizard.languageHint":
+		"Language subjects are taught in their own language. You can change any course later in the Curriculum tab.",
+	"export.languageWarn": "{course}: {text}",
 	"curriculum.empty":
 		"This project has no curriculum yet. Open your existing material to bring one in.",
 	"curriculum.units": "Units",
@@ -576,6 +597,27 @@ const ar: Record<TextKey, string> = {
 	"project.export": "صدِّر المنهج…",
 
 	"curriculum.loading": "جارٍ قراءة المنهج…",
+	"language.title": "اللغة والمساعدة",
+	"language.teaching": "لغة التدريس",
+	"language.help": "المساعدة بلغة",
+	"language.helpHint":
+		"يجوز للسيد زكي أن يشرح بهذه اللغات حين يتعثر الطفل، ويفهم الطفل إذا كتب بها.",
+	"language.changeWarn":
+		"يعدّ السيد زكي المقرر بلغة أخرى مقررًا مختلفًا، فلا ينتقل إليه تقدّم الأطفال. هل تغيّرها؟",
+	"language.notYet":
+		"لا يستطيع السيد زكي التدريس بـ{language} بعد. سيرى الأهل هذا المقرر غير متاح حتى يستطيع.",
+	"language.helpNotYet":
+		"لا يستطيع السيد زكي المساعدة بـ{language} بعد، ويعمل المقرر بدونها.",
+	"language.applyOthers": "طبّق المساعدة على صفوف أخرى…",
+	"language.applyHint":
+		"تأخذ المادةُ نفسها في الصفوف التي تختارها لغاتِ المساعدة هذه.",
+	"language.apply": "طبّق",
+	"language.noOthers": "لا يوجد صف آخر فيه هذه المادة.",
+	"language.saved": "تم الحفظ.",
+	"wizard.language": "تُدرَّس معظم مواد هذا المنهج باللغة",
+	"wizard.languageHint":
+		"تُدرَّس مواد اللغات بلغتها. يمكنك تغيير لغة أي مقرر لاحقًا من تبويب المنهج.",
+	"export.languageWarn": "{course}: {text}",
 	"curriculum.empty":
 		"لا يوجد منهج في هذا المشروع بعد. افتح موادّك الحالية لإدخال منهج.",
 	"curriculum.units": "الوحدات",

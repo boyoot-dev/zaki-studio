@@ -15,6 +15,7 @@
 // Nothing is copied into the repository: the output folder is the architect's, and the project
 // and work folders are only read. No model is called.
 
+import { rowCourse } from "../src/shared/convert.ts";
 import {
 	existsSync,
 	mkdirSync,
@@ -73,7 +74,14 @@ function parse(args: readonly string[]): Trial | string {
 		work === ""
 	)
 		return "usage: npm run units-trial -- <project folder> <grade> <subject> <period> --out <folder> --work <folder>";
-	const target = { grade: Number(grade), subject, period };
+	// An old id (`chemistry-ar`) names its language; a plain subject is taken as English.
+	const course = rowCourse(subject, undefined);
+	const target = {
+		grade: Number(grade),
+		subject: course.subject,
+		language: course.language,
+		period,
+	};
 	if (changeName(target) === null)
 		return "the grade, subject or period is not one the Studio can name";
 	return {
@@ -117,7 +125,10 @@ function rowsOf(project: string): FileRow[] {
 				id: row.id,
 				path: row.path,
 				grade: typeof row.grade === "number" ? row.grade : null,
-				subject: typeof row.subject === "string" ? row.subject : "",
+				...rowCourse(
+					typeof row.subject === "string" ? row.subject : "",
+					row.language,
+				),
 				block: typeof row.block === "string" ? row.block : "",
 				kind: typeof row.kind === "string" ? row.kind : "",
 				pages: typeof row.pages === "number" ? row.pages : null,

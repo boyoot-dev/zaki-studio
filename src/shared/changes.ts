@@ -11,8 +11,10 @@
 // Today's Arabic text layers can be reversed, so a failed page check is a warning, not a
 // refusal (found 2026-10-25, docs/CURRICULA.md).
 
+import { rowCourse } from "./convert.ts";
 import type { ReviewExam } from "./exam-changes.ts";
 import { BUNDLE_LIMITS, type BundleSkill, checkText } from "./format/bundle.ts";
+import { newId } from "./ids.ts";
 import type {
 	FileRow,
 	ModelCourse,
@@ -56,8 +58,39 @@ export type CleanFact = {
 	copy: string | null;
 };
 
-/** One skill: the sheet's code when it gives one, and what the child should be able to do. */
-export type CleanSkill = BundleSkill;
+/**
+ * One skill: the sheet's code when it gives one, and what the child should be able to do. A
+ * proposal has no ids; merging gives each skill one (keepSkillIds).
+ */
+export type CleanSkill = Omit<BundleSkill, "id">;
+
+/**
+ * The proposed skills with ids (task 224): a skill keeps the id of the old one with the same
+ * text, else of the old one at the same position (a reworded skill keeps its progress, as it
+ * always did), else gets a new id.
+ */
+export function keepSkillIds(
+	old: readonly BundleSkill[],
+	proposed: readonly CleanSkill[],
+): BundleSkill[] {
+	const used = new Set<string>();
+	const byText = proposed.map(
+		(skill) =>
+			old.find((entry) => entry.text === skill.text && !used.has(entry.id)) ??
+			null,
+	);
+	for (const found of byText) if (found !== null) used.add(found.id);
+	return proposed.map((skill, i) => {
+		const same = byText[i];
+		if (same !== null && same !== undefined) return { ...skill, id: same.id };
+		const at = old[i];
+		if (at !== undefined && !used.has(at.id)) {
+			used.add(at.id);
+			return { ...skill, id: at.id };
+		}
+		return { ...skill, id: newId() };
+	});
+}
 
 export type CleanLesson = {
 	number: number;
@@ -80,6 +113,7 @@ export type CleanUnit = {
 export type CleanSet = {
 	grade: number;
 	subject: string;
+	language: string;
 	period: string;
 	units: CleanUnit[];
 	open: string[];
@@ -228,10 +262,19 @@ export function parseChangeSet(value: unknown, given: Given): ParseOutcome {
 			ok: false,
 			issue: `the change set is not for Grade ${given.target.grade}`,
 		};
-	if (raw.subject !== given.target.subject)
+	// A set written before task 224 names a language copy (`chemistry-ar`): read it as its course.
+	const named =
+		typeof raw.subject === "string"
+			? rowCourse(raw.subject, raw.language ?? given.target.language)
+			: null;
+	if (
+		named === null ||
+		named.subject !== given.target.subject ||
+		named.language !== given.target.language
+	)
 		return {
 			ok: false,
-			issue: `the change set is not for ${given.target.subject}`,
+			issue: `the change set is not for ${given.target.subject} (${given.target.language})`,
 		};
 	if (raw.period !== given.target.period)
 		return {
@@ -260,6 +303,7 @@ export function parseChangeSet(value: unknown, given: Given): ParseOutcome {
 		set: {
 			grade: given.target.grade,
 			subject: given.target.subject,
+			language: given.target.language,
 			period: given.target.period,
 			units,
 			open,
@@ -588,10 +632,12 @@ export type ReviewUnit = {
 export type ChangeReview = {
 	/** "units" for units and lessons, "exams" for exam papers (task 177). */
 	kind: "units" | "exams";
-	/** "7-science-block-3", the set's name in .studio/changes. */
+	/** "7-science-en-block-3", the set's name in .studio/changes. */
 	key: string;
 	grade: number;
 	subject: string;
+	/** The course's teaching language (task 224). */
+	language: string;
 	/** The period for a units set, or "" for exams, which cover the whole course. */
 	period: string;
 	state: "pending" | "rejected";
@@ -685,6 +731,7 @@ export function mergeCourse(
 		.filter((entry) => choice.kind === "all" || choice.unit === entry.number)
 		.map(
 			(entry): ModelUnit => ({
+				id: newId(),
 				number: entry.number,
 				period: set.period,
 				title: entry.title,
@@ -716,7 +763,7 @@ function mergeLessons(
 		return {
 			...lesson,
 			title: found.title,
-			skills: found.skills.map((skill) => ({ ...skill })),
+			skills: keepSkillIds(lesson.skills, found.skills),
 			activity: found.activity,
 			facts: mergeFacts(lesson.facts, found.facts),
 		};
@@ -728,9 +775,10 @@ function mergeLessons(
 		)
 		.map(
 			(entry): ModelLesson => ({
+				id: newId(),
 				number: entry.number,
 				title: entry.title,
-				skills: entry.skills.map((skill) => ({ ...skill })),
+				skills: keepSkillIds([], entry.skills),
 				activity: entry.activity,
 				facts: mergeFacts([], entry.facts),
 			}),

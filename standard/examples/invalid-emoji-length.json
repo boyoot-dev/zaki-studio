@@ -19,17 +19,28 @@
 		{
 			"grade": 8,
 			"subject": "science",
+			"language": "en",
 			"units": [
 				{
+					"id": "u1",
 					"number": 1,
 					"period": "year",
 					"title": "The Moon",
-					"keywords": ["moon", "phases"],
+					"keywords": [
+						"moon",
+						"phases"
+					],
 					"lessons": [
 						{
+							"id": "u1-l1",
 							"number": 1,
 							"title": "Why the Moon changes shape",
-							"skills": ["Describe how the Moon's phases work"],
+							"skills": [
+								{
+									"id": "u1-l1-s1",
+									"text": "Describe how the Moon's phases work"
+								}
+							],
 							"facts": [
 								"The Moon's phases repeat about every 29 and a half days: new moon, waxing crescent, first quarter, waxing gibbous, full moon, waning gibbous, last quarter and waning crescent. The cycle takes about one month, and many languages use the same eight names for the phases. People have watched these changes for thousands of years, and given each phase its own name, and its place in the year's calendar.🌑"
 							]

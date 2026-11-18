@@ -107,6 +107,7 @@ export function examRows(
 		(row) =>
 			row.grade === target.grade &&
 			row.subject === target.subject &&
+			row.language === target.language &&
 			row.dupOf === "" &&
 			row.error === "" &&
 			(row.pages ?? 0) > 0 &&
@@ -159,6 +160,7 @@ export function examNotes(
 function courseJson(course: {
 	grade: number;
 	subject: string;
+	language: string;
 	exams: readonly BundleExam[];
 }): string {
 	return `${JSON.stringify(examCourseNow(course), null, "\t")}\n`;
@@ -174,6 +176,7 @@ export function examInput(input: {
 	course: {
 		grade: number;
 		subject: string;
+		language: string;
 		exams: readonly BundleExam[];
 	};
 	/** The year's periods, so the model names one of them instead of guessing (task 182). */
@@ -269,7 +272,8 @@ function requestInput(
 	target: ExamTarget,
 ): ExamRequest {
 	const course =
-		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
+		targetCourse(model, target) ??
+		emptyCourse(target.grade, target.subject, target.language);
 	const notes = examNotes(root, rows, target);
 	return {
 		course,
@@ -467,8 +471,8 @@ export function prepareExamsJob(
 	const courses = input.targets.flatMap((target) => {
 		const course =
 			targetCourse(input.model, target) ??
-			emptyCourse(target.grade, target.subject);
-		const folder = examName(target.grade, target.subject);
+			emptyCourse(target.grade, target.subject, target.language);
+		const folder = examName(target.grade, target.subject, target.language);
 		if (folder === null) return [];
 		const notes = examNotes(input.root, input.rows, target, noted).notes;
 		return notes.length === 0 ? [] : [{ folder, course, notes }];
@@ -534,10 +538,15 @@ export function collectExamsJob(
 	if (record?.kind !== "exams") return { ok: false, code: "invalidName" };
 	const folders = new Map(
 		record.exams.flatMap((course) => {
-			const target = examTargetOf(course.grade, course.subject);
+			const target = examTargetOf(
+				course.grade,
+				course.subject,
+				course.language,
+			);
 			if (
 				target === null ||
-				examName(target.grade, target.subject) !== course.folder
+				examName(target.grade, target.subject, target.language) !==
+					course.folder
 			)
 				return [];
 			return [[course.folder, target] as const];
@@ -596,7 +605,7 @@ export function collectExamsJob(
 		}
 		const course =
 			targetCourse(input.model, target) ??
-			emptyCourse(target.grade, target.subject);
+			emptyCourse(target.grade, target.subject, target.language);
 		const given: ExamGiven = {
 			target,
 			periods: [...periodIds(input.model.curriculum.periods)],
@@ -608,7 +617,7 @@ export function collectExamsJob(
 			outcome.refused.push({ name: entry, code: "invalid" });
 			continue;
 		}
-		const existing = readExamStored(input.root, target.grade, target.subject);
+		const existing = readExamStored(input.root, target);
 		if (existing !== null && existing.state === "pending") {
 			outcome.skipped.push(folderName);
 			continue;

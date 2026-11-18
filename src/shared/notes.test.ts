@@ -29,6 +29,7 @@ function row(id: string, over: Partial<FileRow> = {}): FileRow {
 		path: `Grade 3/${id}.pdf`,
 		grade: 3,
 		subject: "math",
+		language: "en",
 		block: "1",
 		kind: "sheet",
 		pages: 4,

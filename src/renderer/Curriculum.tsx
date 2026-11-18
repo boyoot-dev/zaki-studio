@@ -11,9 +11,11 @@ import type { CourseHead, CourseOpen, ModelOverview } from "../shared/api.ts";
 import { examNumberWarnings } from "../shared/exam-numbers.ts";
 import type { BundlePeriod } from "../shared/format/bundle.ts";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
+import { languageName } from "../shared/languages.ts";
 import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
 import { fileLabel, parseSource } from "../shared/model.ts";
 import { failureText } from "./App";
+import { CourseLanguages } from "./CourseLanguages";
 import { useLang, useSay } from "./i18n";
 import { Divider, usePanes } from "./Panes";
 import { Viewer } from "./Viewer";
@@ -103,9 +105,13 @@ function sourceIds(course: ModelCourse): string[] {
 	return [...ids].slice(0, 1500);
 }
 
-/** The key a course is chosen by: its grade and subject. */
-function courseKey(course: { grade: number; subject: string }): string {
-	return `${course.grade}|${course.subject}`;
+/** The key a course is chosen by: its grade, subject and teaching language (task 224). */
+function courseKey(course: {
+	grade: number;
+	subject: string;
+	language?: string;
+}): string {
+	return `${course.grade}|${course.subject}|${course.language ?? ""}`;
 }
 
 export function Curriculum({
@@ -114,14 +120,22 @@ export function Curriculum({
 	onNotify,
 	reloadKey,
 	openCourse,
+	onChanged,
 }: {
 	root: string;
 	project: { periods: BundlePeriod[] };
 	onNotify: (text: string) => void;
+	/** Called after the author changed a course's languages, so the project is read again. */
+	onChanged: () => void;
 	/** Bumped when the project changed (accepted changes, a scan): the tab stays open now. */
 	reloadKey: number;
 	/** A course the export's exam warning line asked for; `key` bumps on every click. */
-	openCourse?: { grade: number; subject: string; key: number } | null;
+	openCourse?: {
+		grade: number;
+		subject: string;
+		language: string;
+		key: number;
+	} | null;
 }) {
 	const say = useSay();
 	const lang = useLang();
@@ -184,6 +198,7 @@ export function Curriculum({
 				root,
 				head.grade,
 				head.subject,
+				head.language,
 			);
 			if (!alive) return;
 			if (!result.ok) {
@@ -274,6 +289,10 @@ export function Curriculum({
 											}}
 										>
 											{subjectName(entry.subject, lang)}
+											{coursesHere.filter(
+												(other) => other.subject === entry.subject,
+											).length > 1 &&
+												` · ${languageName(entry.language, lang)}`}
 										</button>
 									</li>
 								))}
@@ -286,7 +305,10 @@ export function Curriculum({
 
 			<article className="course">
 				<div className="course-head">
-					<h2>{subjectName(chosenCourse.subject, lang)}</h2>
+					<h2>
+						{subjectName(chosenCourse.subject, lang)} ·{" "}
+						{languageName(chosenCourse.language, lang)}
+					</h2>
 					<button
 						type="button"
 						className="btn btn-quiet"
@@ -309,6 +331,14 @@ export function Curriculum({
 							: 0,
 					})}
 				</p>
+
+				<CourseLanguages
+					root={root}
+					course={chosenCourse}
+					courses={courses}
+					onChanged={onChanged}
+					onNotify={onNotify}
+				/>
 
 				{course === null && courseFailed === "" && (
 					<p className="muted curriculum-note">{say("curriculum.loading")}</p>

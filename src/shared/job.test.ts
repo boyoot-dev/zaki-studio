@@ -34,6 +34,7 @@ const FILES = [
 		path: "Grade 3/Math/sheet.pdf",
 		grade: 3,
 		subject: "math",
+		language: "en",
 		block: "1",
 		kind: "sheet",
 		pages: 3,
@@ -44,6 +45,7 @@ const FILES = [
 		path: "Grade 3/Math/notes.docx",
 		grade: 3,
 		subject: "math",
+		language: "en",
 		block: "",
 		kind: "homework",
 		pages: 1,
@@ -156,9 +158,10 @@ describe("the units job's prompt and README", () => {
 	const FOLDER = "C:\\Users\\author\\Project\\.studio\\jobs\\2026-11-20-0900";
 	const COURSES = [
 		{
-			folder: "7-science-block-3",
+			folder: "7-science-en-block-3",
 			grade: 7,
 			subject: "science",
+			language: "en",
 			period: "block-3",
 			units: 2,
 			notes: 5,
@@ -216,7 +219,7 @@ the number of change sets written.`);
 		);
 		expect(readme).toContain(UNITS_DATA_RULE);
 		expect(readme).toContain(
-			"- `7-science-block-3` — Grade 7 · science · block-3 · 2 units · 5 notes",
+			"- `7-science-en-block-3` — Grade 7 · science · block-3 · 2 units · 5 notes",
 		);
 		// The shape rules.md names is written out, line for line, indented under the bullet.
 		for (const line of CHANGE_FORMAT.split("\n"))
@@ -356,6 +359,7 @@ describe("the exams job's prompt and README", () => {
 			folder: "9-arabic",
 			grade: 9,
 			subject: "arabic",
+			language: "en",
 			exams: 2,
 			notes: 6,
 		},

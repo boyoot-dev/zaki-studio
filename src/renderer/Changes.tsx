@@ -36,6 +36,7 @@ import {
 import type { BundlePart, BundlePeriod } from "../shared/format/bundle";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { JobTool } from "../shared/job";
+import { languageName } from "../shared/languages";
 import type { ModelFact, ModelLesson, ModelUnit } from "../shared/model";
 import { fileLabel, parseSource } from "../shared/model";
 import { failureText } from "./App";
@@ -45,25 +46,38 @@ import { WindowedList } from "./WindowedList";
 /** A word of the window, as the panel's helpers take it. */
 type Say = (key: TextKey, vars?: Record<string, string | number>) => string;
 
-/** The key a target is chosen by: its grade, subject and period. */
+/** The key a target is chosen by: its course (grade, subject, language) and period. */
 function targetKey(target: {
 	grade: number;
 	subject: string;
+	language: string;
 	period: string;
 }): string {
-	return `${target.grade}|${target.subject}|${target.period}`;
+	return `${target.grade}|${target.subject}|${target.language}|${target.period}`;
 }
 
-/** The key an exam target is chosen by: its grade and subject. */
-function examTargetKey(target: { grade: number; subject: string }): string {
-	return `${target.grade}|${target.subject}`;
+/** The key an exam target is chosen by: its course. */
+function examTargetKey(target: {
+	grade: number;
+	subject: string;
+	language: string;
+}): string {
+	return `${target.grade}|${target.subject}|${target.language}`;
 }
 
-/** The subject's own name, in the window's language. */
-function subjectName(id: string, lang: Lang): string {
-	const subject = studioSubjects.find((entry) => entry.id === id);
-	if (subject === undefined) return id;
-	return lang === "ar" ? subject.nameAr : subject.nameEn;
+/** A course's name in the window's language: the subject, then the language it is taught in. */
+function subjectName(
+	course: { subject: string; language: string },
+	lang: Lang,
+): string {
+	const subject = studioSubjects.find((entry) => entry.id === course.subject);
+	const name =
+		subject === undefined
+			? course.subject
+			: lang === "ar"
+				? subject.nameAr
+				: subject.nameEn;
+	return `${name} · ${languageName(course.language, lang)}`;
 }
 
 /** The name of a period, at any depth of the year. */
@@ -721,7 +735,7 @@ function ExamSet({
 				<div>
 					<h3>
 						<span className="chip">{say("changes.exams")}</span> ·{" "}
-						{gradeLabel(lang, set.grade)} · {subjectName(set.subject, lang)}
+						{gradeLabel(lang, set.grade)} · {subjectName(set, lang)}
 					</h3>
 					<p className="muted">
 						{say(
@@ -959,6 +973,7 @@ export function Changes({
 			root,
 			target.grade,
 			target.subject,
+			target.language,
 			target.period,
 		);
 		if (!answer.ok) {
@@ -978,6 +993,7 @@ export function Changes({
 				root,
 				target.grade,
 				target.subject,
+				target.language,
 				target.period,
 				limit,
 			);
@@ -1001,6 +1017,7 @@ export function Changes({
 			root,
 			target.grade,
 			target.subject,
+			target.language,
 		);
 		if (!answer.ok) {
 			onNotify(failureText(lang, answer));
@@ -1019,6 +1036,7 @@ export function Changes({
 				root,
 				target.grade,
 				target.subject,
+				target.language,
 				limit,
 			);
 			if (!answer.ok) {
@@ -1046,6 +1064,7 @@ export function Changes({
 			chosen.map((target) => ({
 				grade: target.grade,
 				subject: target.subject,
+				language: target.language,
 			})),
 			tool,
 		);
@@ -1096,6 +1115,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 			exam,
 			paper,
 		);
@@ -1113,6 +1133,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 		);
 		onNotify(answer.ok ? say("toast.saved") : failureText(lang, answer));
 		await load();
@@ -1128,6 +1149,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 			`exams[${exam}].${fix.path}`,
 			fix.value,
 		);
@@ -1145,6 +1167,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 		);
 		onNotify(answer.ok ? say("toast.deleted") : failureText(lang, answer));
 		await load();
@@ -1159,6 +1182,7 @@ export function Changes({
 			chosen.map((target) => ({
 				grade: target.grade,
 				subject: target.subject,
+				language: target.language,
 				period: target.period,
 			})),
 			tool,
@@ -1206,6 +1230,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 			set.period,
 			unit,
 			lesson,
@@ -1224,6 +1249,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 			set.period,
 		);
 		onNotify(answer.ok ? say("toast.saved") : failureText(lang, answer));
@@ -1235,6 +1261,7 @@ export function Changes({
 			root,
 			set.grade,
 			set.subject,
+			set.language,
 			set.period,
 		);
 		onNotify(answer.ok ? say("toast.deleted") : failureText(lang, answer));
@@ -1331,7 +1358,7 @@ export function Changes({
 									/>
 									<span dir="auto">
 										{gradeLabel(lang, target.grade)} ·{" "}
-										{subjectName(target.subject, lang)} ·{" "}
+										{subjectName(target, lang)} ·{" "}
 										{periodName(project.periods, target.period, lang)}
 									</span>
 								</label>
@@ -1368,7 +1395,7 @@ export function Changes({
 					<div className="notes-actions">
 						<p className="muted">
 							{gradeLabel(lang, plan.target.grade)} ·{" "}
-							{subjectName(plan.target.subject, lang)} ·{" "}
+							{subjectName(plan.target, lang)} ·{" "}
 							{periodName(project.periods, plan.target.period, lang)}
 						</p>
 						<p className="muted">
@@ -1433,7 +1460,7 @@ export function Changes({
 									/>
 									<span dir="auto">
 										{gradeLabel(lang, target.grade)} ·{" "}
-										{subjectName(target.subject, lang)}
+										{subjectName(target, lang)}
 									</span>
 								</label>
 								<span className="muted">
@@ -1472,7 +1499,7 @@ export function Changes({
 					<div className="notes-actions">
 						<p className="muted">
 							{gradeLabel(lang, examPlan.target.grade)} ·{" "}
-							{subjectName(examPlan.target.subject, lang)}
+							{subjectName(examPlan.target, lang)}
 						</p>
 						<p className="muted">
 							{examPlan.view.plan.estimateUsd === null
@@ -1759,8 +1786,7 @@ export function Changes({
 								<header className="new-head">
 									<div>
 										<h3 dir="auto">
-											{gradeLabel(lang, set.grade)} ·{" "}
-											{subjectName(set.subject, lang)} ·{" "}
+											{gradeLabel(lang, set.grade)} · {subjectName(set, lang)} ·{" "}
 											{periodName(project.periods, set.period, lang)}
 										</h3>
 										<p className="muted">
@@ -1823,8 +1849,7 @@ export function Changes({
 							return (
 								<li className="job-row">
 									<span dir="auto">
-										{gradeLabel(lang, set.grade)} ·{" "}
-										{subjectName(set.subject, lang)}
+										{gradeLabel(lang, set.grade)} · {subjectName(set, lang)}
 										{set.kind === "exams"
 											? ` · ${say("changes.exams")}`
 											: ` · ${periodName(project.periods, set.period, lang)}`}

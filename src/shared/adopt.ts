@@ -234,6 +234,8 @@ export function planAdopt(
 		const subject: ProjectSubject = {
 			subject: course.subject,
 			folder: validFolderName(found) ? found : subjectFolder(course.subject),
+			language: course.language,
+			support: [...course.support],
 		};
 		if (!gradeEntry.subjects.some((entry) => entry.subject === subject.subject))
 			gradeEntry.subjects.push(subject);

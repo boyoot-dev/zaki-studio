@@ -38,7 +38,7 @@ import { saveNote } from "./notes.ts";
 import type { NoteReply, NoteRequest } from "./openrouter.ts";
 
 const TODAY = new Date(2026, 10, 13, 8, 30);
-const TARGET = { grade: 9, subject: "arabic" };
+const TARGET = { grade: 9, subject: "arabic", language: "en" };
 const ID = "9a010f4b4816";
 
 /** One part of a writing paper. */
@@ -83,10 +83,12 @@ function part(
 /** One exam with its writing paper. */
 function exam(): BundleExam {
 	return {
+		id: "e3",
 		period: "term-1",
 		name: "Term 1",
 		papers: [
 			{
+				id: "p1",
 				name: "Writing",
 				skill: "writing",
 				language: null,
@@ -109,6 +111,7 @@ function row(
 		path: `Grade 9/Arabic/${academicYear}/${id}.pdf`,
 		grade: 9,
 		subject: "arabic",
+		language: "en",
 		block: "1",
 		kind: "exam",
 		pages: 8,
@@ -134,6 +137,8 @@ function course(): ModelCourse {
 	return {
 		grade: 9,
 		subject: "arabic",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [exam()],
 		units: [],
@@ -165,10 +170,12 @@ function model(): CurriculumModel {
 /** The exam as a bundle file writes it: optional null fields left out. */
 function examJson(): Record<string, unknown> {
 	return {
+		id: "e4",
 		period: "term-1",
 		name: "Term 1",
 		papers: [
 			{
+				id: "p2",
 				name: "Writing",
 				skill: "writing",
 				minutes: 70,
@@ -197,6 +204,7 @@ function goodBody(): string {
 	return JSON.stringify({
 		grade: 9,
 		subject: "arabic",
+		language: "en",
 		exams: [examJson()],
 		sources: { "ar9-w1": [ID] },
 		open: [],
@@ -349,7 +357,9 @@ describe("the request one exam change set makes", () => {
 	it("saves the answer for review, and never merges it by itself", async () => {
 		const got = await write(async () => reply(goodBody()));
 		if (!got.ok) throw new Error(got.code);
-		expect(readExamStored(project, 9, "arabic")).toMatchObject({
+		expect(
+			readExamStored(project, { grade: 9, subject: "arabic", language: "en" }),
+		).toMatchObject({
 			kind: "exams",
 			state: "pending",
 			source: "key",
@@ -357,7 +367,7 @@ describe("the request one exam change set makes", () => {
 		});
 		expect(
 			readFileSync(
-				join(project, ".studio", "model", "grade-9-arabic.json"),
+				join(project, ".studio", "model", "grade-9-arabic-en.json"),
 				"utf8",
 			),
 		).toContain('"minutes": 70');
@@ -368,7 +378,9 @@ describe("the request one exam change set makes", () => {
 			reply(goodBody().replace("[300,400]", "[400,300]")),
 		);
 		expect(got).toMatchObject({ ok: false, code: "refused" });
-		expect(readExamStored(project, 9, "arabic")).toBeNull();
+		expect(
+			readExamStored(project, { grade: 9, subject: "arabic", language: "en" }),
+		).toBeNull();
 	});
 
 	it("stops before a request that would pass the author's limit", async () => {
@@ -412,13 +424,17 @@ describe("the plan before it starts", () => {
 
 	it("prices a course the model has not got yet, from its exam notes", async () => {
 		const rows = YEARS.map((year) =>
-			row(IDS[year] ?? "", year, { grade: 8, subject: "french" }),
+			row(IDS[year] ?? "", year, {
+				grade: 8,
+				subject: "french",
+				language: "en",
+			}),
 		);
 		const plan = await planExamSet(
 			project,
 			model(),
 			rows,
-			{ grade: 8, subject: "french" },
+			{ grade: 8, subject: "french", language: "en" },
 			RULES,
 			"anthropic/claude-sonnet-5.5",
 			(async () => new Response(JSON.stringify(MODELS))) as typeof fetch,
@@ -456,19 +472,23 @@ describe("the exams job folder", () => {
 		expect(readFileSync(join(got.path, "rules.md"), "utf8")).toBe(RULES);
 		const courseJson = JSON.parse(
 			readFileSync(
-				join(got.path, "courses", "9-arabic", "course.json"),
+				join(got.path, "courses", "9-arabic-en", "course.json"),
 				"utf8",
 			),
 		) as { exams: unknown[] };
 		expect(courseJson.exams).toHaveLength(1);
-		expect(readdirSync(join(got.path, "courses", "9-arabic", "notes"))).toEqual(
-			[`01-${IDS["2026"]}.md`, `02-${IDS["2025"]}.md`, `03-${IDS["2024"]}.md`],
-		);
+		expect(
+			readdirSync(join(got.path, "courses", "9-arabic-en", "notes")),
+		).toEqual([
+			`01-${IDS["2026"]}.md`,
+			`02-${IDS["2025"]}.md`,
+			`03-${IDS["2024"]}.md`,
+		]);
 		const record = JSON.parse(
 			readFileSync(join(got.path, "job.json"), "utf8"),
 		) as { kind: string; exams: { folder: string }[] };
 		expect(record.kind).toBe("exams");
-		expect(record.exams[0]?.folder).toBe("9-arabic");
+		expect(record.exams[0]?.folder).toBe("9-arabic-en");
 		expect(readFileSync(join(got.path, "README.md"), "utf8")).toContain(
 			"# Exams job — kestrel",
 		);
@@ -476,7 +496,7 @@ describe("the exams job folder", () => {
 
 	it("collects a good set, and collecting again writes nothing", () => {
 		const got = prepare();
-		writeFileSync(join(got.path, "out", "9-arabic.json"), goodBody());
+		writeFileSync(join(got.path, "out", "9-arabic-en.json"), goodBody());
 		const first = collectExamsJob({
 			root: project,
 			model: model(),
@@ -485,8 +505,10 @@ describe("the exams job folder", () => {
 			today: TODAY,
 		});
 		if ("ok" in first) throw new Error("collecting failed");
-		expect(first.collected).toEqual(["9-arabic"]);
-		expect(readExamStored(project, 9, "arabic")).toMatchObject({
+		expect(first.collected).toEqual(["9-arabic-en"]);
+		expect(
+			readExamStored(project, { grade: 9, subject: "arabic", language: "en" }),
+		).toMatchObject({
 			kind: "exams",
 			source: "job",
 		});
@@ -499,12 +521,12 @@ describe("the exams job folder", () => {
 		});
 		if ("ok" in second) throw new Error("collecting failed");
 		expect(second.collected).toEqual([]);
-		expect(second.skipped).toEqual(["9-arabic"]);
+		expect(second.skipped).toEqual(["9-arabic-en"]);
 	});
 
 	it("shows the exam set in the review, and accepts one paper", () => {
 		const got = prepare();
-		writeFileSync(join(got.path, "out", "9-arabic.json"), goodBody());
+		writeFileSync(join(got.path, "out", "9-arabic-en.json"), goodBody());
 		collectExamsJob({
 			root: project,
 			model: model(),
@@ -520,7 +542,7 @@ describe("the exams job folder", () => {
 		if (!sets.ok) throw new Error("the sets were not read");
 		expect(sets.sets[0]).toMatchObject({
 			kind: "exams",
-			key: "9-arabic",
+			key: "9-arabic-en",
 			state: "pending",
 		});
 		expect(sets.sets[0]?.exams[0]?.papers[0]?.name).toBe("Writing");
@@ -532,7 +554,9 @@ describe("the exams job folder", () => {
 			choice: { kind: "paper", exam: 0, paper: 0 },
 		});
 		expect(accepted).toEqual({ ok: true, left: 0 });
-		expect(readExamStored(project, 9, "arabic")).toBeNull();
+		expect(
+			readExamStored(project, { grade: 9, subject: "arabic", language: "en" }),
+		).toBeNull();
 	});
 });
 
@@ -568,7 +592,11 @@ describe("a safe fix on the waiting set", () => {
 			value: 1,
 		});
 		expect(fixed).toEqual({ ok: true });
-		const stored = readExamStored(project, 9, "arabic");
+		const stored = readExamStored(project, {
+			grade: 9,
+			subject: "arabic",
+			language: "en",
+		});
 		expect(stored).toMatchObject({ kind: "exams", state: "pending" });
 		expect(stored?.set).toMatchObject({
 			exams: [{ papers: [{ parts: [{ questions: { count: 1 } }] }] }],
@@ -590,7 +618,8 @@ describe("a safe fix on the waiting set", () => {
 		});
 		expect(fixed).toEqual({ ok: true });
 		const questions = (
-			readExamStored(project, 9, "arabic")?.set as {
+			readExamStored(project, { grade: 9, subject: "arabic", language: "en" })
+				?.set as {
 				exams: { papers: { parts: { questions: object }[] }[] }[];
 			}
 		).exams[0]?.papers[0]?.parts[0]?.questions;
@@ -609,19 +638,22 @@ describe("a safe fix on the waiting set", () => {
 			value: 1,
 		});
 		expect(fixed).toMatchObject({ ok: false, code: "refused" });
-		expect(readExamStored(project, 9, "arabic")?.set).toMatchObject({
+		expect(
+			readExamStored(project, { grade: 9, subject: "arabic", language: "en" })
+				?.set,
+		).toMatchObject({
 			exams: [{ papers: [{ name: "Writing" }] }],
 		});
 	});
 });
 
 describe("a new course's exams (task 178)", () => {
-	const EIGHT = { grade: 8, subject: "french" };
+	const EIGHT = { grade: 8, subject: "french", language: "en" };
 	const ID8 = "abcdef012345";
 
 	/** A register row of the new course's made-up paper. */
 	function frenchRow(): FileRow {
-		return row(ID8, "2026", { grade: 8, subject: "french" });
+		return row(ID8, "2026", { grade: 8, subject: "french", language: "en" });
 	}
 
 	/** The good set, rewritten for the course the model has not got. */
@@ -650,11 +682,12 @@ describe("a new course's exams (task 178)", () => {
 
 		const sets = readChangeSets(project, model(), files);
 		if (!sets.ok) throw new Error("the sets were not read");
-		expect(sets.sets.find((set) => set.key === "8-french")).toMatchObject({
+		expect(sets.sets.find((set) => set.key === "8-french-en")).toMatchObject({
 			kind: "exams",
 			state: "pending",
 			grade: 8,
 			subject: "french",
+			language: "en",
 		});
 
 		const accepted = acceptExamChange({

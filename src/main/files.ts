@@ -37,6 +37,10 @@ import type {
 } from "../shared/api.ts";
 import { insideProject, isProjectRoot } from "../shared/inside.ts";
 import {
+	type CourseLanguage,
+	cleanCourseLanguage,
+} from "../shared/languages.ts";
+import {
 	INBOX_DIR,
 	nextUnitFolder,
 	PROJECT_FILE,
@@ -293,7 +297,85 @@ export function readProject(
 				? undefined
 				: `${result.issues[0].path}: ${result.issues[0].message}`,
 		);
+	// A project from before format version 1 is converted once (task 224): the old file is
+	// kept in the backup folder, and the converted one is written in its place.
+	if (result.converted === true) {
+		try {
+			const backup = join(root, BACKUP_DIR);
+			mkdirSync(backup, { recursive: true });
+			const kept = join(backup, PROJECT_FILE);
+			if (!existsSync(kept)) writeFileSync(kept, text, "utf8");
+		} catch {
+			return failure("unreadable");
+		}
+		const written = writeProject(root, result.project);
+		if (!written.ok) return written;
+	}
 	return { ok: true, project: result.project };
+}
+
+/** Where the conversion of an old project keeps the files it replaced (task 224). */
+export const BACKUP_DIR = ".studio/backup-project-v1";
+
+/**
+ * Sets courses' teaching and help languages in curriculum.json (task 225), which is where the
+ * Studio keeps them; the model takes them from there when it is read. Each change is cleaned
+ * first, and a course the project doesn't have is refused, so the page can't add one here.
+ */
+export function setCourseLanguages(
+	root: string,
+	changes: unknown,
+): { ok: true; renamed: CourseLanguage[] } | Failure {
+	const renamed: CourseLanguage[] = [];
+	if (!Array.isArray(changes) || changes.length === 0 || changes.length > 400)
+		return failure("invalidProject");
+	const project = readProject(root);
+	if (!project.ok) return project;
+	const next = structuredClone(project.project);
+	for (const raw of changes) {
+		if (typeof raw !== "object" || raw === null)
+			return failure("invalidProject");
+		const given = raw as Record<string, unknown>;
+		const change = cleanCourseLanguage({
+			grade: typeof given.grade === "number" ? given.grade : Number.NaN,
+			subject: typeof given.subject === "string" ? given.subject : "",
+			from: typeof given.from === "string" ? given.from : "",
+			language: typeof given.language === "string" ? given.language : "",
+			support: Array.isArray(given.support)
+				? given.support.filter(
+						(code): code is string => typeof code === "string",
+					)
+				: [],
+		} satisfies CourseLanguage);
+		if (change === null) return failure("invalidProject");
+		const subjects = next.grades.find(
+			(grade) => grade.grade === change.grade,
+		)?.subjects;
+		const entry = subjects?.find(
+			(subject) =>
+				subject.subject === change.subject && subject.language === change.from,
+		);
+		if (entry === undefined) return failure("missing");
+		// One subject may be taught twice in a grade, but never twice in one language.
+		if (
+			change.language !== change.from &&
+			subjects?.some(
+				(subject) =>
+					subject.subject === change.subject &&
+					subject.language === change.language,
+			)
+		)
+			return failure(
+				"refused",
+				"that course is already taught in that language",
+			);
+		entry.language = change.language;
+		entry.support = change.support;
+		if (change.language !== change.from) renamed.push(change);
+	}
+	const written = writeProject(root, next);
+	if (!written.ok) return written;
+	return { ok: true, renamed };
 }
 
 /** The top-level folders of a folder that isn't a project yet, and their child folders. */

@@ -192,7 +192,6 @@ const ocr = { text: async () => "KESTREL SCHOOL\n1" };
 /** The scan's own settings for a test: it reads English only, and nothing is left owed. */
 function scan(over: Partial<Parameters<typeof scanProject>[1]> = {}) {
 	return scanProject(project, {
-		subjects: [{ id: "math", contentLanguage: "en" }],
 		studioRoot: join(import.meta.dirname, "..", ".."),
 		render: reader,
 		ocr,
@@ -250,6 +249,7 @@ describe("a scan of a project", { timeout: 30_000 }, () => {
 			path: "Grade 3/2026-2027/Math/Math-B1-Sheet1 - Main.pdf",
 			grade: 3,
 			subject: "math",
+			language: "",
 			block: "1",
 			kind: "sheet",
 			year: "current",
@@ -542,7 +542,6 @@ describe("a scan of a project", { timeout: 30_000 }, () => {
 	it("says which language files are missing instead of crashing", async () => {
 		put("Grade 3/2026-2027/Arabic/sheet.pdf", pdf([{ text: "1" }]));
 		const outcome = await scan({
-			subjects: [{ id: "arabic", contentLanguage: "ar" }],
 			ocr: undefined,
 		});
 		if (!outcome.ok) throw new Error("the scan failed");

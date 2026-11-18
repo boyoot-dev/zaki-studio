@@ -51,10 +51,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: "One paper, short answers.",
 		exams: [],
 		units: [
 			{
+				id: "u2",
 				number: 1,
 				period: "t1",
 				title: "Classification",
@@ -63,10 +66,15 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l3",
 						number: 1,
 						title: "Living things",
 						skills: [
-							{ code: "7-1-1", text: "Sort living things into groups." },
+							{
+								id: "s1",
+								code: "7-1-1",
+								text: "Sort living things into groups.",
+							},
 						],
 						facts: [
 							{
@@ -147,10 +155,10 @@ describe("the model's files", () => {
 		const current = model();
 		const header = modelFileText(current.curriculum);
 		const courses = current.courses.map((entry) => ({
-			name: courseFile(entry.grade, entry.subject),
+			name: courseFile(entry.grade, entry.subject, entry.language),
 			text: modelFileText(entry),
 		}));
-		expect(courses[0]?.name).toBe("grade-7-science.json");
+		expect(courses[0]?.name).toBe("grade-7-science-en.json");
 		const parsed = parseModelText(header, courses);
 		expect(parsed.ok).toBe(true);
 		if (parsed.ok) expect(parsed.model).toEqual(current);
@@ -166,6 +174,7 @@ describe("the model's files", () => {
 				unit.keywords = [];
 				unit.lessons = [
 					{
+						id: "l4",
 						number: 1,
 						title: "An empty lesson",
 						skills: [],
@@ -178,7 +187,7 @@ describe("the model's files", () => {
 		current.curriculum.periods = [];
 		const header = modelFileText(current.curriculum);
 		const courses = current.courses.map((entry) => ({
-			name: courseFile(entry.grade, entry.subject),
+			name: courseFile(entry.grade, entry.subject, entry.language),
 			text: modelFileText(entry),
 		}));
 		const parsed = parseModelText(header, courses);
@@ -194,10 +203,12 @@ describe("the model's files", () => {
 		const withExam = course();
 		withExam.exams = [
 			{
+				id: "e6",
 				period: "t1",
 				name: "Term 1 test",
 				papers: [
 					{
+						id: "p5",
 						name: "Paper 1",
 						skill: "written",
 						language: null,
@@ -205,7 +216,7 @@ describe("the model's files", () => {
 						marks: null,
 						parts: [
 							{
-								id: null,
+								id: "t1",
 								name: "Part 1",
 								nameEn: null,
 								instruction: null,
@@ -245,7 +256,7 @@ describe("the model's files", () => {
 		// A null would make the bundle parser refuse an exam's optional field.
 		expect(text).not.toContain("null");
 		const parsed = parseModelText(modelFileText(model().curriculum), [
-			{ name: "grade-7-science.json", text },
+			{ name: "grade-7-science-en.json", text },
 		]);
 		expect(parsed.ok).toBe(true);
 		if (parsed.ok)
@@ -259,7 +270,7 @@ describe("the model's files", () => {
 		// leaves its empty lists out, so the reader must give them back as empty ones.
 		const empty = emptyCourse(8, "arabic");
 		const parsed = parseModelText(modelFileText(model().curriculum), [
-			{ name: courseFile(8, "arabic"), text: modelFileText(empty) },
+			{ name: courseFile(8, "arabic", "en"), text: modelFileText(empty) },
 		]);
 		expect(parsed.ok).toBe(true);
 		if (parsed.ok) expect(parsed.model.courses).toEqual([empty]);
@@ -275,12 +286,12 @@ describe("the model's files", () => {
 			own: false,
 		};
 		const parsed = parseModelText(modelFileText(model().curriculum), [
-			{ name: "grade-7-science.json", text: modelFileText(broken) },
+			{ name: "grade-7-science-en.json", text: modelFileText(broken) },
 		]);
 		expect(parsed.ok).toBe(false);
 		if (!parsed.ok)
 			expect(parsed.issues[0]?.path).toBe(
-				"grade-7-science.json.units[0].lessons[0].facts[0].status",
+				"grade-7-science-en.json.units[0].lessons[0].facts[0].status",
 			);
 	});
 });

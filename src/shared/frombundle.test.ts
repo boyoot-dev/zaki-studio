@@ -32,7 +32,7 @@ function example(name: string) {
 }
 
 describe("a project from a curriculum file", () => {
-	for (const name of ["full.json", "writing-v2.json", "minimal.json"]) {
+	for (const name of ["full.json", "writing.json", "minimal.json"]) {
 		it(`exports ${name} again as the same bundle, one version later`, () => {
 			const bundle = example(name);
 			const { project, model } = projectFromBundle(bundle, subjects);

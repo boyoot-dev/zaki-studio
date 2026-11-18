@@ -60,6 +60,7 @@ function part(
 /** One paper whose numbers agree: one part worth two marks. */
 function paper(over: Partial<BundlePaper> = {}): BundlePaper {
 	return {
+		id: "p1",
 		name: "Writing",
 		skill: "writing",
 		language: null,
@@ -72,7 +73,7 @@ function paper(over: Partial<BundlePaper> = {}): BundlePaper {
 
 /** One exam whose numbers agree: one paper of one part. */
 function exam(over: Partial<BundleExam> = {}): BundleExam {
-	return { period: null, name: "Final", papers: [paper()], ...over };
+	return { id: "e1", period: null, name: "Final", papers: [paper()], ...over };
 }
 
 /** One exam with one part, `over` on that part's questions. */
@@ -254,10 +255,10 @@ describe("a whole course", () => {
 		});
 		expect(
 			courseNumberWarnings([
-				{ grade: 9, subject: "arabic", exams: [graded] },
-				{ grade: 8, subject: "french", exams: [exam()] },
+				{ grade: 9, subject: "arabic", language: "en", exams: [graded] },
+				{ grade: 8, subject: "french", language: "en", exams: [exam()] },
 			]),
-		).toEqual([{ grade: 9, subject: "arabic", warnings: 1 }]);
+		).toEqual([{ grade: 9, subject: "arabic", language: "en", warnings: 1 }]);
 	});
 });
 

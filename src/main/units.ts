@@ -92,7 +92,8 @@ function requestInput(
 	// A course the project has not got yet, or a block it has no unit in, is an empty course:
 	// the model writes that period's units from the notes alone (task 178).
 	const course =
-		targetCourse(model, target) ?? emptyCourse(target.grade, target.subject);
+		targetCourse(model, target) ??
+		emptyCourse(target.grade, target.subject, target.language);
 	const notes = periodNotes(root, rows, target);
 	return {
 		...changeInput({

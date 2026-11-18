@@ -5,6 +5,7 @@
 
 import type { CourseNumberWarnings } from "./exam-numbers.ts";
 import type { JobSummary, JobTool } from "./job.ts";
+import type { LanguageWarning } from "./languages.ts";
 import type {
 	ItemsPage,
 	NotesListItem,
@@ -140,7 +141,13 @@ export type Scanned =
 	| Failure;
 
 /** One course of the model, as the curriculum's nav lists it (no units; task 168). */
-export type CourseHead = { grade: number; subject: string };
+export type CourseHead = {
+	grade: number;
+	subject: string;
+	/** The course's teaching language and help languages, from the project (task 225). */
+	language: string;
+	support: string[];
+};
 
 /** The curriculum's header and its courses' heads, for the Curriculum tab's nav. */
 export type ModelOverview =
@@ -166,6 +173,8 @@ export type ExportCheck =
 			rights: string;
 			/** The accepted exams whose numbers don't add up, per course; the export still works. */
 			examWarnings: CourseNumberWarnings[];
+			/** Courses in a language Mr. Zaki can't use yet (task 225); the export still works. */
+			languageWarnings: LanguageWarning[];
 	  }
 	| Failure;
 
@@ -260,6 +269,8 @@ export type JobMade =
 export type ChangeTargetView = {
 	grade: number;
 	subject: string;
+	/** The course's teaching language (task 224). */
+	language: string;
 	period: string;
 	units: number;
 	lessons: number;
@@ -278,6 +289,8 @@ export type ChangeTargetView = {
 export type ExamTargetView = {
 	grade: number;
 	subject: string;
+	/** The course's teaching language (task 224). */
+	language: string;
 	/** The exams the course has now, and how many its exam files are. */
 	exams: number;
 	files: number;
@@ -388,7 +401,22 @@ export type StudioApi = {
 	/** The curriculum's header and its courses' heads, for the Curriculum tab's nav (task 168). */
 	readModel(root: string): Promise<ModelOverview>;
 	/** One course in full, for the Curriculum tab's chosen course (task 168). */
-	course(root: string, grade: number, subject: string): Promise<CourseOpen>;
+	course(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+	): Promise<CourseOpen>;
+	/** Sets courses' teaching and help languages in the project file (task 225). */
+	setCourseLanguages(
+		root: string,
+		changes: {
+			grade: number;
+			subject: string;
+			language: string;
+			support: string[];
+		}[],
+	): Promise<Done>;
 	/** The register's row for one path, for the file's details pane (task 168). */
 	fileRow(
 		root: string,
@@ -540,6 +568,7 @@ export type StudioApi = {
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		period: string,
 	): Promise<UnitsPlanView>;
 	/** Writes one period's change set with the author's key, and keeps it for review. */
@@ -547,13 +576,19 @@ export type StudioApi = {
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		period: string,
 		limit: number,
 	): Promise<ChangesWritten>;
 	/** Writes a units job folder for the chosen periods, and returns its prompt. */
 	prepareUnitsJob(
 		root: string,
-		targets: { grade: number; subject: string; period: string }[],
+		targets: {
+			grade: number;
+			subject: string;
+			language: string;
+			period: string;
+		}[],
 		tool: JobTool,
 	): Promise<JobMade>;
 	/** Reads a units job's out/ folder and keeps every change set that passes the checks. */
@@ -565,18 +600,20 @@ export type StudioApi = {
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 	): Promise<ExamsPlanView>;
 	/** Writes one course's exam change set with the author's key. */
 	writeExams(
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		limit: number,
 	): Promise<ChangesWritten>;
 	/** Writes an exams job folder for the chosen courses, and returns its prompt. */
 	prepareExamsJob(
 		root: string,
-		targets: { grade: number; subject: string }[],
+		targets: { grade: number; subject: string; language: string }[],
 		tool: JobTool,
 	): Promise<JobMade>;
 	/** Reads an exams job's out/ folder and keeps every set that passes the checks. */
@@ -588,26 +625,39 @@ export type StudioApi = {
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		exam?: number,
 		paper?: number,
 	): Promise<Done>;
 	/** Marks an exam change set as rejected, keeping it until it is deleted. */
-	rejectExams(root: string, grade: number, subject: string): Promise<Done>;
+	rejectExams(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+	): Promise<Done>;
 	/** Applies one safe number fix to a pending exam change set, then checks the set again. */
 	fixExams(
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		path: string,
 		value: number | null,
 	): Promise<Done>;
 	/** Deletes a rejected exam change set's file. */
-	deleteExams(root: string, grade: number, subject: string): Promise<Done>;
+	deleteExams(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+	): Promise<Done>;
 	/** Merges a whole set, one unit, or one lesson into the model; the page sends no path. */
 	acceptChanges(
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		period: string,
 		unit?: number,
 		lesson?: number,
@@ -617,6 +667,7 @@ export type StudioApi = {
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		period: string,
 	): Promise<Done>;
 	/** Deletes a change set's file. */
@@ -624,6 +675,7 @@ export type StudioApi = {
 		root: string,
 		grade: number,
 		subject: string,
+		language: string,
 		period: string,
 	): Promise<Done>;
 	/** Keeps the units model id and the spending limit. */

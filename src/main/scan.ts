@@ -17,12 +17,13 @@ import {
 import { dirname, join } from "node:path";
 
 import type { Failure, ScanProgress } from "../shared/api.ts";
+import { settleLanguage } from "../shared/convert.ts";
 import { type FileRow, PAGES_DIR } from "../shared/model.ts";
 import { pngProblem } from "../shared/png.ts";
 import { STUDIO_DIR } from "../shared/project.ts";
 import {
 	compareRows,
-	type LangSubject,
+	langCourses,
 	type NewMaterial,
 	newMaterial,
 	type ReportCourse,
@@ -32,7 +33,7 @@ import {
 } from "../shared/register.ts";
 import { pagePng, textFile, withOcr } from "../shared/text.ts";
 import { collectRows } from "./collect.ts";
-import { safePath } from "./files.ts";
+import { readProject, safePath } from "./files.ts";
 import {
 	readFiles,
 	readModel,
@@ -47,10 +48,11 @@ import {
 import { copyNotes } from "./notes.ts";
 import { missingLangs } from "./ocr.ts";
 
-/** What a scan needs: the subject list, where Tesseract's files are, and how to stop. */
+/**
+ * What a scan needs: where Tesseract's files are, and how to stop. The pages' languages come
+ * from the project's own courses (task 224).
+ */
 export type ScanOptions = {
-	/** The subjects, for their teaching languages. */
-	subjects: readonly LangSubject[];
 	/** The Studio folder, where node_modules and resources/tessdata are. */
 	studioRoot: string;
 	onProgress?: (progress: ScanProgress) => void;
@@ -104,6 +106,7 @@ function reportCourses(root: string): ReportCourse[] {
 	return model.model.courses.map((course) => ({
 		grade: course.grade,
 		subject: course.subject,
+		language: course.language,
 		units: course.units.map((unit) => ({
 			number: unit.number,
 			period: unit.period,
@@ -197,6 +200,8 @@ export async function scanProject(
 	const known = readFiles(root);
 	if (!known.ok) return known;
 	const before = readReport(root);
+	const project = readProject(root);
+	const courses = project.ok ? langCourses(project.project) : [];
 
 	const collected = await collectRows({
 		root,
@@ -216,7 +221,11 @@ export async function scanProject(
 	// A stopped scan keeps what it read: the texts are written below only when it finishes, so
 	// here it simply returns and the next scan begins again from the same register.
 	if (!collected.ok) return { ok: false, code: "cancelled" };
-	const rows = collected.collected.rows;
+	// A row whose folder names no language takes its course's, when the grade has one course
+	// of that subject; with two (task 224) it stays "" until the author says which.
+	const rows = collected.collected.rows.map((row) =>
+		settleLanguage(row, courses),
+	);
 	const written = writeFiles(root, rows);
 	if (!written.ok) return written;
 	// A note the pipeline wrote before this project was adopted is kept as it is (task 157).
@@ -274,7 +283,7 @@ export async function scanProject(
 				done += 1;
 				continue;
 			}
-			const langs = tessLangs(row.subject, options.subjects);
+			const langs = tessLangs(row.grade, row.subject, courses);
 			const absent = missingLangs(options.studioRoot, langs);
 			if (absent.length > 0) {
 				for (const lang of absent) missing.add(lang);

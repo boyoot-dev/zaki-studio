@@ -13,6 +13,8 @@ const api: StudioApi = {
 	openProject: (root) => ipcRenderer.invoke("studio:openProject", root),
 	adoptProject: () => ipcRenderer.invoke("studio:adoptProject"),
 	readModel: (root) => ipcRenderer.invoke("studio:model", root),
+	setCourseLanguages: (root, changes) =>
+		ipcRenderer.invoke("studio:setCourseLanguages", root, changes),
 	readPageText: (root, id, page) =>
 		ipcRenderer.invoke("studio:pageText", root, id, page),
 	exportSummary: (root) => ipcRenderer.invoke("studio:exportSummary", root),
@@ -34,8 +36,8 @@ const api: StudioApi = {
 	projectFromBundle: () => ipcRenderer.invoke("studio:projectFromBundle"),
 	listTree: (root, rel) =>
 		ipcRenderer.invoke("studio:listTree", root, rel ?? ""),
-	course: (root, grade, subject) =>
-		ipcRenderer.invoke("studio:course", root, grade, subject),
+	course: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:course", root, grade, subject, language),
 	fileRow: (root, path) => ipcRenderer.invoke("studio:fileRow", root, path),
 	filePaths: (root, ids) => ipcRenderer.invoke("studio:filePaths", root, ids),
 	folders: (root) => ipcRenderer.invoke("studio:folders", root),
@@ -119,14 +121,22 @@ const api: StudioApi = {
 		ipcRenderer.invoke("studio:collectJob", root, name),
 	deleteJob: (root, name) => ipcRenderer.invoke("studio:deleteJob", root, name),
 	changesState: (root) => ipcRenderer.invoke("studio:changesState", root),
-	unitsPlan: (root, grade, subject, period) =>
-		ipcRenderer.invoke("studio:unitsPlan", root, grade, subject, period),
-	writeChanges: (root, grade, subject, period, limit) =>
+	unitsPlan: (root, grade, subject, language, period) =>
+		ipcRenderer.invoke(
+			"studio:unitsPlan",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+		),
+	writeChanges: (root, grade, subject, language, period, limit) =>
 		ipcRenderer.invoke(
 			"studio:writeChanges",
 			root,
 			grade,
 			subject,
+			language,
 			period,
 			limit,
 		),
@@ -136,38 +146,76 @@ const api: StudioApi = {
 		ipcRenderer.invoke("studio:collectUnitsJob", root, name),
 	deleteUnitsJob: (root, name) =>
 		ipcRenderer.invoke("studio:deleteUnitsJob", root, name),
-	examsPlan: (root, grade, subject) =>
-		ipcRenderer.invoke("studio:examsPlan", root, grade, subject),
-	writeExams: (root, grade, subject, limit) =>
-		ipcRenderer.invoke("studio:writeExams", root, grade, subject, limit),
+	examsPlan: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:examsPlan", root, grade, subject, language),
+	writeExams: (root, grade, subject, language, limit) =>
+		ipcRenderer.invoke(
+			"studio:writeExams",
+			root,
+			grade,
+			subject,
+			language,
+			limit,
+		),
 	prepareExamsJob: (root, targets, tool) =>
 		ipcRenderer.invoke("studio:prepareExamsJob", root, targets, tool),
 	collectExamsJob: (root, name) =>
 		ipcRenderer.invoke("studio:collectExamsJob", root, name),
 	deleteExamsJob: (root, name) =>
 		ipcRenderer.invoke("studio:deleteExamsJob", root, name),
-	acceptExams: (root, grade, subject, exam, paper) =>
-		ipcRenderer.invoke("studio:acceptExams", root, grade, subject, exam, paper),
-	rejectExams: (root, grade, subject) =>
-		ipcRenderer.invoke("studio:rejectExams", root, grade, subject),
-	fixExams: (root, grade, subject, path, value) =>
-		ipcRenderer.invoke("studio:fixExams", root, grade, subject, path, value),
-	deleteExams: (root, grade, subject) =>
-		ipcRenderer.invoke("studio:deleteExams", root, grade, subject),
-	acceptChanges: (root, grade, subject, period, unit, lesson) =>
+	acceptExams: (root, grade, subject, language, exam, paper) =>
+		ipcRenderer.invoke(
+			"studio:acceptExams",
+			root,
+			grade,
+			subject,
+			language,
+			exam,
+			paper,
+		),
+	rejectExams: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:rejectExams", root, grade, subject, language),
+	fixExams: (root, grade, subject, language, path, value) =>
+		ipcRenderer.invoke(
+			"studio:fixExams",
+			root,
+			grade,
+			subject,
+			language,
+			path,
+			value,
+		),
+	deleteExams: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:deleteExams", root, grade, subject, language),
+	acceptChanges: (root, grade, subject, language, period, unit, lesson) =>
 		ipcRenderer.invoke(
 			"studio:acceptChanges",
 			root,
 			grade,
 			subject,
+			language,
 			period,
 			unit,
 			lesson,
 		),
-	rejectChanges: (root, grade, subject, period) =>
-		ipcRenderer.invoke("studio:rejectChanges", root, grade, subject, period),
-	deleteChanges: (root, grade, subject, period) =>
-		ipcRenderer.invoke("studio:deleteChanges", root, grade, subject, period),
+	rejectChanges: (root, grade, subject, language, period) =>
+		ipcRenderer.invoke(
+			"studio:rejectChanges",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+		),
+	deleteChanges: (root, grade, subject, language, period) =>
+		ipcRenderer.invoke(
+			"studio:deleteChanges",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+		),
 	saveUnitsSettings: (model, limit) =>
 		ipcRenderer.invoke("studio:saveUnitsSettings", model, limit),
 };

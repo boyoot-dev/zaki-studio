@@ -5,18 +5,25 @@
 // Arabic, say) stays mapped to its subject, and the periods are exactly the bundle's period
 // shape (docs/BUNDLES.md), so exporting is a copy rather than a translation.
 
+import { convertProjectGrades } from "./convert.ts";
 import {
 	BUNDLE_ID,
 	BUNDLE_LIMITS,
 	type BundlePeriod,
 	checkText,
+	LANGUAGE_CODES,
+	NATIVE,
 } from "./format/bundle.ts";
 import { GRADE_MAX, GRADE_MIN, gradeName } from "./format/grades.ts";
 
 /** The marker in curriculum.json that says this folder is a Studio project. */
 export const PROJECT_FORMAT = "mr-zaki-studio-project";
-/** The project file's own shape. It is not the bundle's version, which export bumps later. */
-export const PROJECT_FORMAT_VERSION = 1;
+/**
+ * The project file's own shape. It is not the bundle's version, which export bumps later.
+ * Version 2 (task 224) gives each subject entry its teaching and help languages; a version 1
+ * file is converted when it is read (./convert.ts) and written back once.
+ */
+export const PROJECT_FORMAT_VERSION = 2;
 /** The file at the root of the project folder. */
 export const PROJECT_FILE = "curriculum.json";
 /** The Studio's memory folder: hidden on Windows, never edited by hand. */
@@ -32,8 +39,17 @@ export const EXAM_FOLDERS = [
 	"reading-samples",
 ] as const;
 
-/** One subject of one grade: the app's subject id, and the folder it lives in. */
-export type ProjectSubject = { subject: string; folder: string };
+/**
+ * One course of one grade: the subject id, the folder it lives in, the language it is taught
+ * in, and the languages that may help the child ("native" is the child's own). The Studio
+ * keeps one course per subject and grade for now; the format allows a second language.
+ */
+export type ProjectSubject = {
+	subject: string;
+	folder: string;
+	language: string;
+	support: string[];
+};
 /** One grade: the bundle's grade number, and the folder it lives in. */
 export type ProjectGrade = {
 	grade: number;
@@ -55,11 +71,19 @@ export type Project = {
 /** One problem in a project file: where it is (e.g. "grades[0].subjects[1]") and what is wrong. */
 export type ProjectIssue = { path: string; message: string };
 export type ProjectResult =
-	| { ok: true; project: Project }
+	| { ok: true; project: Project; converted?: boolean }
 	| { ok: false; issues: ProjectIssue[] };
 
-/** A subject as the wizard shows it: the id the app uses, and its two names. */
-export type SubjectLabel = { id: string; nameEn: string; nameAr: string };
+/**
+ * A subject as the wizard shows it: the id the app uses, its two names, and, for a foreign
+ * language being learnt, which language that is.
+ */
+export type SubjectLabel = {
+	id: string;
+	nameEn: string;
+	nameAr: string;
+	studies?: string;
+};
 
 /** The wizard's answers before they become a project. */
 export type WizardAnswers = {
@@ -73,7 +97,29 @@ export type WizardAnswers = {
 	periods: BundlePeriod[];
 	/** A final exam that covers the whole year (docs/STUDIO.md, exams). */
 	finalExam: boolean;
+	/** The language most of the curriculum is taught in (task 225); "en" when not asked. */
+	language?: string;
+	/** A course's own language when it differs, keyed "<grade> <subject>". */
+	courseLanguages?: Record<string, string>;
 };
+
+/**
+ * The language a wizard course starts with: the author's choice for it, else the language a
+ * foreign-language subject studies, else the curriculum's main language.
+ */
+export function wizardLanguage(
+	answers: Pick<WizardAnswers, "language" | "courseLanguages">,
+	grade: number,
+	subject: SubjectLabel | undefined,
+	id: string,
+): string {
+	return (
+		answers.courseLanguages?.[`${grade} ${id}`] ??
+		subject?.studies ??
+		answers.language ??
+		"en"
+	);
+}
 
 /** How a year may be split in the wizard. */
 export type PeriodPreset =
@@ -380,12 +426,15 @@ export function wizardProject(
 		grades: answers.grades.map((entry) => ({
 			grade: entry.grade,
 			folder: gradeFolder(entry.grade),
-			subjects: entry.subjects.map((subject) => ({
-				subject,
-				folder: subjectFolder(
-					subjects.find((s) => s.id === subject)?.nameEn ?? subject,
-				),
-			})),
+			subjects: entry.subjects.map((subject) => {
+				const label = subjects.find((s) => s.id === subject);
+				return {
+					subject,
+					folder: subjectFolder(label?.nameEn ?? subject),
+					language: wizardLanguage(answers, entry.grade, label, subject),
+					support: [],
+				};
+			}),
 		})),
 	};
 	// Two subjects of one grade must not land in one folder: the second would overwrite the
@@ -540,7 +589,12 @@ export function parseProject(text: string): ProjectResult {
 
 	if (read("format") !== PROJECT_FORMAT)
 		add("format", `expected "${PROJECT_FORMAT}"`);
-	if (read("formatVersion") !== PROJECT_FORMAT_VERSION)
+	// A version 1 project is converted here (task 224) and written back by the caller.
+	let converted = false;
+	if (read("formatVersion") === 1) {
+		convertProjectGrades(read("grades"));
+		converted = true;
+	} else if (read("formatVersion") !== PROJECT_FORMAT_VERSION)
 		add("formatVersion", `expected ${PROJECT_FORMAT_VERSION}`);
 	const idValue = read("id");
 	if (typeof idValue !== "string" || !BUNDLE_ID.test(idValue))
@@ -577,6 +631,7 @@ export function parseProject(text: string): ProjectResult {
 
 	return {
 		ok: true,
+		converted,
 		project: {
 			format: PROJECT_FORMAT,
 			formatVersion: PROJECT_FORMAT_VERSION,
@@ -769,8 +824,27 @@ function parseGrades(
 			}
 			const subjectRaw = item as Record<string, unknown>;
 			for (const key of Object.keys(subjectRaw)) {
-				if (!["subject", "folder"].includes(key))
+				if (!["subject", "folder", "language", "support"].includes(key))
 					add(`${subjectAt}.${key}`, `unknown field "${key}"`);
+			}
+			const language = subjectRaw.language;
+			const support = subjectRaw.support ?? [];
+			if (typeof language !== "string" || !LANGUAGE_CODES.includes(language)) {
+				add(`${subjectAt}.language`, "expected a language code");
+				bad = true;
+				continue;
+			}
+			if (
+				!Array.isArray(support) ||
+				support.some(
+					(code) =>
+						typeof code !== "string" ||
+						(code !== NATIVE && !LANGUAGE_CODES.includes(code)),
+				)
+			) {
+				add(`${subjectAt}.support`, "expected a list of language codes");
+				bad = true;
+				continue;
 			}
 			const subject = subjectRaw.subject;
 			const subjectFolderName = subjectRaw.folder;
@@ -792,7 +866,12 @@ function parseGrades(
 				bad = true;
 			}
 			folders.add(subjectFolderName);
-			subjects.push({ subject, folder: subjectFolderName });
+			subjects.push({
+				subject,
+				folder: subjectFolderName,
+				language,
+				support: support as string[],
+			});
 		}
 		if (subjects.length === 0) {
 			add(`${at}.subjects`, "expected at least one subject");

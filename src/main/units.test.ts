@@ -18,7 +18,12 @@ import { planChangeSet, unitsSystem, writeChangeSet } from "./units.ts";
 const ID = "9a010f4b4816";
 const OTHER = "abcdef012345";
 const TODAY = new Date(2026, 10, 13, 8, 30);
-const TARGET = { grade: 7, subject: "science", period: "block-3" };
+const TARGET = {
+	grade: 7,
+	subject: "science",
+	language: "en",
+	period: "block-3",
+};
 
 /** A register row of made-up material. */
 function row(id: string): FileRow {
@@ -27,6 +32,7 @@ function row(id: string): FileRow {
 		path: `Grade 7/Science/${id}.pdf`,
 		grade: 7,
 		subject: "science",
+		language: "en",
 		block: "3",
 		kind: "sheet",
 		pages: 8,
@@ -51,10 +57,13 @@ function course(): ModelCourse {
 	return {
 		grade: 7,
 		subject: "science",
+		language: "en",
+		support: [],
 		examStyle: null,
 		exams: [],
 		units: [
 			{
+				id: "u3",
 				number: 5,
 				period: "block-3",
 				title: "Breathing (provisional)",
@@ -63,9 +72,10 @@ function course(): ModelCourse {
 				evidence: [],
 				lessons: [
 					{
+						id: "l4",
 						number: 1,
 						title: "The lungs",
-						skills: [{ code: null, text: "name the parts" }],
+						skills: [{ id: "s1", code: null, text: "name the parts" }],
 						facts: [
 							{
 								text: "The author's own fact.",
@@ -109,6 +119,7 @@ function goodBody(): string {
 	return JSON.stringify({
 		grade: 7,
 		subject: "science",
+		language: "en",
 		period: "block-3",
 		units: [
 			{
@@ -122,7 +133,7 @@ function goodBody(): string {
 						number: 1,
 						title: "The lungs",
 						activity: null,
-						skills: [{ code: null, text: "name the parts" }],
+						skills: [{ id: "s2", code: null, text: "name the parts" }],
 						facts: [
 							{
 								text: "The lungs take oxygen from the air.",
@@ -244,7 +255,7 @@ describe("the request one change set makes", () => {
 		// The model still has the old title: accepting is the author's decision.
 		expect(
 			readFileSync(
-				join(project, ".studio", "model", "grade-7-science.json"),
+				join(project, ".studio", "model", "grade-7-science-en.json"),
 				"utf8",
 			),
 		).toContain("Breathing (provisional)");
@@ -347,7 +358,7 @@ describe("the plan before it starts", () => {
 			project,
 			model(),
 			[row(ID)],
-			{ grade: 8, subject: "science", period: "block-3" },
+			{ grade: 8, subject: "science", language: "en", period: "block-3" },
 			RULES,
 			"anthropic/claude-sonnet-5.5",
 			(async () => new Response(JSON.stringify(MODELS))) as typeof fetch,

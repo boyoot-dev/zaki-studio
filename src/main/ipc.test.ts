@@ -59,6 +59,7 @@ function row(): FileRow {
 		path: "Grade 3/Math/sheet.pdf",
 		grade: 3,
 		subject: "math",
+		language: "en",
 		block: "1",
 		kind: "sheet",
 		pages: 0,
@@ -127,10 +128,13 @@ beforeEach(async () => {
 			{
 				grade: 3,
 				subject: "math",
+				language: "en",
+				support: [],
 				examStyle: null,
 				exams: [],
 				units: [
 					{
+						id: "u2",
 						number: 1,
 						period: "block-1",
 						title: "Numbers",
@@ -139,9 +143,10 @@ beforeEach(async () => {
 						evidence: [],
 						lessons: [
 							{
+								id: "l3",
 								number: 1,
 								title: "Counting",
-								skills: [{ code: null, text: "count to ten" }],
+								skills: [{ id: "s1", code: null, text: "count to ten" }],
 								facts: [],
 								activity: null,
 							},
@@ -279,6 +284,7 @@ describe("the key on the IPC surface", () => {
 																								{
 																									grade: 3,
 																									subject: "math",
+																									language: "en",
 																									period: "block-1",
 																								},
 																							],

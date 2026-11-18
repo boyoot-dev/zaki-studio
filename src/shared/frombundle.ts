@@ -26,12 +26,23 @@ export function projectFromBundle(
 	bundle: Bundle,
 	subjects: readonly SubjectLabel[],
 ): { project: Project; model: CurriculumModel } {
-	const byGrade = new Map<number, string[]>();
-	for (const course of bundle.courses) {
+	// The Studio keeps one course per subject and grade (task 224); a file with a subject in
+	// two languages in one grade keeps the first of them.
+	const byGrade = new Map<
+		number,
+		{ id: string; language: string; support: string[] }[]
+	>();
+	const kept = bundle.courses.filter((course) => {
 		const list = byGrade.get(course.grade) ?? [];
-		if (!list.includes(course.subject)) list.push(course.subject);
 		byGrade.set(course.grade, list);
-	}
+		if (list.some((entry) => entry.id === course.subject)) return false;
+		list.push({
+			id: course.subject,
+			language: course.language,
+			support: [...course.support],
+		});
+		return true;
+	});
 	const nameOf = (id: string) =>
 		subjects.find((subject) => subject.id === id)?.nameEn ?? id;
 	const project: Project = {
@@ -45,21 +56,26 @@ export function projectFromBundle(
 		periods: structuredClone(bundle.periods),
 		grades: [...byGrade.entries()]
 			.sort(([a], [b]) => a - b)
-			.map(([grade, ids]) => ({
+			.map(([grade, entries]) => ({
 				grade,
 				folder: gradeFolder(grade),
-				subjects: ids.map((id) => ({
-					subject: id,
-					folder: subjectFolder(nameOf(id)),
+				subjects: entries.map((entry) => ({
+					subject: entry.id,
+					folder: subjectFolder(nameOf(entry.id)),
+					language: entry.language,
+					support: entry.support,
 				})),
 			})),
 	};
-	const courses: ModelCourse[] = bundle.courses.map((course) => ({
+	const courses: ModelCourse[] = kept.map((course) => ({
 		grade: course.grade,
 		subject: course.subject,
+		language: course.language,
+		support: [...course.support],
 		examStyle: course.examStyle,
 		exams: structuredClone(course.exams),
 		units: course.units.map((unit) => ({
+			id: unit.id,
 			number: unit.number,
 			period: unit.period,
 			title: unit.title,
@@ -67,6 +83,7 @@ export function projectFromBundle(
 			keywords: [...unit.keywords],
 			evidence: [...unit.evidence],
 			lessons: unit.lessons.map((lesson) => ({
+				id: lesson.id,
 				number: lesson.number,
 				title: lesson.title,
 				skills: lesson.skills.map((skill) => ({ ...skill })),

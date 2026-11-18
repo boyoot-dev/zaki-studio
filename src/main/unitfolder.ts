@@ -103,6 +103,7 @@ export function writeUnitsFolder(input: UnitsFolderInput): UnitsFolderResult {
 				folder: entry.folder,
 				grade: entry.course.grade,
 				subject: entry.course.subject,
+				language: entry.course.language,
 				period: entry.period,
 				units: entry.course.units.filter((unit) => unit.period === entry.period)
 					.length,

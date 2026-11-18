@@ -10,6 +10,4 @@ export type StudioSubject = SubjectLabel & {
 	icon: string;
 	/** The subject's colour in the app, used to tint its row. */
 	color: string;
-	/** The language the subject's material is written in: "en", "ar" or "fr". */
-	contentLanguage: string;
 };

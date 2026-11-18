@@ -236,6 +236,7 @@ export function examNumberWarnings(exam: BundleExam): ExamNumberWarning[] {
 export type CourseNumberWarnings = {
 	grade: number;
 	subject: string;
+	language: string;
 	warnings: number;
 };
 
@@ -244,6 +245,7 @@ export function courseNumberWarnings(
 	courses: readonly {
 		grade: number;
 		subject: string;
+		language: string;
 		exams: readonly BundleExam[];
 	}[],
 ): CourseNumberWarnings[] {
@@ -256,6 +258,7 @@ export function courseNumberWarnings(
 			out.push({
 				grade: course.grade,
 				subject: course.subject,
+				language: course.language,
 				warnings,
 			});
 	}

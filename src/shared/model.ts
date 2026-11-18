@@ -6,15 +6,16 @@
 // again; `toBundle` turns it into the file Mr. Zaki imports and drops what a bundle cannot
 // carry. Pure and tested; the reading and writing of the files is src/main/model.ts.
 
+import { convertCourse, defaultLanguage } from "./convert.ts";
 import {
 	BUNDLE_LIMITS,
 	type Bundle,
 	type BundleExam,
-	type BundleFormatVersion,
 	type BundleIssue,
 	type BundlePeriod,
 	type BundleSkill,
 	checkText,
+	LANGUAGE_CODES,
 	parseBundle,
 	parseCourseExams,
 } from "./format/bundle.ts";
@@ -54,6 +55,8 @@ export type ModelFact = {
 };
 
 export type ModelLesson = {
+	/** Permanent (task 224): the app matches progress by it. */
+	id: string;
 	number: number;
 	title: string;
 	skills: BundleSkill[];
@@ -62,6 +65,7 @@ export type ModelLesson = {
 };
 
 export type ModelUnit = {
+	id: string;
 	number: number;
 	period: string;
 	title: string;
@@ -74,6 +78,10 @@ export type ModelUnit = {
 export type ModelCourse = {
 	grade: number;
 	subject: string;
+	/** The language the course is taught in (task 224). */
+	language: string;
+	/** Languages that may help the child; "native" is the child's own. */
+	support: string[];
 	examStyle: string | null;
 	exams: BundleExam[];
 	units: ModelUnit[];
@@ -84,8 +92,59 @@ export type ModelCourse = {
  * existing course has never had a unit in. The change and exam steps start from it, so the
  * model writes from the notes alone, and accepting the set adds the course to the project.
  */
-export function emptyCourse(grade: number, subject: string): ModelCourse {
-	return { grade, subject, examStyle: null, exams: [], units: [] };
+export function emptyCourse(
+	grade: number,
+	subject: string,
+	language = defaultLanguage(subject),
+	support: string[] = [],
+): ModelCourse {
+	return {
+		grade,
+		subject,
+		language,
+		support,
+		examStyle: null,
+		exams: [],
+		units: [],
+	};
+}
+
+/**
+ * The model with each course's help languages taken from the project file, which is where the
+ * author sets them (task 225): the project is the one source, and the model's copies are
+ * refreshed from it whenever the model is read or written. The teaching language is part of
+ * the course's identity, so a course is found by grade, subject and language; one the project
+ * has no entry for keeps its own.
+ */
+export function withProjectLanguages(
+	model: CurriculumModel,
+	project: Pick<Project, "grades">,
+): CurriculumModel {
+	return {
+		curriculum: model.curriculum,
+		courses: model.courses.map((course) => {
+			const entry = project.grades
+				.find((grade) => grade.grade === course.grade)
+				?.subjects.find(
+					(subject) =>
+						subject.subject === course.subject &&
+						subject.language === course.language,
+				);
+			return entry === undefined
+				? course
+				: { ...course, support: [...entry.support] };
+		}),
+	};
+}
+
+/** True when two values name the same course: grade, subject and teaching language (task 224). */
+export function sameCourse(
+	a: { grade: number | null; subject: string; language: string },
+	b: { grade: number | null; subject: string; language: string },
+): boolean {
+	return (
+		a.grade === b.grade && a.subject === b.subject && a.language === b.language
+	);
 }
 
 /** `.studio/model/curriculum.json`: what a bundle's header says, before it is exported. */
@@ -122,6 +181,8 @@ export type FileRow = {
 	path: string;
 	grade: number | null;
 	subject: string;
+	/** The teaching language of the file's course; "" when the scan could not tell (task 224). */
+	language: string;
 	block: string;
 	kind: string;
 	pages: number | null;
@@ -160,17 +221,22 @@ export type ModelSummary = {
 	exams: number;
 };
 
-/** The file name of one course in `.studio/model/`, e.g. "grade-7-science.json". */
-export function courseFile(grade: number, subject: string): string {
-	return `grade-${grade}-${subject}.json`;
+/**
+ * The file name of one course in `.studio/model/`, e.g. "grade-7-science-en.json": the
+ * language is part of the course (task 224), so one subject in two languages is two files.
+ */
+export function courseFile(
+	grade: number,
+	subject: string,
+	language: string,
+): string {
+	return `grade-${grade}-${subject}-${language}.json`;
 }
 
 /**
- * The two values every bundle file carries (task 134, docs/tasks/134-bundle-format.md). The
- * format is published, so a tool writing bundles writes them; the shared parseBundle checks
- * them, which is why the round trip in model.test.ts runs the real parser. This is the
- * version a file takes when it uses nothing from version 2; export.ts writes 2 for a file
- * whose exam parts give the answer's length (task 174).
+ * The two values every bundle file carries (task 134). The format is published, so a tool
+ * writing bundles writes them; the shared parseBundle checks them, which is why the round
+ * trip in model.test.ts runs the real parser. There is one version since task 224.
  */
 export const BUNDLE_FORMAT = "mr-zaki-curriculum";
 export const BUNDLE_FORMAT_VERSION = 1;
@@ -178,7 +244,7 @@ export const BUNDLE_FORMAT_VERSION = 1;
 /** A bundle as it is written to a file: the shared type, plus the file's own two fields. */
 export type BundleFile = Bundle & {
 	format: typeof BUNDLE_FORMAT;
-	formatVersion: BundleFormatVersion;
+	formatVersion: typeof BUNDLE_FORMAT_VERSION;
 };
 
 /**
@@ -189,8 +255,7 @@ export type BundleFile = Bundle & {
  *
  * The file leaves out what the format calls absent rather than writing null: a bundle read
  * back from JSON has nulls in its optional fields, and parseBundle refuses a null where it
- * expects a value or nothing at all. A skill without a code is written as its text, which is
- * the format's other shape for one.
+ * expects a value or nothing at all. Every object carries its permanent id (task 224).
  */
 export function toBundle(
 	model: CurriculumModel,
@@ -198,7 +263,10 @@ export function toBundle(
 	version: number,
 ): BundleFile {
 	const courses = [...model.courses].sort(
-		(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),
+		(a, b) =>
+			a.grade - b.grade ||
+			a.subject.localeCompare(b.subject) ||
+			a.language.localeCompare(b.language),
 	);
 	return {
 		format: BUNDLE_FORMAT,
@@ -214,9 +282,12 @@ export function toBundle(
 			compact({
 				grade: course.grade,
 				subject: course.subject,
+				language: course.language,
+				support: course.support,
 				examStyle: course.examStyle,
 				exams: course.exams,
 				units: course.units.map((unit) => ({
+					id: unit.id,
 					number: unit.number,
 					period: unit.period,
 					title: unit.title,
@@ -224,13 +295,14 @@ export function toBundle(
 					keywords: unit.keywords,
 					evidence: unit.evidence,
 					lessons: unit.lessons.map((lesson) => ({
+						id: lesson.id,
 						number: lesson.number,
 						title: lesson.title,
-						skills: lesson.skills.map((skill) =>
-							skill.code === null
-								? skill.text
-								: { code: skill.code, text: skill.text },
-						),
+						skills: lesson.skills.map((skill) => ({
+							id: skill.id,
+							code: skill.code,
+							text: skill.text,
+						})),
 						facts: lesson.facts.map((fact) => fact.text),
 						activity: lesson.activity,
 					})),
@@ -443,14 +515,15 @@ function readSkills(
 			return null;
 		}
 		const raw = item as Record<string, unknown>;
+		const id = readString(raw, "id", where, add);
 		const text = readString(raw, "text", where, add);
 		const code = raw.code ?? null;
 		if (code !== null && typeof code !== "string") {
 			add(`${where}.code`, "expected a text or nothing");
 			return null;
 		}
-		if (text === null) return null;
-		skills.push({ code, text });
+		if (id === null || text === null) return null;
+		skills.push({ id, code, text });
 	}
 	return skills;
 }
@@ -459,7 +532,9 @@ function readSkills(
 export function parseModelCourse(
 	value: unknown,
 	where = "course",
-): { ok: true; course: ModelCourse } | { ok: false; issues: ModelIssue[] } {
+):
+	| { ok: true; course: ModelCourse; converted: boolean }
+	| { ok: false; issues: ModelIssue[] } {
 	const issues: ModelIssue[] = [];
 	const add = (path: string, message: string) => {
 		if (issues.length < BUNDLE_LIMITS.issues) issues.push({ path, message });
@@ -467,8 +542,23 @@ export function parseModelCourse(
 	const fail = () => ({ ok: false as const, issues });
 	if (typeof value !== "object" || value === null || Array.isArray(value))
 		return fail();
-	const raw = value as Record<string, unknown>;
+	// A copy, so converting an old course (task 224) never changes the caller's value.
+	const raw = structuredClone(value) as Record<string, unknown>;
+	const converted = convertCourse(raw);
 	if (!checkCourseHead(raw, where, add)) return fail();
+	const language = raw.language;
+	if (typeof language !== "string" || !LANGUAGE_CODES.includes(language)) {
+		add(`${where}.language`, "expected a language code");
+		return fail();
+	}
+	const support = raw.support;
+	if (
+		!Array.isArray(support) ||
+		support.some((code) => typeof code !== "string")
+	) {
+		add(`${where}.support`, "expected a list of language codes");
+		return fail();
+	}
 	const examStyle = raw.examStyle ?? null;
 	if (examStyle !== null && typeof examStyle !== "string") {
 		add(`${where}.examStyle`, "expected a text or nothing");
@@ -496,6 +586,7 @@ export function parseModelCourse(
 			continue;
 		}
 		const unit = item as Record<string, unknown>;
+		const unitId = readString(unit, "id", at, add);
 		const title = readString(unit, "title", at, add);
 		const period = readString(unit, "period", at, add);
 		const keywords = readStringList(unit, "keywords", at, add);
@@ -518,6 +609,7 @@ export function parseModelCourse(
 				continue;
 			}
 			const lesson = entry as Record<string, unknown>;
+			const lessonId = readString(lesson, "id", lessonAt, add);
 			const lessonTitle = readString(lesson, "title", lessonAt, add);
 			const skills = readSkills(lesson.skills, `${lessonAt}.skills`, add);
 			const activity = lesson.activity ?? null;
@@ -546,8 +638,10 @@ export function parseModelCourse(
 				add(`${lessonAt}.number`, "expected a whole number");
 				continue;
 			}
-			if (lessonTitle === null || skills === null) continue;
+			if (lessonId === null || lessonTitle === null || skills === null)
+				continue;
 			lessons.push({
+				id: lessonId,
 				number: lesson.number,
 				title: lessonTitle,
 				skills,
@@ -556,6 +650,7 @@ export function parseModelCourse(
 			});
 		}
 		if (
+			unitId === null ||
 			title === null ||
 			period === null ||
 			keywords === null ||
@@ -563,6 +658,7 @@ export function parseModelCourse(
 		)
 			continue;
 		units.push({
+			id: unitId,
 			number: unit.number,
 			period,
 			title,
@@ -575,9 +671,12 @@ export function parseModelCourse(
 	if (issues.length > 0) return fail();
 	return {
 		ok: true,
+		converted,
 		course: {
 			grade: raw.grade as number,
 			subject: raw.subject as string,
+			language,
+			support: support as string[],
 			examStyle,
 			exams: exams.exams,
 			units,
@@ -649,13 +748,16 @@ function optionalText(
 export function parseModelText(
 	headerText: string,
 	courseTexts: readonly { name: string; text: string }[],
-): { ok: true; model: CurriculumModel } | { ok: false; issues: ModelIssue[] } {
+):
+	| { ok: true; model: CurriculumModel; converted: boolean }
+	| { ok: false; issues: ModelIssue[] } {
 	const header = parseJson(headerText, MODEL_FILE);
 	if (!header.ok) return header;
 	const curriculum = parseModelCurriculum(header.value);
 	if (!curriculum.ok) return curriculum;
 	const issues: ModelIssue[] = [];
 	const courses: ModelCourse[] = [];
+	let converted = false;
 	for (const file of courseTexts) {
 		const parsed = parseJson(file.text, `${MODEL_DIR}/${file.name}`);
 		if (!parsed.ok) return parsed;
@@ -664,10 +766,15 @@ export function parseModelText(
 			for (const issue of course.issues) issues.push(issue);
 			continue;
 		}
+		if (course.converted) converted = true;
 		courses.push(course.course);
 	}
 	if (issues.length > 0) return { ok: false, issues };
-	return { ok: true, model: { curriculum: curriculum.curriculum, courses } };
+	return {
+		ok: true,
+		converted,
+		model: { curriculum: curriculum.curriculum, courses },
+	};
 }
 
 /** JSON text as a value, or one issue that names the file. */
