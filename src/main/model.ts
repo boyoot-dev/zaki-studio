@@ -693,7 +693,17 @@ export function setFileFields(
 		block: fields.block.trim(),
 		kind: fields.kind,
 		authority: fields.authority,
-		fixed: [...new Set([...found.fixed, ...FILE_FIELDS])],
+		// The language counts as corrected only when the author chose it (the menu shows only
+		// for a subject taught twice in the grade); otherwise a later folder rule or a new
+		// course can still settle it (task 228 review).
+		fixed: [
+			...new Set([
+				...found.fixed,
+				...FILE_FIELDS.filter(
+					(field) => field !== "language" || fields.language !== undefined,
+				),
+			]),
+		],
 	};
 	const next = [...files.files];
 	next[index] = row;

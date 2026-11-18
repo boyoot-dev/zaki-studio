@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChangesState } from "../shared/api.ts";
 import type { FileRow } from "../shared/model.ts";
 import { NOTES_DIR } from "../shared/notes.ts";
-import { writeFiles, writeModel } from "./model.ts";
+import { readFiles, writeFiles, writeModel } from "./model.ts";
 
 /** Everything the Electron fake keeps, made before the mock is hoisted. */
 const fake = vi.hoisted(() => ({
@@ -490,6 +490,12 @@ describe("a course in another language (task 228)", () => {
 				authority: 2,
 			}),
 		).toEqual({ ok: true });
+		// A chosen language is the author's correction; a save without one isn't (review 1).
+		const saved = readFiles(project);
+		if (!saved.ok) throw new Error("readFiles failed");
+		expect(
+			saved.files.find((file) => file.id === "0123456789ab")?.fixed,
+		).toContain("language");
 		// A note makes the register row show in the changes list.
 		mkdirSync(join(project, NOTES_DIR), { recursive: true });
 		writeFileSync(join(project, NOTES_DIR, "0123456789ab.md"), "# A note\n");
