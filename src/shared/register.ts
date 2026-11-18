@@ -192,18 +192,42 @@ export function readIndex(text: string): IndexRow[] {
 		}));
 }
 
-/** The material folder's _subjects.csv: a folder's name, and the subject it stands for. */
-export function readSubjectFolders(
+/** A folder's subject, and the language the course in it is taught in ("" when it says none). */
+export type SubjectFolder = { subject: string; language: string };
+
+/**
+ * The rows of _subjects.csv, read one way for the scan and for adoption (task 230): the subject
+ * column may still be an old id (`chemistry-ar`), and the optional language column beats its
+ * suffix. A language that is not a code is read as none.
+ */
+function subjectFolderRows(
 	text: string,
-): { folder: string; subject: string }[] {
+): { folder: string; subject: string; language: string }[] {
 	return csvFields(text)
 		.filter(
 			(field) => (field.folder ?? "") !== "" && (field.subject ?? "") !== "",
 		)
-		.map((field) => ({
-			folder: field.folder ?? "",
-			subject: field.subject ?? "",
-		}));
+		.map((field) => {
+			const course = tokenCourse((field.subject ?? "").trim());
+			const column = (field.language ?? "").trim();
+			return {
+				folder: field.folder ?? "",
+				subject: course.subject,
+				language:
+					column === ""
+						? course.language
+						: LANGUAGE_CODES.includes(column)
+							? column
+							: "",
+			};
+		});
+}
+
+/** The material folder's _subjects.csv: each folder's name, its subject and its language. */
+export function readSubjectFolders(
+	text: string,
+): { folder: string; subject: string; language: string }[] {
+	return subjectFolderRows(text);
 }
 
 /** A number from a CSV field, or null when the field is empty or not a number. */
@@ -385,31 +409,35 @@ export function loadRules(text: string): AuthorityRule[] {
 	return rules;
 }
 
-/** A curriculum's _subjects.csv as folder name (lowercased) → subject id. */
-export function loadSubjects(text: string): Record<string, string> {
-	const folders: Record<string, string> = {};
-	for (const field of csvFields(text)) {
-		const folder = (field.folder ?? "").trim().toLowerCase();
-		const subject = (field.subject ?? "").trim();
-		if (folder !== "" && subject !== "") folders[folder] = subject;
+/**
+ * A curriculum's _subjects.csv as folder name (lowercased) → subject and language. The
+ * language column is optional: a folder that gives none keeps the language an old subject id
+ * names (`chemistry-ar`), and the scan settles the rest from the project's courses (task 230).
+ */
+export function loadSubjects(text: string): Record<string, SubjectFolder> {
+	const folders: Record<string, SubjectFolder> = {};
+	for (const row of subjectFolderRows(text)) {
+		const folder = row.folder.trim().toLowerCase();
+		if (folder !== "")
+			folders[folder] = { subject: row.subject, language: row.language };
 	}
 	return folders;
 }
 
 /**
- * The file or deepest folder named in _subjects.csv, or "" when none is. A name may also be a
- * file's own name: the ministry folders hold the Arabic, English and French editions side by
- * side.
+ * The file or deepest folder named in _subjects.csv, or an empty subject when none is. A name
+ * may also be a file's own name: the ministry folders hold the Arabic, English and French
+ * editions side by side.
  */
 export function subjectFromFolders(
 	parts: readonly string[],
-	folders: Record<string, string>,
-): string {
+	folders: Record<string, SubjectFolder>,
+): SubjectFolder {
 	for (const part of [...parts].reverse()) {
-		const subject = folders[part.trim().toLowerCase()];
-		if (subject !== undefined && subject !== "") return subject;
+		const folder = folders[part.trim().toLowerCase()];
+		if (folder !== undefined && folder.subject !== "") return folder;
 	}
-	return "";
+	return { subject: "", language: "" };
 }
 
 /** The deepest folder that names a subject ("Extra Sheets/Biology/x.pdf" is biology). */
@@ -489,7 +517,7 @@ export type RowInput = {
 	read: ReadCounts;
 	/** The day this content was first seen, or "" for today. */
 	firstSeen: string;
-	folders: Record<string, string>;
+	folders: Record<string, SubjectFolder>;
 	rules: readonly AuthorityRule[];
 	today: Date;
 	currentYear: string;
@@ -511,6 +539,13 @@ export function fileRow(input: RowInput): FileRow {
 	const academicYear = academicYearOf(parts.slice(0, -1));
 	const kind = kindOf(inside);
 	const read = input.read;
+	// A folder in _subjects.csv names the course itself, language included; a folder name the
+	// school uses only names the subject, and an old id may still carry its language.
+	const named = subjectFromFolders(parts.slice(1), input.folders);
+	const course =
+		named.subject === ""
+			? tokenCourse(subjectOf(parts.slice(1)))
+			: { subject: named.subject, language: named.language };
 	const row: FileRow = {
 		id: input.id,
 		path: input.rel,
@@ -518,10 +553,7 @@ export function fileRow(input: RowInput): FileRow {
 			parts.length > 1 && gradeFolder !== undefined
 				? gradeOf(gradeFolder)
 				: null,
-		...tokenCourse(
-			subjectFromFolders(parts.slice(1), input.folders) ||
-				subjectOf(parts.slice(1)),
-		),
+		...course,
 		block: blockOf(inside),
 		kind,
 		pages: read.pages,

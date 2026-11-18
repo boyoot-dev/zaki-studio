@@ -20,6 +20,7 @@ import {
 	type ReadCounts,
 	type ReadGive,
 	type RowInput,
+	type SubjectFolder,
 } from "../shared/register.ts";
 import { fileKind, readTextFile } from "./read.ts";
 
@@ -199,7 +200,7 @@ export async function collectRows(
 	const read = input.read ?? readTextFile;
 	const today = input.today ?? new Date();
 	const root = input.root;
-	let folders: Record<string, string> = {};
+	let folders: Record<string, SubjectFolder> = {};
 	let rules: ReturnType<typeof loadRules> = [];
 	// A rules file the Studio can't read gives every file the default authority: the scan still
 	// finishes, and the register shows what it could.

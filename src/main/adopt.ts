@@ -111,7 +111,8 @@ export function adoptMaterial(
 		return failure("noWork", `no row of ${indexFile} is for ${curriculumId}`);
 
 	const subjectFile = join(materials, "_subjects.csv");
-	let subjectFolders: { folder: string; subject: string }[] = [];
+	let subjectFolders: { folder: string; subject: string; language: string }[] =
+		[];
 	if (existsSync(subjectFile)) {
 		try {
 			subjectFolders = readSubjectFolders(readFileSync(subjectFile, "utf8"));

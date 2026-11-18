@@ -179,6 +179,18 @@ from the folders, `_subjects.csv`, `_sources.csv` and the file's name, and the a
 correct any of those five in the file's details: a corrected field is kept when the project is
 scanned again.
 
+`_subjects.csv` may also say which language a folder's course is taught in, for a subject
+taught twice in a grade. Every file under that folder then belongs to that course:
+
+```
+folder,subject,language
+Math,math,en
+Arabic Maths,math,ar
+```
+
+An empty or missing `language` leaves it to the project: the one course of that subject in
+the grade, or the file's details when there are two.
+
 Each new file's text is written to `.studio/text/<id>.md` in exactly the pipeline's format —
 `# <path>`, then `## Page N` per page — by `src/main/read.ts`: PDF pages come from pdf.js's
 text layer, Word from mammoth, PowerPoint one page per slide from the zip's own XML
