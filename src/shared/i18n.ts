@@ -109,6 +109,13 @@ const en = {
 	"language.apply": "Apply",
 	"language.noOthers": "No other grade has this subject.",
 	"language.saved": "Saved.",
+	"language.addOther": "Add in another language…",
+	"language.addHint":
+		"The same subject, taught in another language. It stays empty until you give it files.",
+	"language.add": "Add",
+	"language.addNone": "This subject already has every language.",
+	"language.added":
+		"Added {subject} in {language}. Give it files in the Files tab; it shows here after its first accepted change.",
 	"wizard.language": "Most of this curriculum is taught in",
 	"wizard.languageHint":
 		"Language subjects are taught in their own language. You can change any course later in the Curriculum tab.",
@@ -614,6 +621,13 @@ const ar: Record<TextKey, string> = {
 	"language.apply": "طبّق",
 	"language.noOthers": "لا يوجد صف آخر فيه هذه المادة.",
 	"language.saved": "تم الحفظ.",
+	"language.addOther": "أضف بلغة أخرى…",
+	"language.addHint":
+		"المادة نفسها تُدرَّس بلغة أخرى. تبقى فارغة حتى تعطيها ملفات.",
+	"language.add": "أضف",
+	"language.addNone": "لهذه المادة جميع اللغات بالفعل.",
+	"language.added":
+		"أُضيفت {subject} باللغة {language}. أعطها ملفات في تبويب الملفات؛ وستظهر هنا بعد أول تعديل مُعتمد.",
 	"wizard.language": "تُدرَّس معظم مواد هذا المنهج باللغة",
 	"wizard.languageHint":
 		"تُدرَّس مواد اللغات بلغتها. يمكنك تغيير لغة أي مقرر لاحقًا من تبويب المنهج.",

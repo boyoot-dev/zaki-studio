@@ -161,10 +161,14 @@ export type CurriculumModel = {
 	courses: ModelCourse[];
 };
 
-/** The five fields an author may correct on a row; a scan keeps a corrected field (task 156). */
+/**
+ * The fields an author may correct on a row; a scan keeps a corrected field (task 156). The
+ * language joined them in task 228: a subject taught twice in a grade needs the file's course.
+ */
 export const FILE_FIELDS = [
 	"grade",
 	"subject",
+	"language",
 	"block",
 	"kind",
 	"authority",

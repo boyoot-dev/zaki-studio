@@ -1,21 +1,28 @@
-// A file's details (task 156): the grade, subject, block, kind and authority the register
-// guessed from the file's name and folders, which the author can correct. A corrected field is
-// kept when the project is scanned again, so the guess never overwrites a person's answer.
+// A file's details (task 156): the grade, subject, language, block, kind and authority the
+// register guessed from the file's name and folders, which the author can correct. The language
+// shows only when the subject is taught in more than one language in that grade (task 228). A
+// corrected field is kept when the project is scanned again, so the guess never overwrites a
+// person's answer.
 
 import studioSubjects from "virtual:subjects";
 import { useState } from "react";
 
 import type { FileFields } from "../shared/api";
 import type { Lang } from "../shared/i18n";
+import { languageName } from "../shared/languages";
 import type { FileRow } from "../shared/model";
+import type { Project } from "../shared/project";
 import { AUTHORITIES, KINDS } from "../shared/register";
 import { useLang, useSay } from "./i18n";
 
 export function FileDetails({
 	file,
+	project,
 	onSave,
 }: {
 	file: FileRow;
+	/** The project's courses, for the languages the file's grade has this subject in. */
+	project: Project;
 	onSave: (fields: FileFields) => Promise<void>;
 }) {
 	const say = useSay();
@@ -24,6 +31,7 @@ export function FileDetails({
 		file.grade === null ? "" : String(file.grade),
 	);
 	const [subject, setSubject] = useState(file.subject);
+	const [language, setLanguage] = useState(file.language);
 	const [block, setBlock] = useState(file.block);
 	const [kind, setKind] = useState(file.kind === "" ? "other" : file.kind);
 	const [authority, setAuthority] = useState(
@@ -31,12 +39,29 @@ export function FileDetails({
 	);
 	const [saving, setSaving] = useState(false);
 
+	// The languages the chosen grade has this subject in, from the project itself (task 228).
+	const courseLanguages =
+		grade.trim() === ""
+			? []
+			: [
+					...(project.grades
+						.find((entry) => entry.grade === Number(grade))
+						?.subjects.filter((entry) => entry.subject === subject.trim())
+						.map((entry) => entry.language) ?? []),
+				].filter((code, index, all) => all.indexOf(code) === index);
+	const shownLanguage = courseLanguages.includes(language)
+		? language
+		: (courseLanguages[0] ?? "");
+	const pickLanguage = courseLanguages.length > 1;
+
 	const save = async () => {
 		setSaving(true);
 		try {
 			await onSave({
 				grade: grade.trim() === "" ? null : Number(grade),
 				subject,
+				// Hidden when the subject is taught in one language here: the rules keep it.
+				language: pickLanguage ? shownLanguage : undefined,
 				block,
 				kind,
 				authority: authority === "" ? null : Number(authority),
@@ -71,6 +96,21 @@ export function FileDetails({
 						onChange={(event) => setSubject(event.target.value)}
 					/>
 				</label>
+				{pickLanguage && (
+					<label className="picker-field">
+						<span>{say("language.teaching")}</span>
+						<select
+							value={shownLanguage}
+							onChange={(event) => setLanguage(event.target.value)}
+						>
+							{courseLanguages.map((code) => (
+								<option key={code} value={code}>
+									{languageName(code, lang)}
+								</option>
+							))}
+						</select>
+					</label>
+				)}
 				<datalist id="studio-subjects">
 					{studioSubjects.map((entry) => (
 						<option key={entry.id} value={entry.id}>

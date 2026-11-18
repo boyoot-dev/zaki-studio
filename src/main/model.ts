@@ -22,6 +22,7 @@ import { join, resolve } from "node:path";
 
 import type { Failure, FileFields } from "../shared/api.ts";
 import { legacySubject } from "../shared/convert.ts";
+import { LANGUAGE_CODES } from "../shared/format/bundle.ts";
 import {
 	type CurriculumModel,
 	courseFile,
@@ -662,6 +663,12 @@ export function setFileFields(
 		return failure("invalidName");
 	if (typeof fields.subject !== "string" || fields.subject.trim().length > 60)
 		return failure("invalidName");
+	if (
+		fields.language !== undefined &&
+		(typeof fields.language !== "string" ||
+			!LANGUAGE_CODES.includes(fields.language))
+	)
+		return failure("invalidName");
 	if (typeof fields.block !== "string" || fields.block.trim().length > 20)
 		return failure("invalidName");
 	if (
@@ -682,10 +689,21 @@ export function setFileFields(
 		...found,
 		grade: fields.grade,
 		subject: fields.subject.trim(),
+		language: fields.language ?? found.language,
 		block: fields.block.trim(),
 		kind: fields.kind,
 		authority: fields.authority,
-		fixed: [...new Set([...found.fixed, ...FILE_FIELDS])],
+		// The language counts as corrected only when the author chose it (the menu shows only
+		// for a subject taught twice in the grade); otherwise a later folder rule or a new
+		// course can still settle it (task 228 review).
+		fixed: [
+			...new Set([
+				...found.fixed,
+				...FILE_FIELDS.filter(
+					(field) => field !== "language" || fields.language !== undefined,
+				),
+			]),
+		],
 	};
 	const next = [...files.files];
 	next[index] = row;

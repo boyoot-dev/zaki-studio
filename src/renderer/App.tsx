@@ -188,6 +188,9 @@ export function App() {
 					onLanguage={setLang}
 					onNotify={say}
 					onStart={() => setScreen({ kind: "start" })}
+					onProjectReload={() => {
+						void openRoot(screen.root);
+					}}
 				/>
 			)}
 			{bundle !== null && (

@@ -744,6 +744,18 @@ describe("the targets a change set may be built for (task 178)", () => {
 		});
 	});
 
+	it("offers the same subject in another language as a new course (task 228)", () => {
+		expect(
+			allowedTarget(model(), 7, "science", "ar", "block-1", SUBJECTS),
+		).toEqual({
+			grade: 7,
+			subject: "science",
+			language: "ar",
+			period: "block-1",
+			isNew: true,
+		});
+	});
+
 	it("refuses an unknown subject, an impossible grade or a period the year lacks", () => {
 		expect(
 			allowedTarget(model(), 8, "wizardry", "en", "block-1", SUBJECTS),

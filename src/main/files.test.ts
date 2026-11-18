@@ -25,6 +25,7 @@ import {
 	wizardProject,
 } from "../shared/project.ts";
 import {
+	addCourseLanguage,
 	createProject,
 	freeName,
 	importPaths,
@@ -342,5 +343,28 @@ describe("a course's languages (task 225)", () => {
 			]).ok,
 		).toBe(false);
 		expect(setCourseLanguages(root, "not a list").ok).toBe(false);
+	});
+});
+
+describe("a second course language (task 228)", () => {
+	it("writes the course to curriculum.json and makes its folder", () => {
+		expect(createProject(root, project()).ok).toBe(true);
+		expect(addCourseLanguage(root, 7, "science", "ar").ok).toBe(true);
+		const read = readProject(root);
+		if (!read.ok) throw new Error("unreadable");
+		expect(read.project.grades[0]?.subjects).toMatchObject([
+			{ subject: "science", language: "en", folder: "Science" },
+			{ subject: "science", language: "ar", folder: "Science (Arabic)" },
+		]);
+		expect(existsSync(join(root, "Grade 7/Science (Arabic)/Units"))).toBe(true);
+	});
+
+	it("refuses a course it cannot add", () => {
+		expect(createProject(root, project()).ok).toBe(true);
+		expect(addCourseLanguage(root, 8, "science", "ar").ok).toBe(false);
+		expect(addCourseLanguage(root, 7, "math", "ar").ok).toBe(false);
+		expect(addCourseLanguage(root, 7, "science", "fre").ok).toBe(false);
+		expect(addCourseLanguage(root, "7", "science", "ar").ok).toBe(false);
+		expect(addCourseLanguage(root, 7, "science", "en").ok).toBe(false);
 	});
 });

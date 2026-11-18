@@ -73,6 +73,7 @@ export function ProjectView({
 	onLanguage,
 	onNotify,
 	onStart,
+	onProjectReload,
 }: {
 	root: string;
 	project: Project;
@@ -82,6 +83,8 @@ export function ProjectView({
 	onLanguage: (lang: Lang) => void;
 	onNotify: (text: string) => void;
 	onStart: () => void;
+	/** Reads the project file again: a course added there is not in the model yet (task 228). */
+	onProjectReload: () => void;
 }) {
 	const say = useSay();
 	const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
@@ -114,6 +117,11 @@ export function ProjectView({
 	const panes = usePanes("files");
 
 	const reload = useCallback(() => setReloadKey((key) => key + 1), []);
+	/** Refreshes the panes and reads curriculum.json again, for a change made in it. */
+	const reloadProject = useCallback(() => {
+		reload();
+		onProjectReload();
+	}, [reload, onProjectReload]);
 
 	// The file's register row, fetched once per selection (and after a change on disk).
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — refetch when the folder changed on disk.
@@ -485,7 +493,7 @@ export function ProjectView({
 						onNotify={onNotify}
 						reloadKey={reloadKey}
 						openCourse={coursePick}
-						onChanged={reload}
+						onChanged={reloadProject}
 					/>
 				</div>
 			)}
@@ -591,6 +599,7 @@ export function ProjectView({
 								<FileDetails
 									key={`${row.id}-${row.grade}-${row.block}`}
 									file={row}
+									project={project}
 									onSave={async (fields) => {
 										await saveFields(row.id, fields);
 									}}

@@ -107,6 +107,7 @@ import {
 } from "./exams.ts";
 import { exportProject, summaryFor } from "./export.ts";
 import {
+	addCourseLanguage,
 	createProject,
 	guessFolders,
 	importPaths,
@@ -640,6 +641,26 @@ export function registerIpc(): void {
 		},
 	);
 
+	ipcMain.handle(
+		"studio:addCourseLanguage",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			return addCourseLanguage(
+				where,
+				typeof grade === "number" ? grade : Number.NaN,
+				text(subject, 60),
+				text(language, 8),
+			);
+		},
+	);
+
 	ipcMain.handle("studio:model", (event, root: unknown): ModelOverview => {
 		const where = text(root, 400);
 		if (!allowed(event, where)) return notOpen();
@@ -1080,6 +1101,8 @@ export function registerIpc(): void {
 						? raw.grade
 						: null,
 				subject: text(raw.subject, 60).trim(),
+				language:
+					typeof raw.language === "string" ? text(raw.language, 8) : undefined,
 				block: text(raw.block, 20).trim(),
 				kind: text(raw.kind, 20),
 				authority: typeof raw.authority === "number" ? raw.authority : null,

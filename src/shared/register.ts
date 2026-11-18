@@ -8,6 +8,7 @@
 // imports the app or Electron, so the check script can run it with plain Node.
 
 import { rowCourse, tokenCourse } from "./convert.ts";
+import { LANGUAGE_CODES } from "./format/bundle.ts";
 import type { FileField, FileRow } from "./model.ts";
 
 /** One row of a work folder's index.csv, as the file writes it (every value a text). */
@@ -563,6 +564,12 @@ function applyFixed(
 		row.subject = course.subject;
 		if (course.language !== "") row.language = course.language;
 	}
+	// An explicit language follows the subject, so it beats one read from a token (task 228).
+	if (
+		typeof fixed.language === "string" &&
+		LANGUAGE_CODES.includes(fixed.language)
+	)
+		row.language = fixed.language;
 	if (typeof fixed.block === "string") row.block = fixed.block;
 	if (typeof fixed.kind === "string") row.kind = fixed.kind;
 	if (typeof fixed.authority === "number") row.authority = fixed.authority;

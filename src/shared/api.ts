@@ -108,10 +108,12 @@ export type ScanProgress = {
 	done: number;
 };
 
-/** The five fields an author may correct on a register row, as the details form sends them. */
+/** The fields an author may correct on a register row, as the details form sends them. */
 export type FileFields = {
 	grade: number | null;
 	subject: string;
+	/** A language code, only when the subject is taught in more than one in the grade. */
+	language?: string;
 	block: string;
 	kind: string;
 	authority: number | null;
@@ -416,6 +418,13 @@ export type StudioApi = {
 			language: string;
 			support: string[];
 		}[],
+	): Promise<Done>;
+	/** Adds this grade's subject in another language to the project file (task 228). */
+	addCourseLanguage(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
 	): Promise<Done>;
 	/** The register's row for one path, for the file's details pane (task 168). */
 	fileRow(

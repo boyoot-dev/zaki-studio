@@ -14,6 +14,7 @@ import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import { languageName } from "../shared/languages.ts";
 import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
 import { fileLabel, parseSource } from "../shared/model.ts";
+import type { Project } from "../shared/project.ts";
 import { failureText } from "./App";
 import { CourseLanguages } from "./CourseLanguages";
 import { useLang, useSay } from "./i18n";
@@ -123,7 +124,7 @@ export function Curriculum({
 	onChanged,
 }: {
 	root: string;
-	project: { periods: BundlePeriod[] };
+	project: Project;
 	onNotify: (text: string) => void;
 	/** Called after the author changed a course's languages, so the project is read again. */
 	onChanged: () => void;
@@ -176,6 +177,16 @@ export function Curriculum({
 	const courses = loaded.kind === "ready" ? loaded.courses : [];
 	const chosenCourse =
 		courses.find((entry) => courseKey(entry) === chosen) ?? courses[0] ?? null;
+
+	// The languages this subject already has in this grade, as the project has them: the nav
+	// lists the model, which has not got a course added only to the project yet (task 228).
+	const projectLanguages =
+		chosenCourse === null
+			? []
+			: (project.grades
+					.find((entry) => entry.grade === chosenCourse.grade)
+					?.subjects.filter((entry) => entry.subject === chosenCourse.subject)
+					.map((entry) => entry.language) ?? []);
 
 	// The export's link to a course: choose it when the link is used, even if it was chosen before.
 	useEffect(() => {
@@ -336,6 +347,8 @@ export function Curriculum({
 					root={root}
 					course={chosenCourse}
 					courses={courses}
+					projectLanguages={projectLanguages}
+					subjectName={subjectName(chosenCourse.subject, lang)}
 					onChanged={onChanged}
 					onNotify={onNotify}
 				/>
