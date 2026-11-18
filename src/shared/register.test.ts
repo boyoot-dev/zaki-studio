@@ -28,6 +28,7 @@ import {
 	readIndex,
 	readSubjectFolders,
 	registerRows,
+	type SubjectFolder,
 	subjectFromFolders,
 	subjectOf,
 	tessLangs,
@@ -76,7 +77,7 @@ function made(
 		error?: string;
 		metaDate?: string;
 		firstSeen?: string;
-		folders?: Record<string, string>;
+		folders?: Record<string, SubjectFolder>;
 		rules?: { pattern: RegExp; authority: number }[];
 		fixed?: Record<string, number | string | null>;
 	} = {},
@@ -191,18 +192,42 @@ describe("the subject of a file", () => {
 				["Grade 11", "2026-2027", "Ministry", "programming and ai"],
 				folders,
 			),
-		).toBe("programming-ai");
-		expect(subjectFromFolders(["Grade 11", "البرمجة"], folders)).toBe(
-			"programming-ai-ar",
-		);
-		expect(subjectFromFolders(["Grade 11", "Physics"], folders)).toBe("");
+		).toEqual({ subject: "programming-ai", language: "" });
+		expect(subjectFromFolders(["Grade 11", "البرمجة"], folders)).toEqual({
+			subject: "programming-ai",
+			language: "ar",
+		});
+		expect(subjectFromFolders(["Grade 11", "Physics"], folders)).toEqual({
+			subject: "",
+			language: "",
+		});
 		const byFile = loadSubjects(
 			"folder,subject\nphysics-ar-eb-part1.pdf,physics-ar\n",
 		);
 		expect(
 			subjectFromFolders(["Grade 11", "Physics-Ar-EB-part1.pdf"], byFile),
-		).toBe("physics-ar");
+		).toEqual({ subject: "physics", language: "ar" });
 		expect(loadSubjects("")).toEqual({});
+	});
+
+	it("takes the course's language from the language column (task 230)", () => {
+		const folders = loadSubjects(
+			"folder,subject,language\nMath,math,en\nArabic Maths,math,ar\nPhysics,physics,\nOld,chemistry-ar,\nSwitched,chemistry-ar,fr\nBad,biology,fre\n",
+		);
+		expect(folders["arabic maths"]).toEqual({
+			subject: "math",
+			language: "ar",
+		});
+		expect(folders.math).toEqual({ subject: "math", language: "en" });
+		expect(folders.physics).toEqual({ subject: "physics", language: "" });
+		expect(folders.old).toEqual({ subject: "chemistry", language: "ar" });
+		expect(folders.switched).toEqual({ subject: "chemistry", language: "fr" });
+		expect(folders.bad).toEqual({ subject: "biology", language: "" });
+		// A file with no language column at all reads as before.
+		expect(loadSubjects("folder,subject\nMath,math\n").math).toEqual({
+			subject: "math",
+			language: "",
+		});
 	});
 
 	it("falls back to the folder names the school uses", () => {
@@ -271,11 +296,20 @@ describe("the kind, the block and what needs a look", () => {
 });
 
 describe("a register row", () => {
+	it("gets its course's language from its folder (task 230)", () => {
+		const folders = loadSubjects(
+			"folder,subject,language\nArabic Maths,math,ar\n",
+		);
+		expect(
+			made("Grade 3/2026-2027/Arabic Maths/Math-B1-Sheet1.pdf", { folders }),
+		).toMatchObject({ subject: "math", language: "ar" });
+	});
+
 	it("is made from the path the way extract.py makes it", () => {
 		const got = made("Grade 3/2026-2027/Math/Math-B1-Sheet1 - Main.pdf", {
 			id: "0123456789ab",
 			metaDate: "2025-09-20",
-			folders: { math: "math" },
+			folders: { math: { subject: "math", language: "" } },
 		});
 		expect(got).toMatchObject({
 			id: "0123456789ab",
@@ -337,6 +371,23 @@ describe("a register row", () => {
 			fixed: { subject: "chemistry-ar", language: "en" },
 		});
 		expect(token).toMatchObject({ subject: "chemistry", language: "en" });
+	});
+
+	it("lets the author's correction beat the folder's language (task 230)", () => {
+		const folders = loadSubjects(
+			"folder,subject,language\nArabic Maths,math,ar\n",
+		);
+		const got = made("Grade 3/2026-2027/Arabic Maths/sheet.pdf", {
+			folders,
+			fixed: { subject: "math", language: "en" },
+		});
+		expect(got).toMatchObject({ subject: "math", language: "en" });
+		// A corrected subject alone leaves the folder's language.
+		const subjectOnly = made("Grade 3/2026-2027/Arabic Maths/sheet.pdf", {
+			folders,
+			fixed: { subject: "math" },
+		});
+		expect(subjectOnly.language).toBe("ar");
 	});
 
 	it("ignores a language that is not a code", () => {
@@ -539,8 +590,8 @@ describe("the work folder's own files", () => {
 		expect(
 			readSubjectFolders("folder,subject\nScience,science\nالعلوم,science\n"),
 		).toEqual([
-			{ folder: "Science", subject: "science" },
-			{ folder: "العلوم", subject: "science" },
+			{ folder: "Science", subject: "science", language: "" },
+			{ folder: "العلوم", subject: "science", language: "" },
 		]);
 	});
 });

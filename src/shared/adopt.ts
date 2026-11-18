@@ -6,6 +6,7 @@
 // project says) and is pure; src/main/adopt.ts reads and writes the folders.
 
 import { BUNDLE_LIMITS, checkText } from "./format/bundle.ts";
+import { languageName } from "./languages.ts";
 import {
 	type CurriculumModel,
 	type FactStatus,
@@ -51,7 +52,8 @@ export type AdoptInput = {
 	/** The register rows of this curriculum, their paths relative to the project root. */
 	register: FileRow[];
 	/** The folder names of the material, and the subject each stands for. */
-	subjectFolders: { folder: string; subject: string }[];
+	/** _subjects.csv's rows; `language` is "" when the folder names none (task 230). */
+	subjectFolders: { folder: string; subject: string; language?: string }[];
 };
 
 /** What adopting writes: the project file and the Studio's model of the curriculum. */
@@ -194,6 +196,15 @@ export function planAdopt(
 ): { ok: true; plan: AdoptPlan } | { ok: false; issues: ProjectIssue[] } {
 	// The folders the author already has: the first row of a grade names its folder, and the
 	// deepest folder of a row that _subjects.csv maps to the course's subject names that one.
+	// A course is grade + subject + language (task 230): a folder that names a language only
+	// matches a course in that language, and one that names none matches any.
+	const fits = (
+		entry: { subject: string; language?: string },
+		subject: string,
+		language: string,
+	): boolean =>
+		entry.subject === subject &&
+		((entry.language ?? "") === "" || entry.language === language);
 	const sorted = [...input.register].sort((a, b) =>
 		a.path.localeCompare(b.path),
 	);
@@ -206,18 +217,27 @@ export function planAdopt(
 		const folder = parts[0];
 		if (folder === undefined) continue;
 		if (!gradeFolders.has(grade)) gradeFolders.set(grade, folder);
-		const key = `${grade}|${row.subject}`;
+		const key = `${grade}|${row.subject}|${row.language}`;
 		if (row.subject === "" || courseFolders.has(key)) continue;
 		const folders = parts.slice(1, -1);
 		const found = folders.find((part) =>
 			input.subjectFolders.some(
-				(entry) => entry.folder === part && entry.subject === row.subject,
+				(entry) =>
+					entry.folder === part && fits(entry, row.subject, row.language),
 			),
 		);
 		if (found !== undefined) courseFolders.set(key, found);
 	}
-	const subjectFolderOf = (subject: string): string | undefined =>
-		input.subjectFolders.find((entry) => entry.subject === subject)?.folder;
+	// A folder that names this very language first, then one that names no language.
+	const subjectFolderOf = (
+		subject: string,
+		language: string,
+	): string | undefined =>
+		(
+			input.subjectFolders.find(
+				(entry) => entry.subject === subject && entry.language === language,
+			) ?? input.subjectFolders.find((entry) => fits(entry, subject, language))
+		)?.folder;
 
 	const grades = new Map<number, ProjectGrade>();
 	for (const course of input.courses) {
@@ -226,18 +246,28 @@ export function planAdopt(
 			folder: gradeFolders.get(course.grade) ?? gradeFolder(course.grade),
 			subjects: [],
 		};
-		const key = `${course.grade}|${course.subject}`;
+		const key = `${course.grade}|${course.subject}|${course.language}`;
 		const found =
 			courseFolders.get(key) ??
-			subjectFolderOf(course.subject) ??
+			subjectFolderOf(course.subject, course.language) ??
 			subjectFolder(course.subject);
+		let folder = validFolderName(found) ? found : subjectFolder(course.subject);
+		// The same subject in a second language must not share the first one's folder.
+		if (gradeEntry.subjects.some((entry) => entry.folder === folder))
+			folder = `${folder} (${languageName(course.language, "en")})`;
 		const subject: ProjectSubject = {
 			subject: course.subject,
-			folder: validFolderName(found) ? found : subjectFolder(course.subject),
+			folder,
 			language: course.language,
 			support: [...course.support],
 		};
-		if (!gradeEntry.subjects.some((entry) => entry.subject === subject.subject))
+		if (
+			!gradeEntry.subjects.some(
+				(entry) =>
+					entry.subject === subject.subject &&
+					entry.language === subject.language,
+			)
+		)
 			gradeEntry.subjects.push(subject);
 		grades.set(course.grade, gradeEntry);
 	}

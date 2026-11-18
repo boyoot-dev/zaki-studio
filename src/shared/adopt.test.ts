@@ -169,8 +169,8 @@ describe("reading the register", () => {
 		expect(
 			readSubjectFolders("folder,subject\nScience,science\nالعلوم,science\n"),
 		).toEqual([
-			{ folder: "Science", subject: "science" },
-			{ folder: "العلوم", subject: "science" },
+			{ folder: "Science", subject: "science", language: "" },
+			{ folder: "العلوم", subject: "science", language: "" },
 		]);
 	});
 });
@@ -316,6 +316,59 @@ describe("the project adoption makes", () => {
 					},
 				],
 			});
+	});
+
+	it("keeps one subject in two languages as two courses, each in its own folder (task 230)", () => {
+		const header = headerFromFile(def(), "curriculum.json");
+		const english = courseFromFile(
+			gradeFile({ subject: "biology", grade: 11 }),
+			"kestrel",
+			"file",
+		);
+		const arabic = courseFromFile(
+			gradeFile({ subject: "biology", grade: 11, language: "ar" }),
+			"kestrel",
+			"file",
+		);
+		if (!english.ok || !arabic.ok || !header.ok)
+			throw new Error("the fixture is broken");
+		const book = (id: string, path: string, language: string) =>
+			rowOf({
+				id,
+				path,
+				grade: 11,
+				subject: "biology",
+				language,
+				block: "",
+				kind: "book",
+				pages: 200,
+				authority: 1,
+			});
+		const plan = planAdopt({
+			id: ID,
+			curriculumId: "kestrel",
+			header: header.header,
+			courses: [english.course, arabic.course],
+			register: [
+				book("9a010f4b4816", "Grade 11/Biology/book.pdf", "en"),
+				book("9a010f4b4817", "Grade 11/Arabic Biology/book.pdf", "ar"),
+			],
+			subjectFolders: [
+				{ folder: "Biology", subject: "biology", language: "en" },
+				{ folder: "Arabic Biology", subject: "biology", language: "ar" },
+			],
+		});
+		expect(plan.ok).toBe(true);
+		if (plan.ok)
+			expect(plan.plan.project.grades[0]?.subjects).toEqual([
+				{ subject: "biology", folder: "Biology", language: "en", support: [] },
+				{
+					subject: "biology",
+					folder: "Arabic Biology",
+					language: "ar",
+					support: [],
+				},
+			]);
 	});
 
 	it("refuses a curriculum with no courses", () => {
