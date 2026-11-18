@@ -2,8 +2,9 @@
 // author picks the language the course is taught in, and the languages Mr. Zaki may also use
 // to help: the child's own, or a named one. "Apply to other grades" copies the help languages
 // to the same subject in the grades the author ticks, writing them on each course; nothing
-// grade-wide is stored. Every change is written to curriculum.json at once, through the main
-// process, which checks it again.
+// grade-wide is stored. "Add in another language" adds the same subject in a second language
+// to this grade (task 228); it joins the nav once a change set for it is accepted. Every
+// change is written to curriculum.json at once, through the main process, which checks it again.
 
 import { useState } from "react";
 import type { CourseHead } from "../shared/api.ts";
@@ -21,6 +22,8 @@ export function CourseLanguages({
 	root,
 	course,
 	courses,
+	projectLanguages,
+	subjectName,
 	onChanged,
 	onNotify,
 }: {
@@ -28,12 +31,17 @@ export function CourseLanguages({
 	course: CourseHead;
 	/** Every course of the project, for "apply to other grades". */
 	courses: readonly CourseHead[];
+	/** The languages this subject already has in this grade, from the project itself. */
+	projectLanguages: readonly string[];
+	/** The subject's own name, for the toast after adding a course. */
+	subjectName: string;
 	onChanged: () => void;
 	onNotify: (text: string) => void;
 }) {
 	const say = useSay();
 	const lang = useLang();
 	const [others, setOthers] = useState<number[] | null>(null);
+	const [adding, setAdding] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const save = async (
@@ -102,6 +110,36 @@ export function CourseLanguages({
 				support: course.support.filter((code) => code !== entry.language),
 			})),
 		).then(() => setOthers(null));
+	};
+
+	const available = languageChoices(lang).filter(
+		(choice) => !projectLanguages.includes(choice.code),
+	);
+
+	/** Adds the same subject in another language, as a second course of this grade. */
+	const addLanguage = async () => {
+		if (adding === null) return;
+		setBusy(true);
+		const done = await window.studio.addCourseLanguage(
+			root,
+			course.grade,
+			course.subject,
+			adding,
+		);
+		setBusy(false);
+		if (!done.ok) {
+			onNotify(failureText(lang, done));
+			return;
+		}
+		const added = adding;
+		setAdding(null);
+		onNotify(
+			say("language.added", {
+				subject: subjectName,
+				language: languageName(added, lang),
+			}),
+		);
+		onChanged();
 	};
 
 	const offered = [
@@ -209,6 +247,53 @@ export function CourseLanguages({
 							type="button"
 							className="btn btn-quiet"
 							onClick={() => setOthers(null)}
+						>
+							{say("wizard.cancel")}
+						</button>
+					</div>
+				</div>
+			)}
+			{available.length === 0 ? (
+				<p className="muted">{say("language.addNone")}</p>
+			) : adding === null ? (
+				<button
+					type="button"
+					className="btn btn-quiet"
+					disabled={busy}
+					onClick={() => setAdding(available[0]?.code ?? null)}
+				>
+					{say("language.addOther")}
+				</button>
+			) : (
+				<div className="course-apply">
+					<p className="muted">{say("language.addHint")}</p>
+					<label className="course-language">
+						<span>{say("language.teaching")}</span>
+						<select
+							value={adding}
+							disabled={busy}
+							onChange={(event) => setAdding(event.target.value)}
+						>
+							{available.map((choice) => (
+								<option key={choice.code} value={choice.code}>
+									{choice.name}
+								</option>
+							))}
+						</select>
+					</label>
+					<div className="course-apply-buttons">
+						<button
+							type="button"
+							className="btn"
+							disabled={busy}
+							onClick={() => void addLanguage()}
+						>
+							{say("language.add")}
+						</button>
+						<button
+							type="button"
+							className="btn btn-quiet"
+							onClick={() => setAdding(null)}
 						>
 							{say("wizard.cancel")}
 						</button>

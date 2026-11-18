@@ -356,7 +356,7 @@ describe("a scan of a project", { timeout: 30_000 }, () => {
 			block: "7",
 			kind: "exam",
 			authority: 1,
-			fixed: ["authority", "block", "grade", "kind", "subject"],
+			fixed: ["authority", "block", "grade", "kind", "language", "subject"],
 		});
 	});
 

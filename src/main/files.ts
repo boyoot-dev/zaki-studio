@@ -41,6 +41,8 @@ import {
 	cleanCourseLanguage,
 } from "../shared/languages.ts";
 import {
+	addCourseLanguage as addCourseToProject,
+	EXAM_FOLDERS,
 	INBOX_DIR,
 	nextUnitFolder,
 	PROJECT_FILE,
@@ -48,6 +50,7 @@ import {
 	parseProject,
 	projectFolders,
 	STUDIO_DIR,
+	sectionPaths,
 	unitNumber,
 	validFolderName,
 } from "../shared/project.ts";
@@ -376,6 +379,49 @@ export function setCourseLanguages(
 	const written = writeProject(root, next);
 	if (!written.ok) return written;
 	return { ok: true, renamed };
+}
+
+/**
+ * Adds a course in another language to curriculum.json, and makes its folder (task 228). The
+ * course is only in the project until a change set for it is accepted; the model is untouched.
+ */
+export function addCourseLanguage(
+	root: string,
+	grade: unknown,
+	subject: unknown,
+	language: unknown,
+): Done {
+	if (typeof grade !== "number" || !Number.isInteger(grade))
+		return failure("invalidProject");
+	if (typeof subject !== "string" || subject === "")
+		return failure("invalidProject");
+	if (typeof language !== "string" || language === "")
+		return failure("invalidProject");
+	const project = readProject(root);
+	if (!project.ok) return project;
+	const added = addCourseToProject(project.project, grade, subject, language);
+	if (!added.ok) return failure("refused", added.message);
+	const gradeEntry = added.project.grades.find(
+		(entry) => entry.grade === grade,
+	);
+	const course = gradeEntry?.subjects.find(
+		(entry) => entry.subject === subject && entry.language === language,
+	);
+	if (gradeEntry === undefined || course === undefined)
+		return failure("invalidProject");
+	try {
+		const base = `${gradeEntry.folder}/${course.folder}`;
+		mkdirSync(join(root, ...base.split("/")), { recursive: true });
+		for (const section of sectionPaths(gradeEntry, course))
+			mkdirSync(join(root, ...section.rel.split("/")), { recursive: true });
+		for (const exam of EXAM_FOLDERS)
+			mkdirSync(join(root, ...`${base}/Exam/${exam}`.split("/")), {
+				recursive: true,
+			});
+	} catch {
+		return failure("unreadable");
+	}
+	return writeProject(root, added.project);
 }
 
 /** The top-level folders of a folder that isn't a project yet, and their child folders. */

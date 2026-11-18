@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	addCourseLanguage,
 	finalExamPeriod,
 	gradeFolder,
 	guessGrades,
@@ -260,6 +261,66 @@ describe("the wizard's checks", () => {
 			ID,
 		);
 		expect(made.ok).toBe(false);
+	});
+});
+
+describe("a second course language (task 228)", () => {
+	it("adds the subject in another language after its first course", () => {
+		const before = project();
+		const copy = structuredClone(before);
+		const added = addCourseLanguage(before, 7, "math", "ar");
+		if (!added.ok) throw new Error(added.message);
+		expect(
+			added.project.grades[0]?.subjects.map((entry) => [
+				entry.subject,
+				entry.language,
+				entry.folder,
+			]),
+		).toEqual([
+			["science", "en", "Science"],
+			["math", "en", "Mathematics"],
+			["math", "ar", "Mathematics (Arabic)"],
+		]);
+		// The project it was given is left exactly as it was.
+		expect(before).toEqual(copy);
+	});
+
+	it("refuses a language the subject already has in the grade", () => {
+		expect(addCourseLanguage(project(), 7, "science", "en").ok).toBe(false);
+		const first = addCourseLanguage(project(), 7, "math", "ar");
+		if (!first.ok) throw new Error(first.message);
+		expect(addCourseLanguage(first.project, 7, "math", "ar").ok).toBe(false);
+	});
+
+	it("refuses an unknown grade, an unknown subject and a bad code", () => {
+		expect(addCourseLanguage(project(), 8, "math", "ar").ok).toBe(false);
+		expect(addCourseLanguage(project(), 7, "physics", "ar").ok).toBe(false);
+		expect(addCourseLanguage(project(), 7, "math", "fre").ok).toBe(false);
+	});
+
+	it("numbers the folder when the language's name is already taken", () => {
+		const taken = project();
+		const grade = taken.grades[0];
+		if (grade === undefined) throw new Error("no grade");
+		// Another course already lives in "Mathematics (Arabic)".
+		const used = {
+			...taken,
+			grades: [
+				{
+					...grade,
+					subjects: grade.subjects.map((entry) =>
+						entry.subject === "science"
+							? { ...entry, folder: "Mathematics (Arabic)" }
+							: entry,
+					),
+				},
+			],
+		};
+		const added = addCourseLanguage(used, 7, "math", "ar");
+		if (!added.ok) throw new Error(added.message);
+		expect(added.project.grades[0]?.subjects.at(-1)?.folder).toBe(
+			"Mathematics (Arabic) 2",
+		);
 	});
 });
 

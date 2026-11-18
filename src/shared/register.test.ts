@@ -326,6 +326,25 @@ describe("a register row", () => {
 			fixed: ["authority", "block", "grade", "kind", "subject"],
 		});
 	});
+
+	it("keeps the language the author chose for the file's course (task 228)", () => {
+		const corrected = made("Grade 3/2026-2027/Math/sheet.pdf", {
+			fixed: { subject: "math", language: "ar" },
+		});
+		expect(corrected).toMatchObject({ subject: "math", language: "ar" });
+		// The explicit language beats one read from the subject's token.
+		const token = made("Grade 3/2026-2027/Math/sheet.pdf", {
+			fixed: { subject: "chemistry-ar", language: "en" },
+		});
+		expect(token).toMatchObject({ subject: "chemistry", language: "en" });
+	});
+
+	it("ignores a language that is not a code", () => {
+		const got = made("Grade 3/2026-2027/Math/sheet.pdf", {
+			fixed: { subject: "math", language: "fre" },
+		});
+		expect(got.language).toBe("");
+	});
 });
 
 describe("what changed between two scans", () => {

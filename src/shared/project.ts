@@ -15,6 +15,7 @@ import {
 	NATIVE,
 } from "./format/bundle.ts";
 import { GRADE_MAX, GRADE_MIN, gradeName } from "./format/grades.ts";
+import { languageName } from "./languages.ts";
 
 /** The marker in curriculum.json that says this folder is a Studio project. */
 export const PROJECT_FORMAT = "mr-zaki-studio-project";
@@ -41,8 +42,8 @@ export const EXAM_FOLDERS = [
 
 /**
  * One course of one grade: the subject id, the folder it lives in, the language it is taught
- * in, and the languages that may help the child ("native" is the child's own). The Studio
- * keeps one course per subject and grade for now; the format allows a second language.
+ * in, and the languages that may help the child ("native" is the child's own). One subject may
+ * be taught twice in a grade, in two languages (task 228); grade, subject and language name it.
  */
 export type ProjectSubject = {
 	subject: string;
@@ -519,6 +520,58 @@ export function projectFolders(project: Project): string[] {
 		}
 	}
 	return [...new Set(folders)];
+}
+
+/** The project with one more course: this grade's subject taught in another language. */
+export function addCourseLanguage(
+	project: Project,
+	grade: number,
+	subject: string,
+	language: string,
+): { ok: true; project: Project } | { ok: false; message: string } {
+	if (typeof grade !== "number" || !Number.isInteger(grade))
+		return { ok: false, message: "expected a grade" };
+	if (typeof subject !== "string" || subject === "")
+		return { ok: false, message: "expected a subject" };
+	if (typeof language !== "string" || !LANGUAGE_CODES.includes(language))
+		return { ok: false, message: "expected a language code" };
+	const found = project.grades.find((entry) => entry.grade === grade);
+	if (found === undefined)
+		return { ok: false, message: `the project has no grade ${grade}` };
+	const sameSubject = found.subjects.filter(
+		(entry) => entry.subject === subject,
+	);
+	if (sameSubject.length === 0)
+		return {
+			ok: false,
+			message: `grade ${grade} has no course in ${subject}`,
+		};
+	if (sameSubject.some((entry) => entry.language === language))
+		return {
+			ok: false,
+			message: `${subject} is already taught in ${language} in grade ${grade}`,
+		};
+	const last = sameSubject[sameSubject.length - 1] as ProjectSubject;
+	const taken = new Set(found.subjects.map((entry) => entry.folder));
+	const base = `${last.folder} (${languageName(language, "en")})`;
+	let folder = base;
+	for (let n = 2; taken.has(folder); n += 1) folder = `${base} ${n}`;
+	const added: ProjectSubject = { subject, folder, language, support: [] };
+	const at = found.subjects.lastIndexOf(last) + 1;
+	const subjects = [
+		...found.subjects.slice(0, at),
+		added,
+		...found.subjects.slice(at),
+	];
+	return {
+		ok: true,
+		project: {
+			...project,
+			grades: project.grades.map((entry) =>
+				entry.grade === grade ? { ...entry, subjects } : entry,
+			),
+		},
+	};
 }
 
 /** The sections of one subject, as paths relative to the project root. */
