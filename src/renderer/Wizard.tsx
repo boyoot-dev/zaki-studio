@@ -390,7 +390,7 @@ export function Wizard({
 					<section className="planned">
 						<h2>{say("wizard.folders.title")}</h2>
 						<p className="muted">{say("wizard.folders.hint", { root })}</p>
-						<ul className="folder-list" dir="ltr">
+						<ul className="planned-folders" dir="ltr">
 							{projectFolders(made.project).map((folder) => (
 								<li key={folder}>{`${folder}/`}</li>
 							))}
