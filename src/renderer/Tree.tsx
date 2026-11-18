@@ -4,7 +4,7 @@
 // Explorer, or a row dragged from inside), so the author never has to find a menu to put
 // something in its place.
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { TreeNode } from "../shared/api.ts";
 import { failureText } from "./App";
@@ -48,19 +48,34 @@ export function Tree({
 		() => new Map([["", firstTop]]),
 	);
 	const [open, setOpen] = useState<Set<string>>(() => new Set(OPEN_AT_FIRST));
+	// The open folders as the reload below sees them, without re-reading on every toggle.
+	const openRef = useRef(open);
+	openRef.current = open;
 
-	// A change anywhere: everything is re-read from the top, like the old full reload.
+	// A change anywhere: the top and every open folder are re-read, so a drop or a paste keeps
+	// the tree as the author left it. Re-reading only the top closed every folder and left
+	// them marked open, so the next click on one did nothing (owner's walkthrough, 2026-11-18).
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — re-read when the folder changed on disk.
 	useEffect(() => {
 		let alive = true;
 		void (async () => {
-			const result = await window.studio.listTree(root, "");
+			const rels = ["", ...[...openRef.current].filter((rel) => rel !== "")];
+			const results = await Promise.all(
+				rels.map((rel) => window.studio.listTree(root, rel)),
+			);
 			if (!alive) return;
-			if (!result.ok) {
-				onNotify(failureText(lang, result));
+			const top = results[0];
+			if (top === undefined || !top.ok) {
+				if (top !== undefined && !top.ok) onNotify(failureText(lang, top));
 				return;
 			}
-			setLevels(new Map([["", result.nodes]]));
+			const next = new Map<string, TreeNode[]>();
+			rels.forEach((rel, index) => {
+				const result = results[index];
+				// A folder that is gone is left out; it loads again if it comes back and is opened.
+				if (result?.ok) next.set(rel, result.nodes);
+			});
+			setLevels(next);
 		})();
 		return () => {
 			alive = false;
