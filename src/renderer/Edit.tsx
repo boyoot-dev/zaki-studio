@@ -143,11 +143,14 @@ export function AddLine({
 	label,
 	multiline = false,
 	extra,
+	hint,
 	onAdd,
 }: {
 	label: string;
 	multiline?: boolean;
 	extra?: ReactNode;
+	/** A short line under the field, e.g. "One per line: each line is one fact." */
+	hint?: string;
 	onAdd: (text: string) => Promise<boolean>;
 }) {
 	const say = useSay();
@@ -199,6 +202,7 @@ export function AddLine({
 					}}
 				/>
 			)}
+			{hint !== undefined && <p className="muted small">{hint}</p>}
 			{extra}
 			<div className="notes-row">
 				<button

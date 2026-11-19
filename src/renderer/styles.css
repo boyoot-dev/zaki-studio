@@ -2041,3 +2041,22 @@ details.older > summary {
 	padding-inline-start: 18px;
 	font-size: 0.9rem;
 }
+
+/* A unit's key words and evidence, and a lesson's activity, edited by hand (task 251). */
+.unit-lists {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 8px 16px;
+	margin: 6px 0;
+}
+
+.unit-list h5 {
+	margin: 0 0 2px;
+}
+
+.lesson-activity {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin: 2px 0 6px;
+}

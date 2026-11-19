@@ -602,6 +602,54 @@ export function Curriculum({
 									{!exportableUnit(unit) && (
 										<p className="muted small">{say("edit.unitNotExported")}</p>
 									)}
+									<div className="unit-lists">
+										<div className="unit-list">
+											<h5>{say("edit.keywords")}</h5>
+											<EditableText
+												value={unit.keywords.join("\n")}
+												multiline
+												onSave={(text) =>
+													run({
+														kind: "unit.keywords",
+														unit: unit.number,
+														text,
+													})
+												}
+											>
+												<p className="muted small" dir="auto">
+													{unit.keywords.length === 0
+														? say("edit.none")
+														: unit.keywords.join("، ")}
+												</p>
+											</EditableText>
+										</div>
+										<div className="unit-list">
+											<h5>{say("edit.evidence")}</h5>
+											<EditableText
+												value={unit.evidence.join("\n")}
+												multiline
+												onSave={(text) =>
+													run({
+														kind: "unit.evidence",
+														unit: unit.number,
+														text,
+													})
+												}
+											>
+												{unit.evidence.length === 0 ? (
+													<p className="muted small">{say("edit.none")}</p>
+												) : (
+													<ul className="small">
+														{unit.evidence.map((entry) => (
+															<li key={entry} dir="auto">
+																{entry}
+															</li>
+														))}
+													</ul>
+												)}
+											</EditableText>
+										</div>
+									</div>
 									<ol className="lessons">
 										{unit.lessons.map((lesson, lessonIndex) => (
 											<li key={lesson.id} className="lesson">
@@ -699,10 +747,36 @@ export function Curriculum({
 													/>
 												</div>
 												{!exportableLesson(lesson) && (
-													<p className="muted small">
+													<p className="issues small">
 														{say("edit.lessonNotExported")}
 													</p>
 												)}
+												<label className="lesson-activity small">
+													<span>{say("edit.activity")}</span>
+													<select
+														value={lesson.activity ?? ""}
+														onChange={(event) =>
+															void run({
+																kind: "lesson.activity",
+																unit: unit.number,
+																lesson: lesson.number,
+																activity:
+																	event.target.value === "reading" ||
+																	event.target.value === "writing"
+																		? event.target.value
+																		: null,
+															})
+														}
+													>
+														<option value="">{say("edit.activityNone")}</option>
+														<option value="reading">
+															{say("edit.activityReading")}
+														</option>
+														<option value="writing">
+															{say("edit.activityWriting")}
+														</option>
+													</select>
+												</label>
 												<div className="lesson-part">
 													<h5>{say("curriculum.skills")}</h5>
 													<ul className="skills">
@@ -750,6 +824,8 @@ export function Curriculum({
 													</ul>
 													<AddLine
 														label={say("edit.addSkill")}
+														multiline
+														hint={say("edit.manySkills")}
 														onAdd={(text) =>
 															run({
 																kind: "skill.add",
@@ -868,6 +944,7 @@ export function Curriculum({
 													<AddLine
 														label={say("edit.addFact")}
 														multiline
+														hint={say("edit.manyFacts")}
 														onAdd={(text) =>
 															run({
 																kind: "fact.add",
