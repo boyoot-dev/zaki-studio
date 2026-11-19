@@ -45,6 +45,10 @@ const en = {
 	"ai.key": "An OpenRouter key (advanced)",
 	"ai.keyHint":
 		"The Studio sends your material to OpenRouter with your key and pays per use.",
+	"ai.browser": "Claude or Gemini in the browser",
+	"ai.browserHint":
+		"The Studio prepares a file; you upload it to the chat and paste the answer back, once per unit.",
+	"ai.usingBrowser": "Using: Claude or Gemini in the browser",
 	"ai.whichTool": "Which tool",
 	"ai.usingTool": "Using: {tool}",
 	"ai.usingKey": "Using: your OpenRouter key",
@@ -87,6 +91,21 @@ const en = {
 	"book.stopped":
 		"The spending limit stopped the build. Raise it in Settings and press Start again.",
 	"book.lastJob": "A build prepared on {created} can be collected:",
+	// The browser rounds (task 245).
+	"rounds.guess":
+		"This takes about {n:round}: in each, one file to upload and one answer to paste.",
+	"rounds.period": "Period",
+	"rounds.outline": "Round {round} of about {total}: the outline",
+	"rounds.unit": "Round {round} of {total}: Unit {unit} · {title}",
+	"rounds.part": " (part {part} of {parts})",
+	"rounds.steps":
+		"Upload this file to the chat, copy the message below into it, then paste the whole answer here.",
+	"rounds.showFile": "Show the file",
+	"rounds.paste": "Paste the answer here",
+	"rounds.check": "Check the answer",
+	"rounds.kept": "Kept. On to the next round.",
+	"rounds.done": "All rounds are done. The units wait for your review.",
+	"rounds.again": "Start again",
 
 	// The wizard.
 	"wizard.secondLanguage": "+ another language",
@@ -671,6 +690,10 @@ const ar: Record<TextKey, string> = {
 	"ai.key": "مفتاح OpenRouter (متقدّم)",
 	"ai.keyHint":
 		"يرسل الاستوديو موادّك إلى OpenRouter بمفتاحك، وتدفع حسب الاستخدام.",
+	"ai.browser": "Claude أو Gemini في المتصفح",
+	"ai.browserHint":
+		"يجهّز الاستوديو ملفًا؛ ترفعه إلى المحادثة وتلصق الإجابة هنا، مرة لكل وحدة.",
+	"ai.usingBrowser": "تستخدم: Claude أو Gemini في المتصفح",
 	"ai.whichTool": "أي أداة",
 	"ai.usingTool": "تستخدم: {tool}",
 	"ai.usingKey": "تستخدم: مفتاح OpenRouter الخاص بك",
@@ -708,6 +731,20 @@ const ar: Record<TextKey, string> = {
 	"book.stopped":
 		"أوقف حدّ الإنفاق البناء. ارفعه من الإعدادات ثم اضغط «ابدأ» مرة أخرى.",
 	"book.lastJob": "يمكن جمع بناء جُهّز في {created}:",
+	"rounds.guess":
+		"يستغرق هذا نحو {n:round}: في كل جولة ملف ترفعه وإجابة تلصقها.",
+	"rounds.period": "الفترة",
+	"rounds.outline": "الجولة {round} من نحو {total}: المخطط",
+	"rounds.unit": "الجولة {round} من {total}: الوحدة {unit} · {title}",
+	"rounds.part": " (الجزء {part} من {parts})",
+	"rounds.steps":
+		"ارفع هذا الملف إلى المحادثة، وانسخ الرسالة أدناه إليها، ثم ألصق الإجابة كاملة هنا.",
+	"rounds.showFile": "اعرض الملف",
+	"rounds.paste": "ألصق الإجابة هنا",
+	"rounds.check": "افحص الإجابة",
+	"rounds.kept": "حُفظت. إلى الجولة التالية.",
+	"rounds.done": "انتهت الجولات. الوحدات بانتظار مراجعتك.",
+	"rounds.again": "ابدأ من جديد",
 	"wizard.secondLanguage": "+ لغة أخرى",
 	"wizard.secondLanguageLabel": "تُدرَّس أيضًا بـ",
 	"wizard.secondLanguageRemove": "احذف اللغة الثانية",
@@ -1265,7 +1302,8 @@ type Noun =
 	| "subject"
 	| "cent"
 	| "minute"
-	| "proposal";
+	| "proposal"
+	| "round";
 
 /**
  * Each noun's forms for counting, with "#" where the digits go. Arabic uses the six forms
@@ -1425,6 +1463,17 @@ const countedNouns: Record<Noun, Counted> = {
 			few: "# دقائق",
 			many: "# دقيقة",
 			other: "# دقيقة",
+		},
+	},
+	round: {
+		en: { one: "1 round", other: "# rounds" },
+		ar: {
+			zero: "لا جولات",
+			one: "جولة واحدة",
+			two: "جولتين",
+			few: "# جولات",
+			many: "# جولة",
+			other: "# جولة",
 		},
 	},
 	proposal: {

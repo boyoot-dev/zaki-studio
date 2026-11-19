@@ -10,9 +10,11 @@ import type { BookPlanView, BookProgress } from "../shared/api";
 import type { BundlePeriod } from "../shared/format/bundle";
 import { gradeLabel, type TextKey } from "../shared/i18n";
 import { KINDS } from "../shared/register";
+import { roundsGuess } from "../shared/rounds";
 import { termLabel } from "../shared/terms";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
+import { Rounds } from "./Rounds";
 import { useAi, useAiGate } from "./Settings";
 
 /** A course: grade, subject and teaching language. */
@@ -58,6 +60,8 @@ export function BookPanel({
 	const [progress, setProgress] = useState<BookProgress | null>(null);
 	const [result, setResult] = useState("");
 	const [done, setDone] = useState(false);
+	// The period the browser rounds are for, when the course has more than one (task 245).
+	const [roundsPeriod, setRoundsPeriod] = useState("");
 
 	const load = useCallback(async () => {
 		setPlan(
@@ -267,18 +271,58 @@ export function BookPanel({
 					</>
 				)}
 
-				{ready && shown !== null && shown.periods.length > 0 && (
-					<div className="notes-row">
-						<button
-							type="button"
-							className="btn"
-							disabled={busy !== null || (way === "key" && ai?.keySet !== true)}
-							onClick={() => void start()}
-						>
-							{busy === "start" ? say("book.starting") : say("book.start")}
-						</button>
-					</div>
-				)}
+				{ready &&
+					way === "browser" &&
+					shown !== null &&
+					shown.periods.length > 0 && (
+						<>
+							{shown.periods.length > 1 && (
+								<label className="field">
+									<span className="field-label">{say("rounds.period")}</span>
+									<select
+										value={roundsPeriod || shown.periods[0]}
+										onChange={(event) => setRoundsPeriod(event.target.value)}
+									>
+										{shown.periods.map((id) => (
+											<option key={id} value={id}>
+												{termLabel(id, periods, lang) ?? id}
+											</option>
+										))}
+									</select>
+								</label>
+							)}
+							<Rounds
+								key={roundsPeriod || shown.periods[0]}
+								root={root}
+								course={course}
+								period={roundsPeriod || (shown.periods[0] ?? "")}
+								guess={roundsGuess(
+									shown.files.reduce((sum, file) => sum + file.pages, 0) /
+										Math.max(1, shown.periods.length),
+								)}
+								onDone={() => setDone(true)}
+								onNotify={onNotify}
+							/>
+						</>
+					)}
+
+				{ready &&
+					way !== "browser" &&
+					shown !== null &&
+					shown.periods.length > 0 && (
+						<div className="notes-row">
+							<button
+								type="button"
+								className="btn"
+								disabled={
+									busy !== null || (way === "key" && ai?.keySet !== true)
+								}
+								onClick={() => void start()}
+							>
+								{busy === "start" ? say("book.starting") : say("book.start")}
+							</button>
+						</div>
+					)}
 
 				{progressLine !== "" && <p className="muted">{progressLine}</p>}
 

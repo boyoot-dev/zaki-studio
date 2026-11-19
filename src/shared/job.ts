@@ -19,7 +19,7 @@ export type JobTool = "claude-code" | "other";
 
 /** The kinds of job folder: notes for files (task 157), change sets for periods (158),
  * and a course's exam papers (177). */
-export type JobKind = "notes" | "units" | "exams" | "book";
+export type JobKind = "notes" | "units" | "exams" | "book" | "rounds";
 
 /** A job's folder name, e.g. "2026-11-13-0830". The page sends only this. */
 export const JOB_NAME = /^\d{4}-\d{2}-\d{2}-\d{4}$/;
@@ -454,6 +454,7 @@ export function jobKind(value: unknown): JobKind {
 	if (value === "units") return "units";
 	if (value === "exams") return "exams";
 	if (value === "book") return "book";
+	if (value === "rounds") return "rounds";
 	return "notes";
 }
 

@@ -187,7 +187,7 @@ export function rowPeriods(model: CurriculumModel, block: string): string[] {
  * the units from the notes alone (task 178). `allowNewUnits` keeps a set made for such a
  * period acceptable after the author has accepted one of its units.
  */
-function givenFor(
+export function givenFor(
 	root: string,
 	model: CurriculumModel,
 	files: readonly FileRow[],
