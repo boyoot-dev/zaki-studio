@@ -31,6 +31,7 @@ export function NewMaterialPanel({
 	onScan,
 	onStop,
 	onPick,
+	onShowFiles,
 	onNotify,
 	reloadKey,
 }: {
@@ -42,6 +43,8 @@ export function NewMaterialPanel({
 	onScan: () => void;
 	onStop: () => void;
 	onPick: (rel: string) => void;
+	/** Shows the Files tab, for when there is nothing new to look at here. */
+	onShowFiles: () => void;
 	onNotify: (text: string) => void;
 	/** Bumped when the folder changed on disk; the rows are re-read. */
 	reloadKey: number;
@@ -236,6 +239,21 @@ export function NewMaterialPanel({
 							new: allNew,
 						})}
 					</p>
+					{meta.ocrPages > 0 && (
+						<p className="muted">{say("new.ocrPages", { n: meta.ocrPages })}</p>
+					)}
+					{allNew === 0 && meta.found > 0 && (
+						<p className="muted">
+							{say("new.allRead", { n: meta.found })}{" "}
+							<button
+								type="button"
+								className="link-button"
+								onClick={onShowFiles}
+							>
+								{say("new.showFiles")}
+							</button>
+						</p>
+					)}
 					{meta.tessdataMissing.length > 0 && (
 						<p className="issues">{say("new.tessdata")}</p>
 					)}

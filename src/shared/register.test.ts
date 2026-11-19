@@ -504,6 +504,7 @@ describe("the report", () => {
 			since: "",
 			found: 2,
 			read: 2,
+			ocrPages: 9,
 			changes: {
 				new: [
 					made("Grade 3/2026-2027/Math/m.pdf", { id: "aaaaaaaaaaaa" }),
@@ -522,6 +523,7 @@ describe("the report", () => {
 			today: TODAY,
 		});
 		expect(report.at).toBe("2026-10-29 10:00");
+		expect(report.ocrPages).toBe(9);
 		const maths = report.groups.find((group) => group.subject === "math");
 		expect(maths?.rows).toHaveLength(1);
 		expect(maths?.grade).toBe(3);

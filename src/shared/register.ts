@@ -806,6 +806,8 @@ export type NewMaterial = {
 	/** How many files the scan looked at, and how many it read. */
 	found: number;
 	read: number;
+	/** How many picture pages the scan read with OCR, so the panel can say so. */
+	ocrPages: number;
 	groups: NewGroup[];
 	affected: AffectedBlock[];
 	look: { row: FileRow; why: LookReason[] }[];
@@ -824,6 +826,8 @@ export type ReportInput = {
 	since: string;
 	found: number;
 	read: number;
+	/** How many picture pages the scan read with OCR. */
+	ocrPages: number;
 	changes: Changes;
 	courses: readonly ReportCourse[];
 	today: Date;
@@ -860,6 +864,7 @@ export function newMaterial(input: ReportInput): NewMaterial {
 		since: input.since,
 		found: input.found,
 		read: input.read,
+		ocrPages: input.ocrPages,
 		groups: list,
 		affected: affectedUnits(input.changes.new, input.courses, currentYear),
 		look,

@@ -238,15 +238,22 @@ function ProposedLesson({
 	paths,
 	say,
 	accepted,
+	busy,
+	setKey,
+	unit,
 	onAccept,
 }: {
 	review: ReviewLesson;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
 	accepted: boolean;
+	busy: string | null;
+	setKey: string;
+	unit: number;
 	onAccept: () => void;
 }) {
 	const proposed: CleanLesson = review.proposed;
+	const saving = busy === `accept:${setKey}|lesson:${unit}.${review.number}`;
 	const before = new Set((review.now?.facts ?? []).map((fact) => fact.text));
 	const removed = (review.now?.facts ?? []).filter(
 		(fact) =>
@@ -282,10 +289,14 @@ function ProposedLesson({
 			<button
 				type="button"
 				className="btn btn-quiet"
-				disabled={accepted}
+				disabled={busy !== null || accepted}
 				onClick={onAccept}
 			>
-				{accepted ? say("changes.accepted") : say("changes.acceptLesson")}
+				{saving
+					? say("changes.saving")
+					: accepted
+						? say("changes.accepted")
+						: say("changes.acceptLesson")}
 			</button>
 		</div>
 	);
@@ -297,15 +308,20 @@ function UnitPair({
 	reviewSet,
 	paths,
 	say,
+	busy,
+	setKey,
 	onAccept,
 }: {
 	review: ReviewUnit;
 	reviewSet: ChangeReview;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
+	busy: string | null;
+	setKey: string;
 	onAccept: (unit: number, lesson?: number) => void;
 }) {
 	const unitAccepted = reviewSet.accepted.includes(String(review.number));
+	const savingUnit = busy === `accept:${setKey}|unit:${review.number}`;
 	const now: ModelUnit | null = review.now;
 	const proposed = review.proposed;
 	return (
@@ -339,16 +355,23 @@ function UnitPair({
 							accepted={reviewSet.accepted.includes(
 								`${review.number}.${lesson.number}`,
 							)}
+							busy={busy}
+							setKey={setKey}
+							unit={review.number}
 							onAccept={() => onAccept(review.number, lesson.number)}
 						/>
 					))}
 					<button
 						type="button"
 						className="btn btn-quiet"
-						disabled={unitAccepted}
+						disabled={busy !== null || unitAccepted}
 						onClick={() => onAccept(review.number)}
 					>
-						{unitAccepted ? say("changes.accepted") : say("changes.acceptUnit")}
+						{savingUnit
+							? say("changes.saving")
+							: unitAccepted
+								? say("changes.accepted")
+								: say("changes.acceptUnit")}
 					</button>
 				</div>
 			</div>
@@ -563,6 +586,8 @@ function PaperPair({
 	reviewSet,
 	paths,
 	say,
+	busy,
+	setKey,
 	warnings,
 	onFix,
 	onAccept,
@@ -573,11 +598,14 @@ function PaperPair({
 	reviewSet: ChangeReview;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
+	busy: string | null;
+	setKey: string;
 	warnings: readonly ExamNumberWarning[];
 	onFix: (fix: ExamNumberFix) => void;
 	onAccept: (exam: number, paper: number) => void;
 }) {
 	const accepted = reviewSet.accepted.includes(`${examIndex}.${paperIndex}`);
+	const saving = busy === `accept:${setKey}|paper:${examIndex}.${paperIndex}`;
 	const own = warnings.filter(
 		(warning) => warning.path === `papers[${paperIndex}]`,
 	);
@@ -647,10 +675,14 @@ function PaperPair({
 				<button
 					type="button"
 					className="btn btn-quiet"
-					disabled={accepted}
+					disabled={busy !== null || accepted}
 					onClick={() => onAccept(examIndex, paperIndex)}
 				>
-					{accepted ? say("changes.accepted") : say("changes.acceptPaper")}
+					{saving
+						? say("changes.saving")
+						: accepted
+							? say("changes.accepted")
+							: say("changes.acceptPaper")}
 				</button>
 			)}
 		</section>
@@ -664,6 +696,8 @@ function ExamPair({
 	reviewSet,
 	paths,
 	say,
+	busy,
+	setKey,
 	onFix,
 	onAccept,
 }: {
@@ -672,6 +706,8 @@ function ExamPair({
 	reviewSet: ChangeReview;
 	paths: Record<string, { path: string; size: number }>;
 	say: Say;
+	busy: string | null;
+	setKey: string;
 	onFix: (fix: ExamNumberFix) => void;
 	onAccept: (exam: number, paper: number) => void;
 }) {
@@ -702,6 +738,8 @@ function ExamPair({
 					reviewSet={reviewSet}
 					paths={paths}
 					say={say}
+					busy={busy}
+					setKey={setKey}
 					warnings={warnings}
 					onFix={onFix}
 					onAccept={onAccept}
@@ -717,6 +755,7 @@ function ExamSet({
 	paths,
 	lang,
 	say,
+	busy,
 	onAccept,
 	onFix,
 	onReject,
@@ -725,10 +764,13 @@ function ExamSet({
 	paths: Record<string, { path: string; size: number }>;
 	lang: Lang;
 	say: Say;
+	busy: string | null;
 	onAccept: (exam?: number, paper?: number) => void;
 	onFix: (exam: number, fix: ExamNumberFix) => void;
 	onReject: () => void;
 }) {
+	const savingAll = busy === `accept:${set.key}`;
+	const savingReject = busy === `reject:${set.key}`;
 	const warningCount = useMemo(
 		() =>
 			set.exams.reduce(
@@ -762,15 +804,21 @@ function ExamSet({
 					)}
 				</div>
 				<div className="notes-row">
-					<button type="button" className="btn" onClick={() => onAccept()}>
-						{say("changes.acceptAll")}
+					<button
+						type="button"
+						className="btn"
+						disabled={busy !== null}
+						onClick={() => onAccept()}
+					>
+						{savingAll ? say("changes.saving") : say("changes.acceptAll")}
 					</button>
 					<button
 						type="button"
 						className="btn btn-quiet btn-danger"
+						disabled={busy !== null}
 						onClick={onReject}
 					>
-						{say("changes.reject")}
+						{savingReject ? say("changes.saving") : say("changes.reject")}
 					</button>
 				</div>
 			</header>
@@ -782,6 +830,8 @@ function ExamSet({
 					reviewSet={set}
 					paths={paths}
 					say={say}
+					busy={busy}
+					setKey={set.key}
 					onFix={(fix) => onFix(index, fix)}
 					onAccept={(wantedExam, wantedPaper) =>
 						onAccept(wantedExam, wantedPaper)
@@ -884,6 +934,9 @@ export function Changes({
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
 	const [examPrepared, setExamPrepared] = useState<JobMade | null>(null);
 	const [collected, setCollected] = useState<ChangesCollected | null>(null);
+	// The one action running now ("prepare", "collect:<job>", "accept:<set>|unit:2", …), so its
+	// button reads "Collecting…" or "Saving…" and the others wait (task 240).
+	const [busy, setBusy] = useState<string | null>(null);
 	const [examCollected, setExamCollected] = useState<ChangesCollected | null>(
 		null,
 	);
@@ -1064,6 +1117,21 @@ export function Changes({
 			setExamWriting(false);
 		}
 	};
+
+	/** Runs one action with its button marked busy; the mark is cleared however it ends. */
+	const busily = async (key: string, action: () => Promise<void>) => {
+		if (busy !== null) return;
+		setBusy(key);
+		try {
+			await action();
+		} finally {
+			setBusy(null);
+		}
+	};
+
+	/** The busy key of an accept: the whole set, one unit, one lesson or one paper. */
+	const acceptKey = (set: ChangeReview, part?: string) =>
+		part === undefined ? `accept:${set.key}` : `accept:${set.key}|${part}`;
 
 	/** Prepares one exams job folder for the ticked courses. */
 	const prepareExam = async () => {
@@ -1566,10 +1634,12 @@ export function Changes({
 					<button
 						type="button"
 						className="btn btn-quiet"
-						disabled={pickedCount === 0}
-						onClick={() => void prepare()}
+						disabled={pickedCount === 0 || busy !== null}
+						onClick={() => void busily("prepare", prepare)}
 					>
-						{say("changes.prepare")}
+						{busy === "prepare"
+							? say("changes.preparing")
+							: say("changes.prepare")}
 					</button>
 				</div>
 				{prepared?.ok === true && (
@@ -1617,9 +1687,16 @@ export function Changes({
 									<button
 										type="button"
 										className="btn btn-quiet"
-										onClick={() => void collect(job.name)}
+										disabled={busy !== null}
+										onClick={() =>
+											void busily(`collect:${job.name}`, () =>
+												collect(job.name),
+											)
+										}
 									>
-										{say("changes.collect")}
+										{busy === `collect:${job.name}`
+											? say("changes.collecting")
+											: say("changes.collect")}
 									</button>
 									<button
 										type="button"
@@ -1668,10 +1745,12 @@ export function Changes({
 					<button
 						type="button"
 						className="btn btn-quiet"
-						disabled={examPickedCount === 0}
-						onClick={() => void prepareExam()}
+						disabled={examPickedCount === 0 || busy !== null}
+						onClick={() => void busily("prepareExam", prepareExam)}
 					>
-						{say("changes.examPrepare")}
+						{busy === "prepareExam"
+							? say("changes.preparing")
+							: say("changes.examPrepare")}
 					</button>
 				</div>
 				{examPrepared?.ok === true && (
@@ -1724,9 +1803,16 @@ export function Changes({
 									<button
 										type="button"
 										className="btn btn-quiet"
-										onClick={() => void collectExam(job.name)}
+										disabled={busy !== null}
+										onClick={() =>
+											void busily(`collectExam:${job.name}`, () =>
+												collectExam(job.name),
+											)
+										}
 									>
-										{say("changes.collect")}
+										{busy === `collectExam:${job.name}`
+											? say("changes.collecting")
+											: say("changes.collect")}
 									</button>
 									<button
 										type="button"
@@ -1769,9 +1855,22 @@ export function Changes({
 								paths={paths}
 								lang={lang}
 								say={say}
-								onAccept={(exam, paper) => void acceptExam(set, exam, paper)}
+								busy={busy}
+								onAccept={(exam, paper) =>
+									void busily(
+										acceptKey(
+											set,
+											paper === undefined
+												? undefined
+												: `paper:${exam}.${paper}`,
+										),
+										() => acceptExam(set, exam, paper),
+									)
+								}
 								onFix={(exam, fix) => void fixExam(set, exam, fix)}
-								onReject={() => void rejectExam(set)}
+								onReject={() =>
+									void busily(`reject:${set.key}`, () => rejectExam(set))
+								}
 							/>
 						) : (
 							<section key={set.key} className="notes-actions">
@@ -1794,16 +1893,26 @@ export function Changes({
 										<button
 											type="button"
 											className="btn"
-											onClick={() => void accept(set)}
+											disabled={busy !== null}
+											onClick={() =>
+												void busily(acceptKey(set), () => accept(set))
+											}
 										>
-											{say("changes.acceptAll")}
+											{busy === acceptKey(set)
+												? say("changes.saving")
+												: say("changes.acceptAll")}
 										</button>
 										<button
 											type="button"
 											className="btn btn-quiet btn-danger"
-											onClick={() => void reject(set)}
+											disabled={busy !== null}
+											onClick={() =>
+												void busily(`reject:${set.key}`, () => reject(set))
+											}
 										>
-											{say("changes.reject")}
+											{busy === `reject:${set.key}`
+												? say("changes.saving")
+												: say("changes.reject")}
 										</button>
 									</div>
 								</header>
@@ -1814,7 +1923,19 @@ export function Changes({
 										reviewSet={set}
 										paths={paths}
 										say={say}
-										onAccept={(unit, lesson) => void accept(set, unit, lesson)}
+										busy={busy}
+										setKey={set.key}
+										onAccept={(unit, lesson) =>
+											void busily(
+												acceptKey(
+													set,
+													lesson === undefined
+														? `unit:${unit}`
+														: `lesson:${unit}.${lesson}`,
+												),
+												() => accept(set, unit, lesson),
+											)
+										}
 									/>
 								))}
 								<SetNotes set={set} say={say} />

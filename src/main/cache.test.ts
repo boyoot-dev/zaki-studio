@@ -285,6 +285,7 @@ describe("the project's cache", () => {
 			moved: [],
 			removed: [],
 			tessdataMissing: [],
+			ocrPages: 0,
 		};
 		// A different size as well as different content: two writes in the same clock tick
 		// with the same size look alike to the cache (GitHub's Windows runner, 2026-11-13).
@@ -293,6 +294,16 @@ describe("the project's cache", () => {
 		expect(readReport(project)?.found).toBe(10);
 		writeFileSync(join(project, REPORT_FILE), modelFileText(reportB), "utf8");
 		expect(readReport(project)?.found).toBe(2000);
+		// A report written before task 240 has no picture-page count: it reads as none.
+		const { ocrPages: _old, ...older } = { ...reportA, ocrPages: 4 };
+		writeFileSync(join(project, REPORT_FILE), modelFileText(older), "utf8");
+		expect(readReport(project)?.ocrPages).toBe(0);
+		writeFileSync(
+			join(project, REPORT_FILE),
+			modelFileText({ ...reportA, ocrPages: 4, found: 3 }),
+			"utf8",
+		);
+		expect(readReport(project)?.ocrPages).toBe(4);
 	});
 
 	it("serves the pending pages from memory, and picks up new ones on disk", () => {

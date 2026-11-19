@@ -54,6 +54,10 @@ export function ExportDialog({
 	const lang = useLang();
 	const [author, setAuthor] = useState(spec.author);
 	const [rights, setRights] = useState(spec.rights);
+	// The fields are shown straight away only when the project still needs one of them.
+	const [editing, setEditing] = useState(
+		spec.needsAuthor || spec.author === "" || spec.rights === "",
+	);
 	const [problems, setProblems] = useState<string[]>([]);
 	const [working, setWorking] = useState(false);
 
@@ -65,8 +69,7 @@ export function ExportDialog({
 		["export.exams", spec.summary.exams],
 	] as const;
 
-	const ready =
-		!spec.needsAuthor || (author.trim() !== "" && rights.trim() !== "");
+	const ready = author.trim() !== "" && rights.trim() !== "";
 
 	const save = async () => {
 		setWorking(true);
@@ -169,7 +172,7 @@ export function ExportDialog({
 					</ul>
 				)}
 
-				{(spec.needsAuthor || author !== "" || rights !== "") && (
+				{editing ? (
 					<div className="form">
 						<label className="field">
 							<span className="field-label">{say("export.author")}</span>
@@ -189,6 +192,24 @@ export function ExportDialog({
 								onChange={(event) => setRights(event.target.value)}
 							/>
 						</label>
+					</div>
+				) : (
+					<div className="form export-fields">
+						<div className="field">
+							<span className="field-label">{say("export.author")}</span>
+							<span dir="auto">{author}</span>
+						</div>
+						<div className="field">
+							<span className="field-label">{say("export.rights")}</span>
+							<span dir="auto">{rights}</span>
+						</div>
+						<button
+							type="button"
+							className="link-button"
+							onClick={() => setEditing(true)}
+						>
+							{say("export.change")}
+						</button>
 					</div>
 				)}
 

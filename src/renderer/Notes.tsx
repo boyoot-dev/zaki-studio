@@ -101,6 +101,8 @@ export function Notes({
 	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
 	const [collected, setCollected] = useState<JobCollected | null>(null);
+	// The job action running now ("prepare" or "collect:<job>"), so its button says so (task 240).
+	const [busy, setBusy] = useState<string | null>(null);
 	const [failed, setFailed] = useState<
 		{ id: string; path: string; reason: string }[]
 	>([]);
@@ -339,6 +341,17 @@ export function Notes({
 			stop();
 			setWriting(false);
 			setProgress(null);
+		}
+	};
+
+	/** Runs one job action with its button marked busy; the mark is cleared however it ends. */
+	const busily = async (key: string, action: () => Promise<void>) => {
+		if (busy !== null) return;
+		setBusy(key);
+		try {
+			await action();
+		} finally {
+			setBusy(null);
 		}
 	};
 
@@ -782,10 +795,10 @@ export function Notes({
 					<button
 						type="button"
 						className="btn btn-quiet"
-						disabled={selected.size === 0}
-						onClick={() => void prepare()}
+						disabled={selected.size === 0 || busy !== null}
+						onClick={() => void busily("prepare", prepare)}
 					>
-						{say("notes.prepare")}
+						{busy === "prepare" ? say("notes.preparing") : say("notes.prepare")}
 					</button>
 				</div>
 				{prepared?.ok && (
@@ -823,9 +836,14 @@ export function Notes({
 								<button
 									type="button"
 									className="btn btn-quiet"
-									onClick={() => void collect(job.name)}
+									disabled={busy !== null}
+									onClick={() =>
+										void busily(`collect:${job.name}`, () => collect(job.name))
+									}
 								>
-									{say("notes.collect")}
+									{busy === `collect:${job.name}`
+										? say("notes.collecting")
+										: say("notes.collect")}
 								</button>
 								<button
 									type="button"
