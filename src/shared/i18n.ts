@@ -170,6 +170,7 @@ const en = {
 	"export.version": "Version {n}",
 	"export.author": "Your name, as the author",
 	"export.rights": "The rights sentence a parent reads before importing",
+	"export.change": "Change",
 	"export.save": "Choose where to save…",
 	"export.done": "Exported version {n} as a .zaki file.",
 	"export.copy": "A copy is kept in this project.",
@@ -211,21 +212,31 @@ const en = {
 	"prompt.unitHint": "It is numbered for you: “03 Energy” follows “02 Cells”.",
 	"prompt.placeholder": "Name",
 
-	// Why something didn't happen.
-	"failure.outside": "That path is outside the project.",
-	"failure.notOpen": "That folder is not open in the Studio.",
-	"failure.missing": "That file or folder is not there any more.",
-	"failure.tooLarge": "That file is too large to show here.",
-	"failure.unreadable": "That file could not be read.",
-	"failure.nameTaken": "That name is already used in this folder.",
-	"failure.invalidName": "That name can't be used on Windows.",
+	// Why something didn't happen, and the next step where there is one.
+	"failure.outside": "That path is outside the project. Choose one inside it.",
+	"failure.notOpen":
+		"That folder is not open in the Studio. Open the project again.",
+	"failure.missing":
+		"That file or folder is not there any more. Look for new material to refresh the list.",
+	"failure.tooLarge":
+		"That file is too large to show here. Open it in its own app.",
+	"failure.unreadable":
+		"That file could not be read. Close it if another program has it open, and try again.",
+	"failure.nameTaken":
+		"That name is already used in this folder. Choose another name.",
+	"failure.invalidName":
+		"That name can't be used on Windows. Choose another name.",
 	"failure.invalidProject":
-		"This folder's curriculum.json is not a Studio project.",
-	"failure.noWork": "There is no _work folder beside that material.",
-	"failure.emptyModel": "This project has no curriculum to export yet.",
-	"failure.invalidBundle": "The file did not pass the check.",
+		"This folder's curriculum.json is not a Studio project. Open another folder.",
+	"failure.noWork":
+		"There is no _work folder beside that material. Choose the folder that holds it.",
+	"failure.emptyModel":
+		"This project has no curriculum to export yet. Add a course first.",
+	"failure.invalidBundle":
+		"The file did not pass the check. Open it again to see why.",
 	"failure.notEmpty": "Choose an empty folder for the new project.",
-	"failure.unknown": "Something went wrong.",
+	"failure.unknown":
+		"Something went wrong. Try again; if it happens again, restart the Studio.",
 	"failure.cancelled": "",
 
 	"project.tab.new": "New material",
@@ -300,6 +311,7 @@ const en = {
 	"notes.tool.claude-code": "Claude Code",
 	"notes.tool.other": "Another AI tool",
 	"notes.prepare": "Prepare a job for my AI tool",
+	"notes.preparing": "Preparing…",
 	"notes.jobReady": "The job is ready for {n:file}.",
 	"notes.promptHint": "The job folder is {path}. Paste this into your tool:",
 	"notes.copy": "Copy the prompt",
@@ -308,6 +320,7 @@ const en = {
 	"notes.jobsNone": "No job yet.",
 	"notes.jobLine": "{created} · {tool} · {files:file}",
 	"notes.collect": "Collect the notes",
+	"notes.collecting": "Collecting…",
 	"notes.collected": "Kept: {n:note}.",
 	"notes.collectedSkipped":
 		"Kept: {n:note}. Skipped, already kept: {skipped:note}.",
@@ -328,12 +341,16 @@ const en = {
 	"notes.rewriteConfirm":
 		"Write this file's note again, and replace the one there? About {cost}.",
 	"notes.rewriteDone": "The note is written again.",
-	"failure.noKey": "No OpenRouter key is set on this computer.",
+	"failure.noKey":
+		"No OpenRouter key is set on this computer. Save one in the Notes tab, or use a job folder.",
 	"failure.noStorage":
 		"This computer has no secure store for a key. Use the job folder way instead.",
-	"failure.noCredit": "The OpenRouter account has no credit.",
-	"failure.refused": "OpenRouter refused the request.",
-	"failure.limit": "The spending limit stopped the run.",
+	"failure.noCredit":
+		"The OpenRouter account has no credit. Add credit, or use a job folder.",
+	"failure.refused":
+		"OpenRouter refused the request. Try again, or use a job folder.",
+	"failure.limit":
+		"The spending limit stopped the run. Raise the limit or write fewer files.",
 
 	// The Changes tab (task 158).
 	"project.tab.changes": "Changes to review",
@@ -362,8 +379,11 @@ const en = {
 	"changes.jobIntro":
 		"The Studio writes a folder with a fixed prompt. Paste it into your tool; it writes one change set per course folder, and you collect them here. The Studio never drives another program.",
 	"changes.prepare": "Prepare a job for my AI tool",
+	"changes.preparing": "Preparing…",
 	"changes.jobReady": "The job is ready for {n:courseFolder}.",
 	"changes.collect": "Collect the change sets",
+	"changes.collecting": "Collecting…",
+	"changes.saving": "Saving…",
 	"changes.collected": "Collected: {n:changeSet}.",
 	"changes.collectedSkipped":
 		"Collected: {n:changeSet}. Skipped, already waiting: {skipped:changeSet}.",
@@ -491,6 +511,9 @@ const en = {
 	"new.counts": "{found:file} · {read} read · {new} new",
 	"new.emptyFirst": "Nothing new on the first look.",
 	"new.none": "Nothing new since {since}.",
+	"new.ocrPages": "Read the text of {n:imagePage}.",
+	"new.allRead": "All files are read ({n:file}).",
+	"new.showFiles": "Show the files",
 	"new.noGrade": "no grade",
 	"new.noSubject": "no subject",
 	"new.noBlock": "no block",
@@ -683,6 +706,7 @@ const ar: Record<TextKey, string> = {
 	"export.version": "الإصدار {n}",
 	"export.author": "اسمك، بصفتك المؤلف",
 	"export.rights": "جملة الحقوق التي يقرأها ولي الأمر قبل الاستيراد",
+	"export.change": "غيّر",
 	"export.save": "اختر مكان الحفظ…",
 	"export.done": "صُدِّر الإصدار {n} في ملف ‎.zaki.",
 	"export.copy": "تُحفظ نسخة في هذا المشروع.",
@@ -721,20 +745,25 @@ const ar: Record<TextKey, string> = {
 	"prompt.unitHint": "يُرقَّم لك: «03 الطاقة» بعد «02 الخلايا».",
 	"prompt.placeholder": "الاسم",
 
-	"failure.outside": "هذا المسار خارج المشروع.",
-	"failure.notOpen": "هذا المجلد غير مفتوح في الاستوديو.",
-	"failure.missing": "هذا الملف أو المجلد لم يعد موجودًا.",
-	"failure.tooLarge": "هذا الملف أكبر من أن يُعرض هنا.",
-	"failure.unreadable": "تعذّرت قراءة هذا الملف.",
-	"failure.nameTaken": "هذا الاسم مستخدم في هذا المجلد.",
-	"failure.invalidName": "هذا الاسم غير مسموح في ويندوز.",
+	"failure.outside": "هذا المسار خارج المشروع. اختر مسارًا داخله.",
+	"failure.notOpen": "هذا المجلد غير مفتوح في الاستوديو. افتح المشروع من جديد.",
+	"failure.missing":
+		"هذا الملف أو المجلد لم يعد موجودًا. ابحث عن مواد جديدة لتحديث القائمة.",
+	"failure.tooLarge": "هذا الملف أكبر من أن يُعرض هنا. افتحه في تطبيقه.",
+	"failure.unreadable":
+		"تعذّرت قراءة هذا الملف. أغلقه إن كان مفتوحًا في برنامج آخر، ثم حاول مرة أخرى.",
+	"failure.nameTaken": "هذا الاسم مستخدم في هذا المجلد. اختر اسمًا آخر.",
+	"failure.invalidName": "هذا الاسم غير مسموح في ويندوز. اختر اسمًا آخر.",
 	"failure.invalidProject":
-		"ملف curriculum.json في هذا المجلد ليس مشروع استوديو.",
-	"failure.noWork": "لا يوجد مجلد _work بجانب هذه المواد.",
-	"failure.emptyModel": "لا يوجد منهج في هذا المشروع لتصديره بعد.",
-	"failure.invalidBundle": "لم يجتز الملف الفحص.",
+		"ملف curriculum.json في هذا المجلد ليس مشروع استوديو. افتح مجلدًا آخر.",
+	"failure.noWork":
+		"لا يوجد مجلد _work بجانب هذه المواد. اختر المجلد الذي يحويه.",
+	"failure.emptyModel":
+		"لا يوجد منهج في هذا المشروع لتصديره بعد. أضف مقررًا أولًا.",
+	"failure.invalidBundle": "لم يجتز الملف الفحص. افتحه مرة أخرى لتعرف السبب.",
 	"failure.notEmpty": "اختر مجلدًا فارغًا للمشروع الجديد.",
-	"failure.unknown": "حدث خطأ ما.",
+	"failure.unknown":
+		"حدث خطأ ما. حاول مرة أخرى، وإن تكرر فأعد تشغيل الاستوديو.",
 	"failure.cancelled": "",
 
 	"project.tab.new": "مواد جديدة",
@@ -807,6 +836,7 @@ const ar: Record<TextKey, string> = {
 	"notes.tool.claude-code": "Claude Code",
 	"notes.tool.other": "أداة أخرى",
 	"notes.prepare": "جهّز عملًا لأداتي",
+	"notes.preparing": "جارٍ التجهيز…",
 	"notes.jobReady": "العمل جاهز لـ{n:file}.",
 	"notes.promptHint": "مجلد العمل هو {path}. ألصق هذا في أداتك:",
 	"notes.copy": "انسخ الطلب",
@@ -815,6 +845,7 @@ const ar: Record<TextKey, string> = {
 	"notes.jobsNone": "لا يوجد عمل بعد.",
 	"notes.jobLine": "{created} · {tool} · {files:file}",
 	"notes.collect": "اجمع الملاحظات",
+	"notes.collecting": "جارٍ الجمع…",
 	"notes.collected": "المحفوظ: {n:note}.",
 	"notes.collectedSkipped":
 		"المحفوظ: {n:note}. والمتخطّى لأنه محفوظ: {skipped:note}.",
@@ -835,12 +866,14 @@ const ar: Record<TextKey, string> = {
 	"notes.rewriteConfirm":
 		"أأكتب ملاحظة هذا الملف مرة أخرى وأبدّل الموجودة؟ نحو {cost}.",
 	"notes.rewriteDone": "كُتبت الملاحظة مرة أخرى.",
-	"failure.noKey": "لا يوجد مفتاح OpenRouter على هذا الحاسوب.",
+	"failure.noKey":
+		"لا يوجد مفتاح OpenRouter على هذا الحاسوب. احفظ مفتاحًا في تبويب الملاحظات، أو استخدم مجلد عمل.",
 	"failure.noStorage":
 		"لا يوجد مخزن آمن للمفتاح على هذا الحاسوب. استخدم طريقة مجلد العمل بدلًا منه.",
-	"failure.noCredit": "لا يوجد رصيد في حساب OpenRouter.",
-	"failure.refused": "رفض OpenRouter الطلب.",
-	"failure.limit": "أوقف حدّ الإنفاق الكتابة.",
+	"failure.noCredit":
+		"لا يوجد رصيد في حساب OpenRouter. أضف رصيدًا، أو استخدم مجلد عمل.",
+	"failure.refused": "رفض OpenRouter الطلب. حاول مرة أخرى، أو استخدم مجلد عمل.",
+	"failure.limit": "أوقف حدّ الإنفاق الكتابة. ارفع الحدّ أو اكتب ملفات أقل.",
 
 	// تبويب التغييرات (المهمة 158).
 	"project.tab.changes": "تغييرات للمراجعة",
@@ -868,8 +901,11 @@ const ar: Record<TextKey, string> = {
 	"changes.jobIntro":
 		"يكتب الاستوديو مجلدًا فيه طلب ثابت. ألصق الطلب في أداتك؛ تكتب تغييرات لكل مجلد مقرر، ثم تجمعها هنا. ولا يشغّل الاستوديو برنامجًا آخر.",
 	"changes.prepare": "جهّز عملًا لأداتي",
+	"changes.preparing": "جارٍ التجهيز…",
 	"changes.jobReady": "العمل جاهز لـ{n:courseFolder}.",
 	"changes.collect": "اجمع التغييرات",
+	"changes.collecting": "جارٍ الجمع…",
+	"changes.saving": "جارٍ الحفظ…",
 	"changes.collected": "المجمّع: {n:changeSet}.",
 	"changes.collectedSkipped":
 		"المجمّع: {n:changeSet}. والمتخطّى لأنه ينتظر من قبل: {skipped:changeSet}.",
@@ -991,6 +1027,9 @@ const ar: Record<TextKey, string> = {
 	"new.counts": "{found:file} · قُرئ {read} · الجديد {new}",
 	"new.emptyFirst": "لا شيء جديد في أول فحص.",
 	"new.none": "لا شيء جديد منذ {since}.",
+	"new.ocrPages": "قُرئ نص {n:imagePage}.",
+	"new.allRead": "كل الملفات مقروءة ({n:file}).",
+	"new.showFiles": "اعرض الملفات",
 	"new.noGrade": "بلا صف",
 	"new.noSubject": "بلا مادة",
 	"new.noBlock": "بلا مرحلة",

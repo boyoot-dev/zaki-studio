@@ -463,16 +463,26 @@ h3 {
 	height: 100%;
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr);
+	/* One column that may shrink: a long path or a row of tabs wraps instead of widening
+	   the page (the Arabic New material panel ran past the edge, task 240). */
+	grid-template-columns: minmax(0, 1fr);
+	min-width: 0;
 }
 
 .project-head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
 	padding: 12px 20px;
 	background: var(--surface);
 	border-bottom: 1px solid var(--line);
+	min-width: 0;
+}
+
+.project-head > div {
+	min-width: 0;
 }
 
 .project-name {
@@ -483,12 +493,15 @@ h3 {
 
 .project-head .muted {
 	font-size: 0.78rem;
+	overflow-wrap: anywhere;
 }
 
 .head-tools {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 10px;
+	min-width: 0;
 }
 
 .project-body {
@@ -503,6 +516,7 @@ h3 {
 	display: grid;
 	grid-template-rows: auto minmax(0, 1fr);
 	min-height: 0;
+	min-width: 0;
 }
 
 .side-tools {
@@ -591,6 +605,7 @@ h3 {
 .pane {
 	overflow: auto;
 	min-height: 0;
+	min-width: 0;
 	padding: 22px 26px;
 }
 
@@ -799,24 +814,41 @@ h3 {
 
 .new-material {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 14px;
+	width: 100%;
 	max-width: 52rem;
+	min-width: 0;
 	padding: 6px 2px 30px;
+	/* The panel is one grid cell of the project; its own content never widens the window. */
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 .new-head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: start;
 	justify-content: space-between;
 	gap: 16px;
+	min-width: 0;
+}
+
+.new-head > div {
+	min-width: 0;
 }
 
 .new-head h2 {
 	margin: 0;
 }
 
+.new-head p {
+	overflow-wrap: anywhere;
+}
+
 .new-actions {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
 }
 
@@ -925,10 +957,12 @@ h3 {
 
 .tabs {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 4px;
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	padding: 3px;
+	min-width: 0;
 }
 
 .tab {
@@ -1141,6 +1175,10 @@ h3 {
 	width: min(34rem, 100%);
 }
 
+.export-fields .link-button {
+	justify-self: start;
+}
+
 .export-counts {
 	list-style: none;
 	margin: 0;
@@ -1210,6 +1248,7 @@ body.pane-dragging {
 	display: flex;
 	flex-direction: column;
 	gap: 18px;
+	min-width: 0;
 }
 
 .notes h2,
@@ -1405,6 +1444,8 @@ mark {
 .report-list {
 	height: 48vh;
 	min-height: 240px;
+	min-width: 0;
+	max-width: 100%;
 }
 .notes-item .row,
 .report-item .row {

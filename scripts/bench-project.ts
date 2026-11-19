@@ -498,6 +498,7 @@ function build(root: string, files: number): void {
 		at: stamp,
 		since: "",
 		found: rows.length,
+		ocrPages: 0,
 		read: idsWithText.length,
 		changes: compareRows([], rows),
 		courses: reportCourses,

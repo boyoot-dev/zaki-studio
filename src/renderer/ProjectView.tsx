@@ -529,6 +529,7 @@ export function ProjectView({
 						onScan={() => void scan()}
 						onStop={stopScan}
 						onPick={pickFile}
+						onShowFiles={() => setTab("files")}
 						onNotify={onNotify}
 						reloadKey={reloadKey}
 					/>

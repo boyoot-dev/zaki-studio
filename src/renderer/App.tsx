@@ -8,12 +8,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
 	BundleChoice,
 	BundleInfo,
-	Failure,
 	FolderPurpose,
 	GuessFolder,
 	ProjectOpen,
 	TreeNode,
 } from "../shared/api";
+import { failureText } from "../shared/failure-text";
 import { isRightToLeft, type Lang, type TextKey, t } from "../shared/i18n";
 import type { Project } from "../shared/project";
 import { Toast } from "./Chrome";
@@ -21,6 +21,9 @@ import { LanguageProvider } from "./i18n";
 import { OpenBundle } from "./OpenBundle";
 import { ProjectView } from "./ProjectView";
 import { StartScreen } from "./StartScreen";
+
+export { failureText };
+
 import { Wizard } from "./Wizard";
 
 /** Where the app remembers the chosen language, in the app's own window. */
@@ -36,12 +39,6 @@ function firstLanguage(): Lang {
 	const stored = window.localStorage.getItem(LANG_KEY);
 	if (stored === "en" || stored === "ar") return stored;
 	return navigator.language.toLowerCase().startsWith("ar") ? "ar" : "en";
-}
-
-/** Why something didn't happen, in the window's language; a cancelled dialog says nothing. */
-export function failureText(lang: Lang, failure: Failure): string {
-	if (failure.code === "cancelled") return "";
-	return t(lang, `failure.${failure.code}` as TextKey);
 }
 
 export function App() {

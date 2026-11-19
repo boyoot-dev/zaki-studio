@@ -547,6 +547,9 @@ export function readReport(root: string): NewMaterial | null {
 						since: typeof candidate.since === "string" ? candidate.since : "",
 						found: typeof candidate.found === "number" ? candidate.found : 0,
 						read: typeof candidate.read === "number" ? candidate.read : 0,
+						// A report written before the scan counted its picture pages says none.
+						ocrPages:
+							typeof candidate.ocrPages === "number" ? candidate.ocrPages : 0,
 						groups: Array.isArray(candidate.groups)
 							? (candidate.groups as NewMaterial["groups"])
 							: [],

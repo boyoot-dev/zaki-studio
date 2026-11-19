@@ -140,6 +140,8 @@ export type ReportMeta = {
 	since: string;
 	found: number;
 	read: number;
+	/** How many picture pages the scan read with OCR. */
+	ocrPages: number;
 	/** How many files the report says are new (the whole list, not one page of it). */
 	newCount: number;
 	tessdataMissing: string[];
@@ -154,6 +156,7 @@ export function reportMeta(report: NewMaterial): ReportMeta {
 		since: report.since,
 		found: report.found,
 		read: report.read,
+		ocrPages: report.ocrPages,
 		newCount,
 		tessdataMissing: report.tessdataMissing,
 	};

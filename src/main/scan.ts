@@ -334,6 +334,7 @@ export async function scanProject(
 		since: before?.at ?? "",
 		found: collected.collected.found,
 		read: collected.collected.read,
+		ocrPages: done,
 		changes,
 		courses: reportCourses(root),
 		today,

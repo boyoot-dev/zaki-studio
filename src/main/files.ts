@@ -604,9 +604,9 @@ export function moveEntry(root: string, fromRel: string, toRel: string): Done {
 	const from = safePath(root, fromRel);
 	const targetFolder = safePath(root, toRel, true);
 	if (from === null || targetFolder === null) return failure("outside");
-	if (!existsSync(from)) return failure("missing");
+	if (!existsSync(from)) return failure("missing", fromRel);
 	if (!existsSync(targetFolder) || !statSync(targetFolder).isDirectory())
-		return failure("missing");
+		return failure("missing", toRel);
 	if (samePath(from, targetFolder) || insideProject(from, targetFolder))
 		return failure("invalidName", "A folder can't be moved into itself.");
 	if (dirname(from) === targetFolder) return { ok: true };
@@ -629,7 +629,7 @@ function samePath(a: string, b: string): boolean {
 export function renameEntry(root: string, rel: string, name: string): Made {
 	const absolute = safePath(root, rel);
 	if (absolute === null) return failure("outside");
-	if (!existsSync(absolute)) return failure("missing");
+	if (!existsSync(absolute)) return failure("missing", rel);
 	const trimmed = name.trim();
 	if (!validFolderName(trimmed)) return failure("invalidName");
 	const isFile = lstatSync(absolute).isFile();
@@ -642,7 +642,7 @@ export function renameEntry(root: string, rel: string, name: string): Made {
 		existsSync(join(folder, wanted)) &&
 		!samePath(join(folder, wanted), absolute)
 	)
-		return failure("nameTaken");
+		return failure("nameTaken", wanted);
 	try {
 		renameSync(absolute, join(folder, wanted));
 		const parent = toRel(root, folder);
@@ -657,7 +657,7 @@ export function makeUnit(root: string, unitsRel: string, title: string): Made {
 	const units = safePath(root, unitsRel, true);
 	if (units === null) return failure("outside");
 	if (!existsSync(units) || !statSync(units).isDirectory())
-		return failure("missing");
+		return failure("missing", unitsRel);
 	const existing = readdirSync(units).filter(
 		(name) => unitNumber(name) !== null,
 	);
@@ -678,15 +678,15 @@ export function readBytes(root: string, rel: string): FileBytes {
 	try {
 		info = statSync(absolute);
 	} catch {
-		return failure("missing");
+		return failure("missing", rel);
 	}
-	if (!info.isFile()) return failure("unreadable");
-	if (info.size > MAX_READ_BYTES) return failure("tooLarge");
+	if (!info.isFile()) return failure("unreadable", rel);
+	if (info.size > MAX_READ_BYTES) return failure("tooLarge", rel);
 	try {
 		const bytes = new Uint8Array(readFileSync(absolute));
 		return { ok: true, name: basename(absolute), bytes };
 	} catch {
-		return failure("unreadable");
+		return failure("unreadable", rel);
 	}
 }
 
