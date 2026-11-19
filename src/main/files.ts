@@ -42,7 +42,7 @@ import {
 } from "../shared/languages.ts";
 import {
 	addCourseLanguage as addCourseToProject,
-	EXAM_FOLDERS,
+	examFolders,
 	INBOX_DIR,
 	nextUnitFolder,
 	PROJECT_FILE,
@@ -50,6 +50,7 @@ import {
 	parseProject,
 	projectFolders,
 	STUDIO_DIR,
+	type SubjectLabel,
 	sectionPaths,
 	unitNumber,
 	validFolderName,
@@ -395,6 +396,7 @@ export function addCourseLanguage(
 	grade: unknown,
 	subject: unknown,
 	language: unknown,
+	subjects: readonly SubjectLabel[] = [],
 ): Done {
 	if (typeof grade !== "number" || !Number.isInteger(grade))
 		return failure("invalidProject");
@@ -419,7 +421,7 @@ export function addCourseLanguage(
 		mkdirSync(join(root, ...base.split("/")), { recursive: true });
 		for (const section of sectionPaths(gradeEntry, course))
 			mkdirSync(join(root, ...section.rel.split("/")), { recursive: true });
-		for (const exam of EXAM_FOLDERS)
+		for (const exam of examFolders(course.subject, subjects))
 			mkdirSync(join(root, ...`${base}/Exam/${exam}`.split("/")), {
 				recursive: true,
 			});
@@ -454,14 +456,18 @@ export function guessFolders(root: string): GuessFolder[] {
 }
 
 /** Makes the project's folders and writes curriculum.json, as the wizard showed them. */
-export function createProject(root: string, project: unknown): Done {
+export function createProject(
+	root: string,
+	project: unknown,
+	subjects: readonly SubjectLabel[] = [],
+): Done {
 	if (typeof root !== "string" || root.trim() === "") return failure("missing");
 	// The page sends the project; it is checked again here, so a broken one never reaches disk.
 	const checked = checkProject(project);
 	if (!checked.ok) return checked;
 	try {
 		mkdirSync(root, { recursive: true });
-		for (const folder of projectFolders(checked.project))
+		for (const folder of projectFolders(checked.project, subjects))
 			mkdirSync(join(root, ...folder.split("/")), { recursive: true });
 	} catch {
 		return failure("unreadable");

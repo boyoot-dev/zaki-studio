@@ -17,6 +17,7 @@ import {
 	fileRow,
 	loadRules,
 	loadSubjects,
+	type ProjectPlaces,
 	type ReadCounts,
 	type ReadGive,
 	type RowInput,
@@ -74,6 +75,8 @@ export type CollectInput = {
 	read?: (path: string, bytes: Uint8Array) => Promise<ReadGive>;
 	progress?: (state: CollectProgress) => void;
 	cancelled?: () => boolean;
+	/** The project's own grade and course folders, read before the name patterns. */
+	places?: ProjectPlaces;
 };
 
 /** Why a collect stopped: the author cancelled it. */
@@ -315,6 +318,7 @@ export async function collectRows(
 			},
 			firstSeen: known?.firstSeen ?? workById.get(id)?.firstSeen ?? "",
 			folders,
+			places: input.places,
 			rules,
 			today,
 			currentYear,

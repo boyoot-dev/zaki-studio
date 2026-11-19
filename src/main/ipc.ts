@@ -169,6 +169,7 @@ import { modelInfo, testKey } from "./openrouter.ts";
 import { openRenderer } from "./render.ts";
 import { studioRootPath } from "./root.ts";
 import { scanProject } from "./scan.ts";
+import { firstSteps } from "./steps.ts";
 import { planChangeSet, writeChangeSet } from "./units.ts";
 import { watchProject } from "./watch.ts";
 
@@ -626,7 +627,7 @@ export function registerIpc(): void {
 			if (where === "" || typeof project !== "object" || project === null)
 				return { ok: false, code: "invalidProject" };
 			// The project is checked again inside createProject, so a broken one never reaches disk.
-			const written = createProject(where, project);
+			const written = createProject(where, project, subjects);
 			if (!written.ok) return written;
 			return openProject(where);
 		},
@@ -664,6 +665,7 @@ export function registerIpc(): void {
 				typeof grade === "number" ? grade : Number.NaN,
 				text(subject, 60),
 				text(language, 8),
+				subjects,
 			);
 		},
 	);
@@ -1041,6 +1043,7 @@ export function registerIpc(): void {
 			ok: true,
 			total: files.files.length,
 			meta: report === null ? null : reportMeta(report),
+			steps: firstSteps(where),
 		};
 	});
 

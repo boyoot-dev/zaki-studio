@@ -97,10 +97,14 @@ describe("making a project", () => {
 			"Inbox",
 			".studio",
 			"Grade 7/Science/Units",
-			"Grade 7/Science/Exam/reading-samples",
+			"Grade 7/Science/Exam/past-papers",
 		]) {
 			expect(existsSync(join(root, ...folder.split("/")))).toBe(true);
 		}
+		// Science is not a language subject: no samples folders (task 243).
+		expect(
+			existsSync(join(root, "Grade 7", "Science", "Exam", "reading-samples")),
+		).toBe(false);
 		const read = readProject(root);
 		expect(read.ok).toBe(true);
 		if (read.ok) {

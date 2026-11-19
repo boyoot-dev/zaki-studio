@@ -32,6 +32,7 @@ const SUBJECTS: SubjectLabel[] = [
 	{ id: "science", nameEn: "Science", nameAr: "العلوم" },
 	{ id: "math", nameEn: "Mathematics", nameAr: "الرياضيات" },
 	{ id: "arabic", nameEn: "Arabic", nameAr: "اللغة العربية" },
+	{ id: "french", nameEn: "French", nameAr: "الفرنسية", studies: "fr" },
 ];
 
 function answers(over: Partial<WizardAnswers> = {}): WizardAnswers {
@@ -65,8 +66,60 @@ describe("the wizard's folders", () => {
 		);
 	});
 
-	it("puts the four sections and the three exam folders under each subject", () => {
-		expect(projectFolders(project())).toEqual([
+	it("names the grade and subject folders in Arabic when the wizard runs in Arabic", () => {
+		expect(gradeFolder(11, "ar")).toBe("الصف 11");
+		expect(gradeFolder(-1, "ar")).toBe("الروضة الأولى");
+		const made = project({
+			folderLanguage: "ar",
+			grades: [{ grade: 11, subjects: ["science"] }],
+		});
+		expect(made.grades[0]?.folder).toBe("الصف 11");
+		expect(made.grades[0]?.subjects[0]?.folder).toBe("العلوم");
+		// The names read back as the same grade and subject.
+		expect(matchGrade("الصف 11")).toBe(11);
+		expect(matchSubject("العلوم", SUBJECTS)).toBe("science");
+	});
+
+	it("adds the same subject in a second language as a second course", () => {
+		const made = project({
+			grades: [{ grade: 7, subjects: ["science", "math"] }],
+			secondLanguages: { "7 science": "ar" },
+		});
+		expect(
+			made.grades[0]?.subjects.map((entry) => [entry.folder, entry.language]),
+		).toEqual([
+			["Science", "en"],
+			["Science (Arabic)", "ar"],
+			["Mathematics", "en"],
+		]);
+		const same = wizardProject(
+			answers({ secondLanguages: { "7 science": "en" } }),
+			SUBJECTS,
+			ID,
+		);
+		expect(same.ok).toBe(false);
+	});
+
+	it("makes listening and reading samples only for a language subject", () => {
+		const made = project({
+			grades: [{ grade: 7, subjects: ["science", "arabic", "french"] }],
+		});
+		const exams = projectFolders(made, SUBJECTS).filter((folder) =>
+			folder.includes("/Exam/"),
+		);
+		expect(exams).toEqual([
+			"Grade 7/Science/Exam/past-papers",
+			"Grade 7/Arabic/Exam/past-papers",
+			"Grade 7/Arabic/Exam/listening-samples",
+			"Grade 7/Arabic/Exam/reading-samples",
+			"Grade 7/French/Exam/past-papers",
+			"Grade 7/French/Exam/listening-samples",
+			"Grade 7/French/Exam/reading-samples",
+		]);
+	});
+
+	it("puts the four sections and past papers under each subject", () => {
+		expect(projectFolders(project(), SUBJECTS)).toEqual([
 			"Inbox",
 			".studio",
 			"Grade 7",
@@ -76,16 +129,12 @@ describe("the wizard's folders", () => {
 			"Grade 7/Science/Extra",
 			"Grade 7/Science/Exam",
 			"Grade 7/Science/Exam/past-papers",
-			"Grade 7/Science/Exam/listening-samples",
-			"Grade 7/Science/Exam/reading-samples",
 			"Grade 7/Mathematics",
 			"Grade 7/Mathematics/Units",
 			"Grade 7/Mathematics/Books",
 			"Grade 7/Mathematics/Extra",
 			"Grade 7/Mathematics/Exam",
 			"Grade 7/Mathematics/Exam/past-papers",
-			"Grade 7/Mathematics/Exam/listening-samples",
-			"Grade 7/Mathematics/Exam/reading-samples",
 		]);
 	});
 
