@@ -4,6 +4,7 @@
 // list draws only what is on screen (task 168), so a first scan of a huge project stays
 // quick. Every file's name is a button: it opens the file where the author already reads it.
 
+import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ScanProgress } from "../shared/api.ts";
@@ -276,7 +277,7 @@ function progressText(progress: ScanProgress | null, say: Say): string {
 	return say("new.finished", { done: progress.done, pages: progress.pages });
 }
 
-/** "Grade 3 · arabic · Block 1", or the parts the project doesn't know. */
+/** "Grade 3 · Math · Block 1", or the parts the project doesn't know. */
 function groupTitle(
 	grade: number | null,
 	subject: string,
@@ -286,10 +287,19 @@ function groupTitle(
 ): string {
 	const words = [
 		grade === null ? say("new.noGrade") : gradeLabel(lang, grade),
-		subject === "unknown" || subject === "" ? say("new.noSubject") : subject,
-		block === "" ? say("new.noBlock") : say("new.block", { block }),
+		subject === "unknown" || subject === ""
+			? say("new.noSubject")
+			: subjectName(subject, lang),
 	];
+	if (block !== "") words.push(say("new.block", { block }));
 	return words.join(" · ");
+}
+
+/** The subject's own name, in the window's language, from the wizard's list. */
+function subjectName(id: string, lang: Lang): string {
+	const subject = studioSubjects.find((entry) => entry.id === id);
+	if (subject === undefined) return id;
+	return lang === "ar" ? subject.nameAr : subject.nameEn;
 }
 
 /** The kind a row names, or "other" for a row from before the register knew kinds. */
@@ -299,17 +309,12 @@ function kindKey(kind: string): TextKey {
 		: "kind.other";
 }
 
-/** One file's known facts in a line: kind, year, date, authority, pages. */
+/** One file's known facts in a line: kind, the year and date when known, and pages. */
 function fileLine(row: FileRow, say: Say): string {
-	const parts = [
-		say(kindKey(row.kind)),
-		row.academicYear === "" ? say("new.year.none") : row.academicYear,
-		row.published === ""
-			? say("new.noDate")
-			: `${row.published} (${row.publishedFrom})`,
-		say("new.authority", { n: row.authority ?? "-" }),
-		say("new.pages", { n: row.pages ?? 0, images: row.imagePages }),
-	];
+	const parts = [say(kindKey(row.kind))];
+	if (row.academicYear !== "") parts.push(row.academicYear);
+	if (row.published !== "") parts.push(row.published);
+	parts.push(say("new.pages", { n: row.pages ?? 0, images: row.imagePages }));
 	return parts.join(" · ");
 }
 

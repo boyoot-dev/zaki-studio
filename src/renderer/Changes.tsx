@@ -114,6 +114,19 @@ function sourceLabel(
 		.join(" · ");
 }
 
+/** What collecting a job kept and skipped; a skip count of zero is left out. */
+function collectedText(
+	answer: { collected: number; skipped: number },
+	say: Say,
+): string {
+	return answer.skipped > 0
+		? say("changes.collectedSkipped", {
+				n: answer.collected,
+				skipped: answer.skipped,
+			})
+		: say("changes.collected", { n: answer.collected });
+}
+
 /** A fact's text with the run it copied marked, in plain text nodes only. */
 function marked(text: string, run: string | null) {
 	if (run === null) return text;
@@ -316,7 +329,6 @@ function UnitPair({
 				<div className="changes-side">
 					<h5>{say("changes.proposed")}</h5>
 					<p dir="auto">{proposed.title}</p>
-					<p className="muted">{proposed.source}</p>
 					<UnitLists unit={proposed} say={say} />
 					{review.lessons.map((lesson) => (
 						<ProposedLesson
@@ -1091,12 +1103,7 @@ export function Changes({
 			return;
 		}
 		setExamCollected(answer);
-		onNotify(
-			say("changes.collected", {
-				n: answer.collected,
-				skipped: answer.skipped,
-			}),
-		);
+		onNotify(collectedText(answer, say));
 		await load();
 	};
 
@@ -1210,12 +1217,7 @@ export function Changes({
 			return;
 		}
 		setCollected(answer);
-		onNotify(
-			say("changes.collected", {
-				n: answer.collected,
-				skipped: answer.skipped,
-			}),
-		);
+		onNotify(collectedText(answer, say));
 		await load();
 	};
 
@@ -1374,10 +1376,10 @@ export function Changes({
 									<span className="chip">{say("changes.pending")}</span>
 								)}
 								{target.newCourse && (
-									<span className="chip">{say("changes.newCourse")}</span>
+									<span className="tag">{say("changes.newCourse")}</span>
 								)}
 								{target.newBlock && (
-									<span className="chip">{say("changes.newBlock")}</span>
+									<span className="tag">{say("changes.newBlock")}</span>
 								)}
 								<button
 									type="button"
@@ -1481,7 +1483,7 @@ export function Changes({
 									<span className="chip">{say("changes.pending")}</span>
 								)}
 								{target.newCourse && (
-									<span className="chip">{say("changes.newCourse")}</span>
+									<span className="tag">{say("changes.newCourse")}</span>
 								)}
 								<button
 									type="button"
@@ -1633,12 +1635,7 @@ export function Changes({
 				)}
 				{collected?.ok === true && (
 					<div>
-						<p className="muted">
-							{say("changes.collected", {
-								n: collected.collected,
-								skipped: collected.skipped,
-							})}
-						</p>
+						<p className="muted">{collectedText(collected, say)}</p>
 						{collected.refused.length > 0 && (
 							<ul className="new-list issues">
 								{collected.refused.map((entry) => (
@@ -1745,12 +1742,7 @@ export function Changes({
 				)}
 				{examCollected?.ok === true && (
 					<div>
-						<p className="muted">
-							{say("changes.collected", {
-								n: examCollected.collected,
-								skipped: examCollected.skipped,
-							})}
-						</p>
+						<p className="muted">{collectedText(examCollected, say)}</p>
 						{examCollected.refused.length > 0 && (
 							<ul className="new-list issues">
 								{examCollected.refused.map((entry) => (

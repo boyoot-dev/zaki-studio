@@ -390,10 +390,13 @@ export type JobCollected =
 	  }
 	| Failure;
 
+/** Why the system dialog asks for a folder: a new curriculum, or one to open (task 238). */
+export type FolderPurpose = "new" | "open";
+
 /** Everything the page can ask the main process to do. */
 export type StudioApi = {
-	/** Asks for a folder with the system dialog. */
-	chooseFolder(): Promise<string | null>;
+	/** Asks for a folder with the system dialog; the purpose names what it is for. */
+	chooseFolder(purpose?: FolderPurpose): Promise<string | null>;
 	/** Opens a project folder, or says it needs the wizard. */
 	openProject(root: string): Promise<ProjectOpen>;
 	/** Adopts today's material: three dialogs, then the project is written and opened. */
