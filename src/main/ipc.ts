@@ -2053,6 +2053,12 @@ export function registerIpc(): void {
 						0,
 					),
 					yearsLeftOut: years.leftOut,
+					// The files counted as exam papers, by name and kind, so the author can see
+					// which and correct one (task 241).
+					papers: examRowsNow.slice(0, 30).map((row) => ({
+						path: row.path,
+						kind: row.kind,
+					})),
 					pending: sets.sets.some(
 						(set) => set.key === examKey(examTarget) && set.state === "pending",
 					),
