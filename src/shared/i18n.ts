@@ -133,6 +133,22 @@ const en = {
 		"Not in the export until one of its lessons has a skill.",
 	"edit.newUnitPeriod": "Period",
 
+	// Asking the AI for one change (task 248).
+	"ask.open": "Ask the AI…",
+	"ask.title": "Ask the AI for a change",
+	"ask.unit": "Unit {unit} · {title}",
+	"ask.lesson": "Unit {unit} · Lesson {lesson} · {title}",
+	"ask.hint":
+		"What should change? For example: “add the point about …”, “split this lesson into two”, “make the facts simpler”.",
+	"ask.count": "{n} of {max} characters",
+	"ask.send": "Send",
+	"ask.upload":
+		"The file is shown in Explorer: upload it to the chat, copy the message below into it, then paste the whole answer here.",
+	"ask.sent": "The proposal waits for your review.",
+	"ask.refused":
+		"The answer changed more than this unit, or did not pass the check. Ask your tool again.",
+	"ask.youAsked": "You asked: {text}",
+
 	// The wizard.
 	"wizard.secondLanguage": "+ another language",
 	"wizard.secondLanguageLabel": "Also taught in",
@@ -805,6 +821,20 @@ const ar: Record<TextKey, string> = {
 	"edit.lessonNotExported": "لن يُصدَّر حتى تكون له مهارة.",
 	"edit.unitNotExported": "لن تُصدَّر حتى تكون لأحد دروسها مهارة.",
 	"edit.newUnitPeriod": "الفترة",
+	"ask.open": "اطلب من الذكاء الاصطناعي…",
+	"ask.title": "اطلب تغييرًا من الذكاء الاصطناعي",
+	"ask.unit": "الوحدة {unit} · {title}",
+	"ask.lesson": "الوحدة {unit} · الدرس {lesson} · {title}",
+	"ask.hint":
+		"ماذا تريد أن يتغير؟ مثلًا: «أضف النقطة الخاصة بـ…»، «قسّم هذا الدرس إلى درسين»، «بسّط المعلومات».",
+	"ask.count": "{n} من {max} حرفًا",
+	"ask.send": "أرسل",
+	"ask.upload":
+		"الملف معروض في المستكشف: ارفعه إلى المحادثة، وانسخ الرسالة أدناه إليها، ثم ألصق الإجابة كاملة هنا.",
+	"ask.sent": "المقترح بانتظار مراجعتك.",
+	"ask.refused":
+		"غيّرت الإجابة أكثر من هذه الوحدة، أو لم تجتز الفحص. اطلب من أداتك مرة أخرى.",
+	"ask.youAsked": "طلبتَ: {text}",
 	"wizard.secondLanguage": "+ لغة أخرى",
 	"wizard.secondLanguageLabel": "تُدرَّس أيضًا بـ",
 	"wizard.secondLanguageRemove": "احذف اللغة الثانية",

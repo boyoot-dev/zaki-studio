@@ -186,6 +186,16 @@ const api: StudioApi = {
 			change,
 		),
 	undoEdit: (root) => ipcRenderer.invoke("studio:undoEdit", root),
+	requestCost: (root, request) =>
+		ipcRenderer.invoke("studio:requestCost", root, request),
+	prepareRequest: (root, request) =>
+		ipcRenderer.invoke("studio:prepareRequest", root, request),
+	sendRequest: (root, request) =>
+		ipcRenderer.invoke("studio:sendRequest", root, request),
+	requestUpload: (root, request) =>
+		ipcRenderer.invoke("studio:requestUpload", root, request),
+	answerRequest: (root, request, answer) =>
+		ipcRenderer.invoke("studio:answerRequest", root, request, answer),
 	aiState: () => ipcRenderer.invoke("studio:aiState"),
 	saveAi: (choice) => ipcRenderer.invoke("studio:saveAi", choice),
 	saveKey: (key) => ipcRenderer.invoke("studio:saveKey", key),

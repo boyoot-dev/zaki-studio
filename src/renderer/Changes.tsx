@@ -1419,6 +1419,11 @@ export function Changes({
 											)}{" "}
 											· {set.at} · {set.model}
 										</p>
+										{set.request !== "" && (
+											<p className="asked" dir="auto">
+												{say("ask.youAsked", { text: set.request })}
+											</p>
+										)}
 									</div>
 									<div className="notes-row">
 										<button

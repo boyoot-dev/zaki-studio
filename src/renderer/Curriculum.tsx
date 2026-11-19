@@ -23,8 +23,10 @@ import {
 	parseSource,
 } from "../shared/model.ts";
 import type { Project } from "../shared/project.ts";
+import type { UnitRequest } from "../shared/request.ts";
 import { termLabel, unitLeaves } from "../shared/terms.ts";
 import { failureText } from "./App";
+import { AskPanel } from "./Ask";
 import type { BookTarget } from "./Book";
 import { CourseLanguages } from "./CourseLanguages";
 import { AddLine, EditableText, ItemMenu } from "./Edit";
@@ -134,9 +136,12 @@ export function Curriculum({
 	openCourse,
 	onChanged,
 	onBuild,
+	onOpenReview,
 }: {
 	root: string;
 	project: Project;
+	/** Opens the Review tab, after a request to the AI was answered (task 248). */
+	onOpenReview: () => void;
 	/** Opens "Build from my book" for a course (task 246). */
 	onBuild: (course: BookTarget) => void;
 	onNotify: (text: string) => void;
@@ -163,6 +168,11 @@ export function Curriculum({
 		Record<string, { path: string; size: number }>
 	>({});
 	const panes = usePanes("curriculum");
+	// The unit or lesson "Ask the AI…" is open for (task 248).
+	const [ask, setAsk] = useState<{
+		request: Omit<UnitRequest, "text">;
+		about: string;
+	} | null>(null);
 	// How many edits of this session can be undone, and the period a new unit goes in.
 	const [undoable, setUndoable] = useState(0);
 	const [newUnitPeriod, setNewUnitPeriod] = useState("");
@@ -554,6 +564,24 @@ export function Curriculum({
 															}),
 													})),
 												{
+													label: say("ask.open"),
+													run: () =>
+														setAsk({
+															request: {
+																grade: chosenCourse.grade,
+																subject: chosenCourse.subject,
+																language: chosenCourse.language,
+																period: unit.period,
+																unit: unit.number,
+																lesson: 0,
+															},
+															about: say("ask.unit", {
+																unit: unit.number,
+																title: unit.title,
+															}),
+														}),
+												},
+												{
 													label: say("edit.delete"),
 													danger: true,
 													confirm: say("edit.confirmUnit"),
@@ -637,6 +665,25 @@ export function Curriculum({
 																			to: other.number,
 																		}),
 																})),
+															{
+																label: say("ask.open"),
+																run: () =>
+																	setAsk({
+																		request: {
+																			grade: chosenCourse.grade,
+																			subject: chosenCourse.subject,
+																			language: chosenCourse.language,
+																			period: unit.period,
+																			unit: unit.number,
+																			lesson: lesson.number,
+																		},
+																		about: say("ask.lesson", {
+																			unit: unit.number,
+																			lesson: lesson.number,
+																			title: lesson.title,
+																		}),
+																	}),
+															},
 															{
 																label: say("edit.delete"),
 																danger: true,
@@ -881,6 +928,17 @@ export function Curriculum({
 					</>
 				)}
 			</article>
+
+			{ask !== null && (
+				<AskPanel
+					root={root}
+					request={ask.request}
+					about={ask.about}
+					onClose={() => setAsk(null)}
+					onOpenReview={onOpenReview}
+					onNotify={onNotify}
+				/>
+			)}
 
 			{!panes.collapsed && (
 				<>
