@@ -1,23 +1,33 @@
 // The Curriculum tab (task 153): grades → subjects → units (with their period) → lessons,
 // with each lesson's skills and then its facts in order. Every fact shows the files and pages
 // it came from; a click opens that file at that page beside the facts, a PDF on its own page
-// and anything else with the page's text under it. Read only in this task: the author edits
-// in the app, never here (docs/STUDIO.md). The nav loads the courses' heads, and one course
-// in full when the author picks it (task 168) — never the whole school in one go.
+// and anything else with the page's text under it. Since task 247 the author edits here too:
+// every unit, lesson, skill and fact has a pencil and a small menu, "+ Add …" lines add one,
+// and Undo takes back the last 20 edits of the session; a fact the author writes is theirs and
+// the AI never changes it. The nav loads the courses' heads, and one course in full when the
+// author picks it (task 168) — never the whole school in one go.
 
 import studioSubjects from "virtual:subjects";
 import { useEffect, useState } from "react";
 import type { CourseHead, CourseOpen, ModelOverview } from "../shared/api.ts";
+import type { Edit } from "../shared/edit.ts";
 import { examNumberWarnings } from "../shared/exam-numbers.ts";
 import type { BundlePeriod } from "../shared/format/bundle.ts";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import { languageName } from "../shared/languages.ts";
 import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
-import { fileLabel, parseSource } from "../shared/model.ts";
+import {
+	exportableLesson,
+	exportableUnit,
+	fileLabel,
+	parseSource,
+} from "../shared/model.ts";
 import type { Project } from "../shared/project.ts";
+import { termLabel, unitLeaves } from "../shared/terms.ts";
 import { failureText } from "./App";
 import type { BookTarget } from "./Book";
 import { CourseLanguages } from "./CourseLanguages";
+import { AddLine, EditableText, ItemMenu } from "./Edit";
 import { useLang, useSay } from "./i18n";
 import { Divider, usePanes } from "./Panes";
 import { Viewer } from "./Viewer";
@@ -153,6 +163,13 @@ export function Curriculum({
 		Record<string, { path: string; size: number }>
 	>({});
 	const panes = usePanes("curriculum");
+	// How many edits of this session can be undone, and the period a new unit goes in.
+	const [undoable, setUndoable] = useState(0);
+	const [newUnitPeriod, setNewUnitPeriod] = useState("");
+	const unitPeriods = unitLeaves(project.periods).map((period) => ({
+		id: period.id,
+		name: termLabel(period.id, project.periods, lang) ?? period.id,
+	}));
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — the project changed while this tab stayed open.
 	useEffect(() => {
@@ -239,6 +256,51 @@ export function Curriculum({
 	if (loaded.kind === "failed") return <p className="issues">{loaded.text}</p>;
 	if (courses.length === 0 || chosenCourse === null)
 		return <p className="muted curriculum-note">{say("curriculum.empty")}</p>;
+
+	/** Sends one hand edit for the chosen course; true when it was made (task 247). */
+	const run = async (change: Edit): Promise<boolean> => {
+		const reply = await window.studio.editCourse(
+			root,
+			chosenCourse.grade,
+			chosenCourse.subject,
+			chosenCourse.language,
+			change,
+		);
+		if (!reply.ok) {
+			onNotify(failureText(lang, reply));
+			return false;
+		}
+		setUndoable(reply.undo);
+		if (!reply.done || reply.course === null) {
+			onNotify(reply.issue);
+			return false;
+		}
+		setCourse(reply.course);
+		return true;
+	};
+
+	/** Takes back the last hand edit of this session. */
+	const undo = async () => {
+		const reply = await window.studio.undoEdit(root);
+		if (!reply.ok) {
+			onNotify(failureText(lang, reply));
+			return;
+		}
+		setUndoable(reply.undo);
+		if (!reply.done) {
+			onNotify(reply.issue);
+			return;
+		}
+		// The undone edit may belong to another course: read the chosen one again.
+		const again = await window.studio.course(
+			root,
+			chosenCourse.grade,
+			chosenCourse.subject,
+			chosenCourse.language,
+		);
+		if (again.ok) setCourse(again.course);
+		onNotify(say("edit.undone"));
+	};
 
 	/** Opens the file a source names, at its page. */
 	const openSource = async (target: string) => {
@@ -341,6 +403,15 @@ export function Curriculum({
 							? say("book.update")
 							: say("book.build")}
 					</button>
+					{undoable > 0 && (
+						<button
+							type="button"
+							className="btn btn-quiet"
+							onClick={() => void undo()}
+						>
+							{say("edit.undo")}
+						</button>
+					)}
 					<button
 						type="button"
 						className="btn btn-quiet"
@@ -428,50 +499,254 @@ export function Curriculum({
 
 						<h3 className="units-head">{say("curriculum.units")}</h3>
 						<ol className="units">
-							{course.units.map((unit) => (
-								<li key={unit.number} className="unit">
-									<h3 dir="auto">
-										{unit.number}. {unit.title}
-									</h3>
+							{course.units.map((unit, unitIndex) => (
+								<li key={unit.id} className="unit">
+									<div className="item-row">
+										<EditableText
+											value={unit.title}
+											onSave={(title) =>
+												run({ kind: "unit.title", unit: unit.number, title })
+											}
+										>
+											<h3 dir="auto">
+												{unit.number}. {unit.title}
+											</h3>
+										</EditableText>
+										<ItemMenu
+											actions={[
+												...(unitIndex > 0
+													? [
+															{
+																label: say("edit.up"),
+																run: () =>
+																	void run({
+																		kind: "unit.move",
+																		unit: unit.number,
+																		by: -1,
+																	}),
+															},
+														]
+													: []),
+												...(unitIndex < course.units.length - 1
+													? [
+															{
+																label: say("edit.down"),
+																run: () =>
+																	void run({
+																		kind: "unit.move",
+																		unit: unit.number,
+																		by: 1,
+																	}),
+															},
+														]
+													: []),
+												...unitPeriods
+													.filter((period) => period.id !== unit.period)
+													.map((period) => ({
+														label: say("edit.toPeriod", {
+															period: period.name,
+														}),
+														run: () =>
+															void run({
+																kind: "unit.period",
+																unit: unit.number,
+																period: period.id,
+															}),
+													})),
+												{
+													label: say("edit.delete"),
+													danger: true,
+													confirm: say("edit.confirmUnit"),
+													run: () =>
+														void run({
+															kind: "unit.delete",
+															unit: unit.number,
+														}),
+												},
+											]}
+										/>
+									</div>
 									<p className="muted">
 										{say("curriculum.period")}:{" "}
 										{periodName(project.periods, unit.period, lang) ||
 											unit.period}
 									</p>
+									{!exportableUnit(unit) && (
+										<p className="muted small">{say("edit.unitNotExported")}</p>
+									)}
 									<ol className="lessons">
-										{unit.lessons.map((lesson) => (
-											<li key={lesson.number} className="lesson">
-												<h4 dir="auto">
-													{lesson.number}. {lesson.title}
-												</h4>
+										{unit.lessons.map((lesson, lessonIndex) => (
+											<li key={lesson.id} className="lesson">
+												<div className="item-row">
+													<EditableText
+														value={lesson.title}
+														onSave={(title) =>
+															run({
+																kind: "lesson.title",
+																unit: unit.number,
+																lesson: lesson.number,
+																title,
+															})
+														}
+													>
+														<h4 dir="auto">
+															{lesson.number}. {lesson.title}
+														</h4>
+													</EditableText>
+													<ItemMenu
+														actions={[
+															...(lessonIndex > 0
+																? [
+																		{
+																			label: say("edit.up"),
+																			run: () =>
+																				void run({
+																					kind: "lesson.move",
+																					unit: unit.number,
+																					lesson: lesson.number,
+																					by: -1,
+																				}),
+																		},
+																	]
+																: []),
+															...(lessonIndex < unit.lessons.length - 1
+																? [
+																		{
+																			label: say("edit.down"),
+																			run: () =>
+																				void run({
+																					kind: "lesson.move",
+																					unit: unit.number,
+																					lesson: lesson.number,
+																					by: 1,
+																				}),
+																		},
+																	]
+																: []),
+															...course.units
+																.filter((other) => other.number !== unit.number)
+																.map((other) => ({
+																	label: say("edit.toUnit", {
+																		n: other.number,
+																	}),
+																	run: () =>
+																		void run({
+																			kind: "lesson.toUnit",
+																			unit: unit.number,
+																			lesson: lesson.number,
+																			to: other.number,
+																		}),
+																})),
+															{
+																label: say("edit.delete"),
+																danger: true,
+																confirm: say("edit.confirmLesson"),
+																run: () =>
+																	void run({
+																		kind: "lesson.delete",
+																		unit: unit.number,
+																		lesson: lesson.number,
+																	}),
+															},
+														]}
+													/>
+												</div>
+												{!exportableLesson(lesson) && (
+													<p className="muted small">
+														{say("edit.lessonNotExported")}
+													</p>
+												)}
 												<div className="lesson-part">
 													<h5>{say("curriculum.skills")}</h5>
 													<ul className="skills">
-														{lesson.skills.map((skill) => (
+														{lesson.skills.map((skill, skillIndex) => (
 															<li
-																key={`${skill.code ?? "skill"}-${skill.text}`}
+																key={skill.id}
+																className="item-row"
 																dir="auto"
 															>
-																{skill.code !== null && (
-																	<span className="code">{skill.code}</span>
-																)}
-																{skill.text}
+																<EditableText
+																	value={skill.text}
+																	onSave={(text) =>
+																		run({
+																			kind: "skill.text",
+																			unit: unit.number,
+																			lesson: lesson.number,
+																			skill: skillIndex,
+																			text,
+																		})
+																	}
+																>
+																	{skill.code !== null && (
+																		<span className="code">{skill.code}</span>
+																	)}
+																	{skill.text}
+																</EditableText>
+																<ItemMenu
+																	actions={[
+																		{
+																			label: say("edit.delete"),
+																			danger: true,
+																			confirm: say("edit.confirmSkill"),
+																			run: () =>
+																				void run({
+																					kind: "skill.delete",
+																					unit: unit.number,
+																					lesson: lesson.number,
+																					skill: skillIndex,
+																				}),
+																		},
+																	]}
+																/>
 															</li>
 														))}
 													</ul>
+													<AddLine
+														label={say("edit.addSkill")}
+														onAdd={(text) =>
+															run({
+																kind: "skill.add",
+																unit: unit.number,
+																lesson: lesson.number,
+																text,
+															})
+														}
+													/>
 												</div>
 												<div className="lesson-part">
 													<h5>{say("curriculum.facts")}</h5>
-													{lesson.facts.length === 0 ? (
+													{lesson.facts.length === 0 && (
 														<p className="muted">{say("curriculum.noFacts")}</p>
-													) : (
-														<ol className="facts">
-															{lesson.facts.map((fact) => (
-																<li key={fact.text}>
+													)}
+													<ol className="facts">
+														{lesson.facts.map((fact, factIndex) => (
+															<li
+																// biome-ignore lint/suspicious/noArrayIndexKey: facts have no id; their place is their identity here.
+																key={factIndex}
+																className="item-row"
+															>
+																<EditableText
+																	value={fact.text}
+																	multiline
+																	onSave={(text) =>
+																		run({
+																			kind: "fact.text",
+																			unit: unit.number,
+																			lesson: lesson.number,
+																			fact: factIndex,
+																			text,
+																		})
+																	}
+																>
 																	<p className="fact" dir="auto">
 																		{fact.text}
+																		{fact.own && (
+																			<span className="tag tag-quiet">
+																				{say("edit.yours")}
+																			</span>
+																		)}
 																	</p>
-																	{fact.sources.length === 0 && (
+																	{fact.sources.length === 0 && !fact.own && (
 																		<p className="muted small">
 																			{say("curriculum.noPage")}
 																		</p>
@@ -493,17 +768,116 @@ export function Curriculum({
 																			))}
 																		</div>
 																	)}
-																</li>
-															))}
-														</ol>
-													)}
+																</EditableText>
+																<ItemMenu
+																	actions={[
+																		...(factIndex > 0
+																			? [
+																					{
+																						label: say("edit.up"),
+																						run: () =>
+																							void run({
+																								kind: "fact.move",
+																								unit: unit.number,
+																								lesson: lesson.number,
+																								fact: factIndex,
+																								by: -1,
+																							}),
+																					},
+																				]
+																			: []),
+																		...(factIndex < lesson.facts.length - 1
+																			? [
+																					{
+																						label: say("edit.down"),
+																						run: () =>
+																							void run({
+																								kind: "fact.move",
+																								unit: unit.number,
+																								lesson: lesson.number,
+																								fact: factIndex,
+																								by: 1,
+																							}),
+																					},
+																				]
+																			: []),
+																		{
+																			label: say("edit.delete"),
+																			danger: true,
+																			confirm: say("edit.confirmFact"),
+																			run: () =>
+																				void run({
+																					kind: "fact.delete",
+																					unit: unit.number,
+																					lesson: lesson.number,
+																					fact: factIndex,
+																				}),
+																		},
+																	]}
+																/>
+															</li>
+														))}
+													</ol>
+													<AddLine
+														label={say("edit.addFact")}
+														multiline
+														onAdd={(text) =>
+															run({
+																kind: "fact.add",
+																unit: unit.number,
+																lesson: lesson.number,
+																after: lesson.facts.length - 1,
+																text,
+															})
+														}
+													/>
 												</div>
 											</li>
 										))}
 									</ol>
+									<AddLine
+										label={say("edit.addLesson")}
+										onAdd={(title) =>
+											run({
+												kind: "lesson.add",
+												unit: unit.number,
+												after: unit.lessons.length,
+												title,
+											})
+										}
+									/>
 								</li>
 							))}
 						</ol>
+						<AddLine
+							label={say("edit.addUnit")}
+							extra={
+								unitPeriods.length > 1 ? (
+									<label className="field">
+										<span className="field-label">
+											{say("edit.newUnitPeriod")}
+										</span>
+										<select
+											value={newUnitPeriod || unitPeriods[0]?.id}
+											onChange={(event) => setNewUnitPeriod(event.target.value)}
+										>
+											{unitPeriods.map((period) => (
+												<option key={period.id} value={period.id}>
+													{period.name}
+												</option>
+											))}
+										</select>
+									</label>
+								) : undefined
+							}
+							onAdd={(title) =>
+								run({
+									kind: "unit.add",
+									period: newUnitPeriod || (unitPeriods[0]?.id ?? ""),
+									title,
+								})
+							}
+						/>
 					</>
 				)}
 			</article>

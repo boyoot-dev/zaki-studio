@@ -1908,3 +1908,105 @@ details.older > summary {
 	font-weight: 600;
 	margin: 8px 0;
 }
+
+/* Editing by hand in the Curriculum tab (task 247): a pencil and a "⋯" menu on each item. */
+.item-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	min-width: 0;
+}
+
+.editable {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+	flex: 1;
+	min-width: 0;
+}
+
+.editable-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.edit-pencil,
+.item-menu > summary {
+	flex: none;
+	border: none;
+	background: none;
+	color: var(--ink-soft);
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 6px;
+	opacity: 0.55;
+	list-style: none;
+}
+
+.item-menu > summary::-webkit-details-marker {
+	display: none;
+}
+
+.item-row:hover .edit-pencil,
+.item-row:hover .item-menu > summary,
+.edit-pencil:focus-visible,
+.item-menu > summary:focus-visible {
+	opacity: 1;
+}
+
+.item-menu {
+	position: relative;
+	flex: none;
+}
+
+.item-menu-list {
+	position: absolute;
+	inset-inline-end: 0;
+	top: calc(100% + 4px);
+	z-index: 20;
+	display: grid;
+	gap: 2px;
+	padding: 6px;
+	min-width: 11rem;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.item-menu-list button {
+	text-align: start;
+	padding: 6px 8px;
+	border: none;
+	background: none;
+	cursor: pointer;
+	border-radius: 6px;
+	font: inherit;
+}
+
+.item-menu-list button:hover {
+	background: var(--accent-soft);
+}
+
+.edit-field {
+	display: grid;
+	gap: 6px;
+	flex: 1;
+	min-width: 0;
+}
+
+.edit-field textarea,
+.edit-field input {
+	width: 100%;
+	font: inherit;
+}
+
+.add-line {
+	margin: 4px 0 8px;
+}
+
+.tag-quiet {
+	margin-inline-start: 8px;
+	font-size: 0.75rem;
+	opacity: 0.75;
+}

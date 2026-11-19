@@ -39,6 +39,7 @@ import type {
 	ChangeTargetView,
 	CourseHead,
 	Done,
+	EditReply,
 	ExamsPlanView,
 	ExamTargetView,
 	ExportCheck,
@@ -67,6 +68,7 @@ import type {
 	UnitsPlanView,
 } from "../shared/api.ts";
 import { bookMinutes } from "../shared/book.ts";
+import { cleanEdit } from "../shared/edit.ts";
 import type { ExamTarget } from "../shared/exam-changes.ts";
 import type { JobTool } from "../shared/job.ts";
 import { reportMeta } from "../shared/lists.ts";
@@ -116,6 +118,7 @@ import {
 	targetCourse,
 	writeUnitsSettings,
 } from "./changes.ts";
+import { editCourse, undoCount, undoEdit } from "./edit.ts";
 import {
 	collectExamsJob,
 	examRows,
@@ -1348,6 +1351,61 @@ export function registerIpc(): void {
 			return { ok: true };
 		},
 	);
+
+	// Hand edits (task 247): one edit at a time, clamped by cleanEdit, and undo for the session.
+	ipcMain.handle(
+		"studio:editCourse",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+			change: unknown,
+		): EditReply => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const wanted = cleanEdit(change);
+			if (wanted === null) return failure("invalidName");
+			const got = editCourse(
+				where,
+				bookCourse(grade, subject, language),
+				wanted,
+			);
+			if ("issue" in got)
+				return {
+					ok: true,
+					done: false,
+					issue: got.issue,
+					course: null,
+					undo: undoCount(where),
+				};
+			if (!got.ok) return got;
+			return {
+				ok: true,
+				done: true,
+				issue: "",
+				course: got.course,
+				undo: got.undo,
+			};
+		},
+	);
+
+	ipcMain.handle("studio:undoEdit", (event, root: unknown): EditReply => {
+		const where = text(root, 400);
+		if (!allowed(event, where)) return notOpen();
+		const got = undoEdit(where);
+		if ("issue" in got)
+			return { ok: true, done: false, issue: got.issue, course: null, undo: 0 };
+		if (!got.ok) return got;
+		return {
+			ok: true,
+			done: true,
+			issue: "",
+			course: got.course,
+			undo: got.undo,
+		};
+	});
 
 	ipcMain.handle(
 		"studio:prepareBook",

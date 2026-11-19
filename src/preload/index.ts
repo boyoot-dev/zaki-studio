@@ -176,6 +176,16 @@ const api: StudioApi = {
 			language,
 			period,
 		),
+	editCourse: (root, grade, subject, language, change) =>
+		ipcRenderer.invoke(
+			"studio:editCourse",
+			root,
+			grade,
+			subject,
+			language,
+			change,
+		),
+	undoEdit: (root) => ipcRenderer.invoke("studio:undoEdit", root),
 	aiState: () => ipcRenderer.invoke("studio:aiState"),
 	saveAi: (choice) => ipcRenderer.invoke("studio:saveAi", choice),
 	saveKey: (key) => ipcRenderer.invoke("studio:saveKey", key),

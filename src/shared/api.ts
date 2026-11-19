@@ -427,6 +427,18 @@ export type RoundAnswered =
 	  }
 	| Failure;
 
+/** What a hand edit or an undo gave (task 247): the course now, or why not in plain words. */
+export type EditReply =
+	| {
+			ok: true;
+			done: boolean;
+			issue: string;
+			course: import("./model").ModelCourse | null;
+			/** How many edits of this session can be undone. */
+			undo: number;
+	  }
+	| Failure;
+
 /** How far a build with a key is. */
 export type BookProgress =
 	| { stage: "reading" }
@@ -704,6 +716,16 @@ export type StudioApi = {
 		subject: string,
 		language: string,
 	): Promise<BookBuiltView>;
+	/** Makes one hand edit to a course (task 247). */
+	editCourse(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+		edit: import("./edit").Edit,
+	): Promise<EditReply>;
+	/** Undoes the last hand edit of this session. */
+	undoEdit(root: string): Promise<EditReply>;
 	/** Where a course period's browser rounds are. */
 	roundsState(
 		root: string,
