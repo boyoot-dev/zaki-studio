@@ -260,6 +260,10 @@ export type BundleFile = Bundle & {
  * The file leaves out what the format calls absent rather than writing null: a bundle read
  * back from JSON has nulls in its optional fields, and parseBundle refuses a null where it
  * expects a value or nothing at all. Every object carries its permanent id (task 224).
+ *
+ * A unit with no lesson, and a lesson with no skill, are left out until they are filled: the
+ * format requires both, and a teacher may have just added one by hand (task 247). The
+ * Curriculum tab says so on them (`exportable`).
  */
 export function toBundle(
 	model: CurriculumModel,
@@ -290,7 +294,7 @@ export function toBundle(
 				support: course.support,
 				examStyle: course.examStyle,
 				exams: course.exams,
-				units: course.units.map((unit) => ({
+				units: course.units.filter(exportableUnit).map((unit) => ({
 					id: unit.id,
 					number: unit.number,
 					period: unit.period,
@@ -298,7 +302,7 @@ export function toBundle(
 					source: unit.source,
 					keywords: unit.keywords,
 					evidence: unit.evidence,
-					lessons: unit.lessons.map((lesson) => ({
+					lessons: unit.lessons.filter(exportableLesson).map((lesson) => ({
 						id: lesson.id,
 						number: lesson.number,
 						title: lesson.title,
@@ -314,6 +318,16 @@ export function toBundle(
 			}),
 		) as Bundle["courses"],
 	};
+}
+
+/** True for a lesson the bundle can carry: it has at least one skill. */
+export function exportableLesson(lesson: ModelLesson): boolean {
+	return lesson.skills.length > 0;
+}
+
+/** True for a unit the bundle can carry: at least one of its lessons can be carried. */
+export function exportableUnit(unit: ModelUnit): boolean {
+	return unit.lessons.some(exportableLesson);
 }
 
 /**
