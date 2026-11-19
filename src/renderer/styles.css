@@ -2019,3 +2019,25 @@ details.older > summary {
 	background: var(--accent-soft);
 	border-radius: 4px;
 }
+
+/* The pages the AI never used (task 250). */
+.coverage {
+	margin: 6px 0;
+}
+
+.coverage p {
+	margin: 0 0 4px;
+}
+
+.coverage-warn {
+	padding: 8px 10px;
+	border: 1px solid var(--line);
+	border-inline-start: 3px solid #c2410c;
+	border-radius: 4px;
+}
+
+.coverage-list {
+	margin: 0;
+	padding-inline-start: 18px;
+	font-size: 0.9rem;
+}

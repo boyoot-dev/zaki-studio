@@ -144,6 +144,8 @@ describe("the browser rounds", () => {
 		if (kept === null) throw new Error("not kept");
 		const second = roundsView(project, kept, 8);
 		expect(second).toMatchObject({ round: 2, total: 2, outlineDone: true });
+		// The outline's gaps are kept with the rounds (task 250).
+		expect(second.gaps).not.toBeNull();
 		expect(second.unit?.title).toBe("Breathing");
 		const upload = readFileSync(second.file, "utf8");
 		expect(upload).toContain("## Page 6");

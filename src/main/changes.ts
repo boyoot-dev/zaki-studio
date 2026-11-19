@@ -30,11 +30,18 @@ import {
 	CHANGES_DIR,
 	type ChangeRefusalCode,
 	type ChangeReview,
+	type CleanSet,
 	mergeCourse,
 	parseChangeSet,
 	reviewUnits,
 } from "../shared/changes.ts";
 import { rowCourse } from "../shared/convert.ts";
+import {
+	type Coverage,
+	citedPages,
+	coverage,
+	textPages,
+} from "../shared/coverage.ts";
 import {
 	type ExamChoice,
 	type ExamGiven,
@@ -70,7 +77,12 @@ import {
 import { rowPeriodIds } from "../shared/terms.ts";
 import { safePath } from "./files.ts";
 import { freeJobName, JOBS_DIR, jobRecord, realFolder } from "./job.ts";
-import { readPageCount, readPageText, writeModel } from "./model.ts";
+import {
+	readPageCount,
+	readPageText,
+	readTextFile,
+	writeModel,
+} from "./model.ts";
 import {
 	type NoteSettings,
 	noteIds,
@@ -517,6 +529,10 @@ export function readChangeSets(
 			exams: [],
 			open: parsed.set.open,
 			refused: parsed.refused,
+			// A proposal for one request covers one unit: the whole period's pages don't apply.
+			...(stored.request === undefined
+				? { coverage: setCoverage(root, model, files, target, parsed.set) }
+				: {}),
 		});
 	}
 	return {
@@ -525,6 +541,33 @@ export function readChangeSets(
 			(a, b) => b.at.localeCompare(a.at) || a.key.localeCompare(b.key),
 		),
 	};
+}
+
+/**
+ * Which of the period's text pages a proposal's facts cite (task 250), so the teacher sees
+ * pages the AI never used.
+ */
+export function setCoverage(
+	root: string,
+	model: CurriculumModel,
+	files: readonly FileRow[],
+	target: Target,
+	set: CleanSet,
+): Coverage {
+	const rows = targetRows(files, target, model.curriculum.periods);
+	const sources = set.units.flatMap((unit) =>
+		unit.lessons.flatMap((lesson) =>
+			lesson.facts.flatMap((fact) => fact.sources),
+		),
+	);
+	return coverage(
+		rows.map((row) => ({
+			id: row.id,
+			path: row.path,
+			pages: textPages(readTextFile(root, row.id)),
+		})),
+		citedPages(sources),
+	);
 }
 
 /**

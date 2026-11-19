@@ -637,6 +637,8 @@ export type ChangeReview = {
 	refused: ChangeRefusal[];
 	/** What the teacher asked for, when the proposal answers one request (task 248); "" else. */
 	request: string;
+	/** Which of the period's text pages its facts use (task 250); absent for exams and requests. */
+	coverage?: import("./coverage.ts").Coverage;
 };
 
 /** The set paired with the course as it is now, for the review's side by side. */

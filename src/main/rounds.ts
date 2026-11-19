@@ -9,6 +9,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { parseChangeSet } from "../shared/changes.ts";
+import { type Coverage, outlineGaps, textPages } from "../shared/coverage.ts";
 import type { CurriculumModel, FileRow } from "../shared/model.ts";
 import { emptyCourse } from "../shared/model.ts";
 import {
@@ -50,6 +51,8 @@ export type RoundsState = {
 	answers: { unit: number; value: unknown }[];
 	/** True once the merged change set was saved for review. */
 	done: boolean;
+	/** The text pages the outline put in no unit (task 250). */
+	gaps?: Coverage;
 };
 
 /** What the page shows of the rounds: where the teacher is, and what to do now. */
@@ -63,6 +66,8 @@ export type RoundsView = {
 	file: string;
 	message: string;
 	done: boolean;
+	/** The text pages the outline put in no unit, once the outline is in (task 250). */
+	gaps: Coverage | null;
 };
 
 /** The file a course period's rounds are kept in. */
@@ -257,6 +262,7 @@ export function roundsView(
 				: unitMessage(unit, state.target.language)
 			: outlineMessage(state.target.language),
 		done: state.done,
+		gaps: state.gaps ?? null,
 	};
 }
 
@@ -293,6 +299,14 @@ export function answerRound(input: {
 			rows.map((row) => [row.id, readTextFile(input.root, row.id)]),
 		);
 		state.outline = parsed.outline;
+		state.gaps = outlineGaps(
+			rows.map((row) => ({
+				id: row.id,
+				path: row.path,
+				pages: textPages(texts.get(row.id) ?? ""),
+			})),
+			parsed.outline.units,
+		);
 		state.rounds = unitRounds(
 			parsed.outline,
 			(range) =>
