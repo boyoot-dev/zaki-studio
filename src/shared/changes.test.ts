@@ -213,7 +213,35 @@ describe("a change set that passes", () => {
 			pageOk: true,
 			copy: null,
 		});
-		expect(parsed.set.open).toHaveLength(1);
+		expect(parsed.set.open).toEqual([
+			{
+				text: "Which page gives the diagram's labels?",
+				decide: false,
+				sources: [],
+			},
+		]);
+	});
+
+	it("reads open questions in the new shape, checking their pages against the job", () => {
+		const parsed = parseChangeSet(
+			changeSet({
+				open: [
+					{
+						text: "Confirm the grouping.",
+						decide: true,
+						sources: [`${ID}#p6`, `${ID}#p99`],
+					},
+				],
+			}),
+			given(),
+		);
+		if (!parsed.ok) throw new Error(parsed.issue);
+		expect(parsed.set.open).toEqual([
+			{ text: "Confirm the grouping.", decide: true, sources: [`${ID}#p6`] },
+		]);
+		expect(parsed.refused.map((item) => item.path)).toEqual([
+			"open[0].sources[1]",
+		]);
 	});
 
 	it("refuses a set for another grade, subject or period", () => {
@@ -705,6 +733,16 @@ Write only a change set (JSON, the format below), nothing else.
   instead of guessing.
 - Facts marked "own": true were written by the author: never change or remove them; add
   yours beside them.
+- Open questions ("open"), for the author to read:
+  - Write them in the course's teaching language, the same as the facts.
+  - "decide": true only when the author must choose or confirm something: a conflict the
+    priority can't settle, a missing part, a grouping to confirm. Everything else is
+    "decide": false.
+  - At most 5 with "decide": true and 8 in all. Each is one or two short sentences.
+  - Never name a file by its id in the text. Put the pages it is about in "sources", as
+    "<id>#p<N>".
+  - Damaged text you simply skipped (unreadable scanned pages, scrambled tables) is one
+    "decide": false question at most, with those pages in "sources".
 `);
 		expect(rules).toContain('"own": true');
 	});

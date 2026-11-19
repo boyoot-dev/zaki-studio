@@ -23,6 +23,7 @@ import type {
 	ModelUnit,
 } from "./model.ts";
 import { parseSource } from "./model.ts";
+import { type OpenQuestion, parseOpen, sourceIssue } from "./open-questions.ts";
 import type { AcceptChoice, Target } from "./targets.ts";
 
 /** Where a project keeps the change sets waiting for review, under .studio. */
@@ -116,7 +117,7 @@ export type CleanSet = {
 	language: string;
 	period: string;
 	units: CleanUnit[];
-	open: string[];
+	open: OpenQuestion[];
 };
 
 /** What parsing gave: the clean set and every item it refused, or why the whole set failed. */
@@ -297,7 +298,7 @@ export function parseChangeSet(value: unknown, given: Given): ParseOutcome {
 			ok: false,
 			issue: refused[0]?.message ?? "no unit could be read",
 		};
-	const open = textList(raw.open, "open", BUNDLE_LIMITS.listChars, add);
+	const open = parseOpen(raw.open, given, add);
 	return {
 		ok: true,
 		set: {
@@ -585,27 +586,9 @@ function checkSources(
 			add(`${at}[${i}]`, "expected a source");
 			return null;
 		}
-		const parsed = parseSource(item);
-		const row =
-			parsed === null
-				? undefined
-				: given.files.find((file) => file.id === parsed.id);
-		if (parsed === null || row === undefined) {
-			add(`${at}[${i}]`, `"${item}" is not a file of this project`);
-			return null;
-		}
-		if (parsed.from === null) {
-			add(`${at}[${i}]`, `"${item}" needs a page, e.g. #p6`);
-			return null;
-		}
-		const last = parsed.to ?? parsed.from;
-		if (last < parsed.from) {
-			add(`${at}[${i}]`, `"${item}" has the pages the wrong way`);
-			return null;
-		}
-		const count = Math.max(row.pages ?? 0, given.pages(row.id));
-		if (last > count) {
-			add(`${at}[${i}]`, `"${item}" is beyond the file's ${count} pages`);
+		const issue = sourceIssue(item, given);
+		if (issue !== null) {
+			add(`${at}[${i}]`, issue);
 			return null;
 		}
 		out.push(item);
@@ -650,7 +633,7 @@ export type ChangeReview = {
 	units: ReviewUnit[];
 	/** The exams side by side, for an exams set; empty for a units set. */
 	exams: ReviewExam[];
-	open: string[];
+	open: OpenQuestion[];
 	refused: ChangeRefusal[];
 };
 

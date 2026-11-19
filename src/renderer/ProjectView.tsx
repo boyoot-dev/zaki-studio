@@ -88,6 +88,10 @@ export function ProjectView({
 }) {
 	const say = useSay();
 	const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+	// The page a review link asked for; it applies only while that same file is shown.
+	const [openAt, setOpenAt] = useState<{ rel: string; page: number } | null>(
+		null,
+	);
 	const [prompt, setPrompt] = useState<PromptSpec | null>(null);
 	const [tab, setTabState] = useState<Tab>("files");
 	// The tabs opened so far: they stay mounted (hidden) so switching back is instant.
@@ -332,9 +336,11 @@ export function ProjectView({
 
 	const node = selectedNode;
 
-	/** Opens a file the New material panel names, in the pane the author reads files in. */
-	const pickFile = (rel: string) => {
+	/** Opens a file the New material panel or a review names, in the pane the author reads
+	 * files in, at a page when one is given. */
+	const pickFile = (rel: string, page?: number) => {
 		setTab("files");
+		setOpenAt(page === undefined ? null : { rel, page });
 		setSelectedNode({
 			name: fileName(rel),
 			rel,
@@ -515,6 +521,7 @@ export function ProjectView({
 						project={project}
 						onNotify={onNotify}
 						onChanged={reload}
+						onOpenFile={pickFile}
 						reloadKey={reloadKey}
 					/>
 				</div>
@@ -608,9 +615,10 @@ export function ProjectView({
 							)}
 							{node !== null && node.kind === "file" && (
 								<Viewer
-									key={node.rel}
+									key={`${node.rel}#${openAt?.rel === node.rel ? openAt.page : ""}`}
 									root={root}
 									node={node}
+									startPage={openAt?.rel === node.rel ? openAt.page : undefined}
 									onNotify={onNotify}
 								/>
 							)}

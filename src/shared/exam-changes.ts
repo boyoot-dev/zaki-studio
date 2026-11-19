@@ -10,10 +10,8 @@
 // author accepted, and leaves every other paper as it was.
 
 import type { ChangeRefusal } from "./changes.ts";
-import { textList } from "./changes.ts";
 import { rowCourse } from "./convert.ts";
 import {
-	BUNDLE_LIMITS,
 	type BundleExam,
 	type BundlePaper,
 	type BundlePart,
@@ -28,6 +26,7 @@ import {
 } from "./format/bundle.ts";
 import { newId } from "./ids.ts";
 import type { FileRow, ModelCourse } from "./model.ts";
+import { OPEN_FORMAT, type OpenQuestion, parseOpen } from "./open-questions.ts";
 
 /**
  * A proposal's exams with ids written in (task 224): a model writes no exam or paper ids, so
@@ -77,7 +76,7 @@ export type CleanExamSet = {
 	exams: BundleExam[];
 	/** Part id → the register file ids it was read from. Every part has at least one. */
 	sources: Record<string, string[]>;
-	open: string[];
+	open: OpenQuestion[];
 };
 
 /** What parsing gave: the clean set and the open questions it refused, or why the set failed. */
@@ -129,7 +128,7 @@ export const EXAM_FORMAT = `{
                 "copiedExactly": true | false },
               "notes": "<text>", "marking": "<text>" } ] } ] } ],
   "sources": { "<part id>": ["<file id>"] },
-  "open": ["<text>"]
+  ${OPEN_FORMAT}
 }
 
 "kind" is one of: ${anyOf(EXAM_MATERIAL_KINDS)}. "none" is a part with no text to read or hear, such as a writing task or a set of maths questions; "other" needs a "description" that says what it is.
@@ -309,7 +308,7 @@ export function parseExamChangeSet(
 			issue: `${refused[0]?.path}: ${refused[0]?.message}`,
 			refused,
 		};
-	const open = textList(raw.open, "open", BUNDLE_LIMITS.listChars, add);
+	const open = parseOpen(raw.open, given, add);
 	return {
 		ok: true,
 		set: {

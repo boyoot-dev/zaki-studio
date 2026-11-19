@@ -9,6 +9,7 @@
 
 import type { ModelCourse, ModelUnit } from "./model.ts";
 import { estimateTokens, gradeText } from "./notes.ts";
+import { OPEN_FORMAT } from "./open-questions.ts";
 
 /** The course and period a change set is for. */
 export type Target = {
@@ -36,7 +37,7 @@ export const CHANGE_FORMAT = `{
           "activity": null | "reading" | "writing",
           "skills": [{ "code": <text> | null, "text": "<text>" }],
           "facts": [{ "text": "<text>", "sources": ["<id>#p<N>"] }] } ] } ],
-  "open": ["<text>"]
+  ${OPEN_FORMAT}
 }`;
 
 /** The kinds of page sources.py prefers, in its order: a main sheet before a worksheet. */
