@@ -118,8 +118,46 @@ describe("the wizard's folders", () => {
 		]);
 	});
 
+	it("adds a folder per term under Books and Extra in a split year", () => {
+		const semesters = project({
+			periods: presetPeriods("semesters"),
+			grades: [{ grade: 7, subjects: ["science"] }],
+		});
+		expect(projectFolders(semesters, SUBJECTS)).toEqual([
+			"Inbox",
+			".studio",
+			"Grade 7",
+			"Grade 7/Science",
+			"Grade 7/Science/Units",
+			"Grade 7/Science/Books",
+			"Grade 7/Science/Books/Semester 1",
+			"Grade 7/Science/Books/Semester 2",
+			"Grade 7/Science/Extra",
+			"Grade 7/Science/Extra/Semester 1",
+			"Grade 7/Science/Extra/Semester 2",
+			"Grade 7/Science/Exam",
+			"Grade 7/Science/Exam/past-papers",
+		]);
+		// Terms with blocks nest: every term has a "Block 1".
+		const blocks = projectFolders(
+			project({
+				folderLanguage: "ar",
+				grades: [{ grade: 7, subjects: ["science"] }],
+			}),
+			SUBJECTS,
+		).filter((folder) => folder.includes("/Books/"));
+		expect(blocks.slice(0, 3)).toEqual([
+			"الصف 7/العلوم/Books/الفصل الدراسي 1",
+			"الصف 7/العلوم/Books/الفصل الدراسي 1/المرحلة 1",
+			"الصف 7/العلوم/Books/الفصل الدراسي 1/المرحلة 2",
+		]);
+		expect(blocks).toHaveLength(9);
+	});
+
 	it("puts the four sections and past papers under each subject", () => {
-		expect(projectFolders(project(), SUBJECTS)).toEqual([
+		expect(
+			projectFolders(project({ periods: presetPeriods("none") }), SUBJECTS),
+		).toEqual([
 			"Inbox",
 			".studio",
 			"Grade 7",

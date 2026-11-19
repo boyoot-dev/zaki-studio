@@ -7,9 +7,11 @@
 // A block period ("block-3") takes the files whose register block names it; any other period
 // takes every readable file of the course, because the register has no other period.
 
+import type { BundlePeriod } from "./format/bundle.ts";
 import type { ModelCourse, ModelUnit } from "./model.ts";
 import { estimateTokens, gradeText } from "./notes.ts";
 import { OPEN_FORMAT } from "./open-questions.ts";
+import { allIds, periodWithin, rowPeriodIds } from "./terms.ts";
 
 /** The course and period a change set is for. */
 export type Target = {
@@ -58,14 +60,21 @@ export function blockOf(period: string): string | null {
 	return match?.[1] ?? null;
 }
 
-/** True when a register row's block names this period's block. "2&3" names 2 and 3. */
-export function inBlock(row: { block: string }, period: string): boolean {
-	const block = blockOf(period);
-	if (block === null) return true;
-	return row.block
-		.split("&")
-		.map((part) => part.trim())
-		.includes(block);
+/**
+ * True when a register row is for this period: its block names the period or one under it
+ * ("2&3" names block-2 and block-3; "t1-b2" is under "t1"). In a split year a row with no
+ * period is for none (task 249). A period the year doesn't have, and that is not a block,
+ * takes the whole course, as before.
+ */
+export function inBlock(
+	row: { block: string },
+	period: string,
+	periods: readonly BundlePeriod[],
+): boolean {
+	if (!allIds(periods).has(period) && blockOf(period) === null) return true;
+	return rowPeriodIds(row.block, periods).some((id) =>
+		periodWithin(id, period, periods),
+	);
 }
 
 /** The day a date names as one number, newest first; unknown dates last. */
@@ -108,7 +117,12 @@ export function targetRows<
 		error: string;
 		pages: number | null;
 	},
->(rows: readonly T[], target: Target): T[] {
+>(
+	rows: readonly T[],
+	target: Target,
+	/** The year's periods, so a row's term folder or chosen term counts (task 249). */
+	periods: readonly BundlePeriod[],
+): T[] {
 	return rows.filter(
 		(row) =>
 			row.grade === target.grade &&
@@ -117,7 +131,7 @@ export function targetRows<
 			row.dupOf === "" &&
 			row.error === "" &&
 			(row.pages ?? 0) > 0 &&
-			inBlock(row, target.period),
+			inBlock(row, target.period, periods),
 	);
 }
 

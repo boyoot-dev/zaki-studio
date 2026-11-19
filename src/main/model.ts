@@ -682,7 +682,8 @@ export function setFileFields(
 			!LANGUAGE_CODES.includes(fields.language))
 	)
 		return failure("invalidName");
-	if (typeof fields.block !== "string" || fields.block.trim().length > 20)
+	// A block is digits ("3", "2&3") or a period id of the year (task 249), at most 40.
+	if (typeof fields.block !== "string" || fields.block.trim().length > 40)
 		return failure("invalidName");
 	if (
 		!(FILE_FIELDS as readonly string[]).includes("kind") ||

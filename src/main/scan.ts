@@ -210,7 +210,9 @@ export async function scanProject(
 		work: workRows(root),
 		today,
 		cancelled: options.cancelled,
-		places: project.ok ? projectPlaces(project.project.grades) : undefined,
+		places: project.ok
+			? projectPlaces(project.project.grades, project.project.periods)
+			: undefined,
 		progress: (state) =>
 			options.onProgress?.({
 				stage: "reading",
@@ -340,6 +342,7 @@ export async function scanProject(
 		changes,
 		courses: reportCourses(root),
 		today,
+		periods: project.ok ? project.project.periods : [],
 	});
 	material.tessdataMissing = [...missing].sort();
 	// A stopped scan keeps the last finished report: only a scan that ended replaces it.

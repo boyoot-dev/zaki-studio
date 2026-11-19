@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { FileRow } from "./model.ts";
+import { presetPeriods } from "./project.ts";
 import {
 	academicYearOf,
 	affectedUnits,
@@ -21,9 +22,11 @@ import {
 	loadSubjects,
 	lookReasons,
 	newMaterial,
+	type ProjectPlaces,
 	parseCsv,
 	parseIsoDate,
 	parsePdfDate,
+	projectPlaces,
 	publishedDate,
 	readIndex,
 	readSubjectFolders,
@@ -80,6 +83,7 @@ function made(
 		folders?: Record<string, SubjectFolder>;
 		rules?: { pattern: RegExp; authority: number }[];
 		fixed?: Record<string, number | string | null>;
+		places?: ProjectPlaces;
 	} = {},
 ): FileRow {
 	return fileRow({
@@ -101,6 +105,7 @@ function made(
 		today: TODAY,
 		currentYear: currentAcademicYear(TODAY),
 		fixed: over.fixed ?? {},
+		places: over.places,
 	});
 }
 
@@ -595,5 +600,59 @@ describe("the work folder's own files", () => {
 			{ folder: "Science", subject: "science", language: "" },
 			{ folder: "العلوم", subject: "science", language: "" },
 		]);
+	});
+});
+
+describe("a file's term (task 249)", () => {
+	const semesters = projectPlaces([], presetPeriods("semesters"));
+	const blocks = projectPlaces([], presetPeriods("terms-blocks"));
+
+	it("reads the term from a folder named after it, in English or Arabic", () => {
+		expect(
+			made("Grade 7/Science/Books/Semester 2/book.pdf", { places: semesters })
+				.block,
+		).toBe("t2");
+		expect(
+			made("Grade 7/Science/Books/الفصل الدراسي 1/book.pdf", {
+				places: semesters,
+			}).block,
+		).toBe("t1");
+		// Every term has a "Block 1": the term folder above it says which.
+		expect(
+			made("Grade 7/Science/Books/Term 2/Block 1/book.pdf", { places: blocks })
+				.block,
+		).toBe("t2-b1");
+		expect(
+			made("Grade 7/Science/Books/t3-b2/book.pdf", { places: blocks }).block,
+		).toBe("t3-b2");
+	});
+
+	it("keeps the author's correction over the folder", () => {
+		expect(
+			made("Grade 7/Science/Books/Semester 2/book.pdf", {
+				places: semesters,
+				fixed: { block: "t1" },
+			}).block,
+		).toBe("t1");
+	});
+
+	it("still reads the old block digits when no term folder matches", () => {
+		expect(
+			made("Grade 7/Science/Science-B3-Sheet.pdf", { places: semesters }).block,
+		).toBe("3");
+		expect(made("Grade 7/Science/Science-B3-Sheet.pdf").block).toBe("3");
+	});
+
+	it("lists a file with no term in a split year, and none in a year not split", () => {
+		const row = made("Grade 7/Science/Books/book.pdf", { places: semesters });
+		expect(row.block).toBe("");
+		expect(lookReasons(row, presetPeriods("semesters"))).toContainEqual({
+			code: "noTerm",
+		});
+		expect(lookReasons(row, presetPeriods("none"))).toEqual([]);
+		const placed = made("Grade 7/Science/Books/Semester 1/book.pdf", {
+			places: semesters,
+		});
+		expect(lookReasons(placed, presetPeriods("semesters"))).toEqual([]);
 	});
 });

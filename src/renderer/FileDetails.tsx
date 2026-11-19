@@ -13,6 +13,7 @@ import { languageName } from "../shared/languages";
 import type { FileRow } from "../shared/model";
 import type { Project } from "../shared/project";
 import { AUTHORITIES, KINDS } from "../shared/register";
+import { rowPeriodIds, termPaths, yearIsSplit } from "../shared/terms";
 import { useLang, useSay } from "./i18n";
 
 export function FileDetails({
@@ -32,7 +33,22 @@ export function FileDetails({
 	);
 	const [subject, setSubject] = useState(file.subject);
 	const [language, setLanguage] = useState(file.language);
-	const [block, setBlock] = useState(file.block);
+	// In a year split into terms the block is the file's term, chosen from the year's unit
+	// periods (task 249); a block read from "Block 3" shows as that period when the year has it.
+	const split = yearIsSplit(project.periods);
+	const terms = split
+		? termPaths(project.periods, (period) =>
+				lang === "ar" ? period.nameAr : period.nameEn,
+			)
+		: [];
+	const [block, setBlock] = useState(() => {
+		if (!split) return file.block;
+		const ids = rowPeriodIds(file.block, project.periods);
+		const id = ids.length === 1 ? ids[0] : undefined;
+		return id !== undefined && terms.some((term) => term.id === id)
+			? id
+			: file.block;
+	});
 	const [kind, setKind] = useState(file.kind === "" ? "other" : file.kind);
 	const [authority, setAuthority] = useState(
 		file.authority === null ? "" : String(file.authority),
@@ -118,15 +134,35 @@ export function FileDetails({
 						</option>
 					))}
 				</datalist>
-				<label className="picker-field">
-					<span>{say("detail.block")}</span>
-					<input
-						type="text"
-						dir="auto"
-						value={block}
-						onChange={(event) => setBlock(event.target.value)}
-					/>
-				</label>
+				{split ? (
+					<label className="picker-field">
+						<span>{say("detail.term")}</span>
+						<select
+							value={block}
+							onChange={(event) => setBlock(event.target.value)}
+						>
+							<option value="">{say("detail.termNone")}</option>
+							{block !== "" && !terms.some((term) => term.id === block) && (
+								<option value={block}>{block}</option>
+							)}
+							{terms.map((term) => (
+								<option key={term.id} value={term.id}>
+									{term.path.join(" · ")}
+								</option>
+							))}
+						</select>
+					</label>
+				) : (
+					<label className="picker-field">
+						<span>{say("detail.block")}</span>
+						<input
+							type="text"
+							dir="auto"
+							value={block}
+							onChange={(event) => setBlock(event.target.value)}
+						/>
+					</label>
+				)}
 				<label className="picker-field">
 					<span>{say("detail.kind")}</span>
 					<select

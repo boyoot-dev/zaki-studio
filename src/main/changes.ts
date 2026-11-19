@@ -57,7 +57,6 @@ import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes.ts";
 import {
 	type AcceptChoice,
 	acceptKey,
-	blockOf,
 	changeName,
 	MAX_CHANGE_BYTES,
 	notedRows,
@@ -67,6 +66,7 @@ import {
 	targetOf,
 	targetRows,
 } from "../shared/targets.ts";
+import { rowPeriodIds } from "../shared/terms.ts";
 import { safePath } from "./files.ts";
 import { freeJobName, JOBS_DIR, jobRecord, realFolder } from "./job.ts";
 import { readPageCount, readPageText, writeModel } from "./model.ts";
@@ -172,37 +172,13 @@ export function allowedExamTarget(
 	return { ...target, isNew: targetCourse(model, target) === null };
 }
 
-/** The periods a register block names, for a target built from the material itself. */
-export function blockPeriods(block: string): string[] {
-	return block
-		.split("&")
-		.map((part) => part.trim())
-		.filter((part) => part !== "")
-		.flatMap((part) => {
-			const period = `block-${part}`;
-			return blockOf(period) === part ? [period] : [];
-		});
-}
-
 /**
- * The periods a register row offers the units step: the blocks its path names, else the
- * year's one unit period when the year has exactly one (a leaf that is not a whole-year
- * exam). A file in a wizard project names no block, and a year that is not split still has
- * one period for its units (found in the owner's walkthrough, 2026-11-18). A year with several
- * periods and no block in the path offers none: which period such a file is for is open.
+ * The periods a register row offers the units step: the ones its block names (a term folder,
+ * a chosen term, or "Block N" in the path), else the year's one unit period when the year is
+ * not split. A file in a split year with no term offers none (task 249).
  */
 export function rowPeriods(model: CurriculumModel, block: string): string[] {
-	const named = blockPeriods(block);
-	if (named.length > 0) return named;
-	const leaves: string[] = [];
-	const walk = (periods: CurriculumModel["curriculum"]["periods"]) => {
-		for (const period of periods) {
-			if (period.periods.length > 0) walk(period.periods);
-			else if (!period.wholeYear) leaves.push(period.id);
-		}
-	};
-	walk(model.curriculum.periods);
-	return leaves.length === 1 ? leaves : [];
+	return rowPeriodIds(block, model.curriculum.periods);
 }
 
 /**
@@ -856,7 +832,10 @@ export function prepareUnitsJob(
 		const folder = changeName(target);
 		if (folder === null) return [];
 		const notes = notesOrder(
-			notedRows(targetRows(input.rows, target), noted),
+			notedRows(
+				targetRows(input.rows, target, input.model.curriculum.periods),
+				noted,
+			),
 		).flatMap((row) => {
 			const text = readNote(input.root, row.id);
 			return text === "" ? [] : [{ id: row.id, text }];

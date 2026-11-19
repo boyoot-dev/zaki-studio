@@ -8,10 +8,12 @@ import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ScanProgress } from "../shared/api.ts";
+import type { BundlePeriod } from "../shared/format/bundle";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { ReportListItem, ReportMeta } from "../shared/lists.ts";
 import type { FileRow } from "../shared/model.ts";
 import { type AffectedLine, KINDS } from "../shared/register.ts";
+import { termLabel } from "../shared/terms";
 import { useLang, useSay } from "./i18n";
 import { WindowedList } from "./WindowedList";
 
@@ -34,6 +36,7 @@ export function NewMaterialPanel({
 	onShowFiles,
 	onNotify,
 	reloadKey,
+	periods,
 }: {
 	root: string;
 	/** The header of the last scan's report, or null when there is none. */
@@ -48,6 +51,8 @@ export function NewMaterialPanel({
 	onNotify: (text: string) => void;
 	/** Bumped when the folder changed on disk; the rows are re-read. */
 	reloadKey: number;
+	/** The year's periods, so a group names its term rather than its id (task 249). */
+	periods: readonly BundlePeriod[];
 }) {
 	const say = useSay();
 	const lang = useLang();
@@ -117,7 +122,14 @@ export function NewMaterialPanel({
 				return (
 					<div className="row row-head">
 						<h3 dir="auto">
-							{groupTitle(item.grade, item.subject, item.block, lang, say)}
+							{groupTitle(
+								item.grade,
+								item.subject,
+								item.block,
+								lang,
+								say,
+								periods,
+							)}
 						</h3>
 					</div>
 				);
@@ -143,7 +155,14 @@ export function NewMaterialPanel({
 			case "affectedBlock":
 				return (
 					<div className="row row-sub">
-						{groupTitle(item.grade, item.subject, item.block, lang, say)}
+						{groupTitle(
+							item.grade,
+							item.subject,
+							item.block,
+							lang,
+							say,
+							periods,
+						)}
 					</div>
 				);
 			case "affectedLine":
@@ -302,6 +321,7 @@ function groupTitle(
 	block: string,
 	lang: Lang,
 	say: Say,
+	periods: readonly BundlePeriod[],
 ): string {
 	const words = [
 		grade === null ? say("new.noGrade") : gradeLabel(lang, grade),
@@ -309,7 +329,8 @@ function groupTitle(
 			? say("new.noSubject")
 			: subjectName(subject, lang),
 	];
-	if (block !== "") words.push(say("new.block", { block }));
+	if (block !== "")
+		words.push(termLabel(block, periods, lang) ?? say("new.block", { block }));
 	return words.join(" · ");
 }
 

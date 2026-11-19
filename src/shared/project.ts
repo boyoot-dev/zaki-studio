@@ -16,6 +16,7 @@ import {
 } from "./format/bundle.ts";
 import { GRADE_MAX, GRADE_MIN, gradeName } from "./format/grades.ts";
 import { languageName } from "./languages.ts";
+import { termPaths, yearIsSplit } from "./terms.ts";
 
 /** The marker in curriculum.json that says this folder is a Studio project. */
 export const PROJECT_FORMAT = "mr-zaki-studio-project";
@@ -570,18 +571,44 @@ export function projectFolders(
 ): string[] {
 	const folders = [INBOX_DIR, STUDIO_DIR];
 	for (const grade of project.grades) {
-		const gradePath = grade.folder;
-		folders.push(gradePath);
-		for (const subject of grade.subjects) {
-			const subjectPath = `${gradePath}/${subject.folder}`;
-			folders.push(subjectPath);
-			for (const section of SECTION_FOLDERS)
-				folders.push(`${subjectPath}/${section}`);
-			for (const exam of examFolders(subject.subject, subjects))
-				folders.push(`${subjectPath}/Exam/${exam}`);
-		}
+		folders.push(grade.folder);
+		for (const subject of grade.subjects)
+			folders.push(...courseFolders(grade, subject, project.periods, subjects));
 	}
 	return [...new Set(folders)];
+}
+
+/**
+ * One course's folders: the subject folder, its four sections, its exam folders, and in a
+ * year split into terms a folder per term under Books and Extra (task 249), named in the
+ * language the grade folder is named in, so a file put there says which term it is for.
+ */
+export function courseFolders(
+	grade: ProjectGrade,
+	subject: ProjectSubject,
+	periods: readonly BundlePeriod[],
+	subjects: readonly SubjectLabel[],
+): string[] {
+	const base = `${grade.folder}/${subject.folder}`;
+	// The Arabic block, U+0600 to U+06FF: a grade folder named in Arabic.
+	const arabic = /[؀-ۿ]/.test(grade.folder);
+	const terms = yearIsSplit(periods)
+		? termPaths(periods, (period) =>
+				subjectFolder(arabic ? period.nameAr : period.nameEn),
+			)
+		: [];
+	const out = [base];
+	for (const section of SECTION_FOLDERS) {
+		out.push(`${base}/${section}`);
+		if (section === "Books" || section === "Extra")
+			for (const term of terms)
+				for (let depth = 1; depth <= term.path.length; depth += 1)
+					out.push(`${base}/${section}/${term.path.slice(0, depth).join("/")}`);
+		if (section === "Exam")
+			for (const exam of examFolders(subject.subject, subjects))
+				out.push(`${base}/Exam/${exam}`);
+	}
+	return [...new Set(out)];
 }
 
 /** The project with one more course: this grade's subject taught in another language. */
