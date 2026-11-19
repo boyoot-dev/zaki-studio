@@ -619,6 +619,7 @@ export function ProjectView({
 						onShowFiles={() => setTab("files")}
 						onNotify={onNotify}
 						reloadKey={reloadKey}
+						periods={project.periods}
 					/>
 				</div>
 			)}

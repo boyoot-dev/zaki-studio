@@ -159,7 +159,9 @@ function notesOf(
 	target: Target,
 ): { id: string; text: string }[] {
 	const order = notesOrder(
-		notedRows(targetRows(rows, target), notedIn(project, work)),
+		// The trial names block periods ("block-3"), which read the same without the year's
+		// periods.
+		notedRows(targetRows(rows, target, []), notedIn(project, work)),
 	);
 	return order.flatMap((row) => {
 		const text = noteText(project, work, row.id);

@@ -73,9 +73,10 @@ function periodNotes(
 	root: string,
 	rows: readonly FileRow[],
 	target: Target,
+	periods: CurriculumModel["curriculum"]["periods"],
 ): { id: string; text: string }[] {
 	const noted = noteIds(root);
-	const order = notesOrder(notedRows(targetRows(rows, target), noted));
+	const order = notesOrder(notedRows(targetRows(rows, target, periods), noted));
 	return order.flatMap((row) => {
 		const text = readNote(root, row.id);
 		return text === "" ? [] : [{ id: row.id, text }];
@@ -94,7 +95,7 @@ function requestInput(
 	const course =
 		targetCourse(model, target) ??
 		emptyCourse(target.grade, target.subject, target.language);
-	const notes = periodNotes(root, rows, target);
+	const notes = periodNotes(root, rows, target, model.curriculum.periods);
 	return {
 		...changeInput({
 			curriculum: basename(root),

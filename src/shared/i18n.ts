@@ -500,6 +500,8 @@ const en = {
 	"detail.hint":
 		"What you change here is kept when the project is looked at again.",
 	"detail.block": "Block",
+	"detail.term": "Term",
+	"detail.termNone": "Not set",
 	"detail.kind": "Kind",
 	"detail.authority": "Authority",
 	"detail.authorityNone": "Not known",
@@ -558,6 +560,8 @@ const en = {
 	"new.why.noGrade": "no grade",
 	"new.why.error": "error: {detail}",
 	"new.why.copy": "a copy of {id}",
+	"new.why.noTerm":
+		"no term: put it in a term's folder, or choose its term in the file's details",
 	"new.copies": "Copied: {n:file}",
 	"new.moved": "Moved: {n:file}",
 	"new.removed": "Removed from the folders: {n:file}",
@@ -1038,6 +1042,8 @@ const ar: Record<TextKey, string> = {
 	"detail.title": "بيانات الملف",
 	"detail.hint": "ما تغيّره هنا يبقى عند فحص المشروع مرة أخرى.",
 	"detail.block": "المرحلة",
+	"detail.term": "الفصل الدراسي",
+	"detail.termNone": "غير محدد",
 	"detail.kind": "النوع",
 	"detail.authority": "الجهة",
 	"detail.authorityNone": "غير معروفة",
@@ -1094,6 +1100,8 @@ const ar: Record<TextKey, string> = {
 	"new.why.noGrade": "بلا صف",
 	"new.why.error": "خطأ: {detail}",
 	"new.why.copy": "نسخة من {id}",
+	"new.why.noTerm":
+		"بلا فصل دراسي: ضعه في مجلد فصله، أو اختر فصله في تفاصيل الملف",
 	"new.copies": "نُسخ: {n:file}",
 	"new.moved": "نُقل: {n:file}",
 	"new.removed": "حُذف من المجلدات: {n:file}",

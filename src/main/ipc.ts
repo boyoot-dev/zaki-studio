@@ -1113,7 +1113,7 @@ export function registerIpc(): void {
 				subject: text(raw.subject, 60).trim(),
 				language:
 					typeof raw.language === "string" ? text(raw.language, 8) : undefined,
-				block: text(raw.block, 20).trim(),
+				block: text(raw.block, 40).trim(),
 				kind: text(raw.kind, 20),
 				authority: typeof raw.authority === "number" ? raw.authority : null,
 			};
@@ -1451,7 +1451,11 @@ export function registerIpc(): void {
 						`${target.grade}|${target.subject}|${target.language}`,
 					) ?? [];
 				const units = course === null ? [] : periodUnits(course, target.period);
-				const rows = targetRows(courseRows, target);
+				const rows = targetRows(
+					courseRows,
+					target,
+					model.model.curriculum.periods,
+				);
 				const key = changeName(target);
 				targets.push({
 					...target,

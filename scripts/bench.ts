@@ -176,7 +176,11 @@ function calls(root: string, deep: string, userData: string): BenchCall[] {
 						period,
 					};
 					const units = periodUnits(course, period);
-					const matching = targetRows(courseRows, target);
+					const matching = targetRows(
+						courseRows,
+						target,
+						model.curriculum.periods,
+					);
 					const key = changeName(target);
 					targets.push({
 						...target,

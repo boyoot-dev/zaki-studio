@@ -109,12 +109,12 @@ describe("the block a period names", () => {
 	});
 
 	it("takes the files whose register block names it, including a shared block", () => {
-		expect(inBlock({ block: "3" }, "block-3")).toBe(true);
-		expect(inBlock({ block: "2" }, "block-3")).toBe(false);
-		expect(inBlock({ block: "2&3" }, "block-3")).toBe(true);
-		expect(inBlock({ block: "2 & 3" }, "block-3")).toBe(true);
+		expect(inBlock({ block: "3" }, "block-3", [])).toBe(true);
+		expect(inBlock({ block: "2" }, "block-3", [])).toBe(false);
+		expect(inBlock({ block: "2&3" }, "block-3", [])).toBe(true);
+		expect(inBlock({ block: "2 & 3" }, "block-3", [])).toBe(true);
 		// A period that is not a block takes the whole course.
-		expect(inBlock({ block: "2" }, "term-1")).toBe(true);
+		expect(inBlock({ block: "2" }, "term-1", [])).toBe(true);
 	});
 });
 
@@ -161,12 +161,16 @@ describe("the notes a period's change set is written from", () => {
 			row("ffffffffffff", { error: "unreadable" }),
 			row("111111111111", { pages: 0 }),
 		];
-		const got = targetRows(rows, {
-			grade: 7,
-			subject: "science",
-			language: "en",
-			period: "block-2",
-		});
+		const got = targetRows(
+			rows,
+			{
+				grade: 7,
+				subject: "science",
+				language: "en",
+				period: "block-2",
+			},
+			[],
+		);
 		expect(got.map((entry) => entry.id)).toEqual(["aaaaaaaaaaaa"]);
 		expect(
 			notedRows(got, new Set(["aaaaaaaaaaaa"])).map((entry) => entry.id),

@@ -42,7 +42,7 @@ import {
 } from "../shared/languages.ts";
 import {
 	addCourseLanguage as addCourseToProject,
-	examFolders,
+	courseFolders,
 	INBOX_DIR,
 	nextUnitFolder,
 	PROJECT_FILE,
@@ -51,7 +51,6 @@ import {
 	projectFolders,
 	STUDIO_DIR,
 	type SubjectLabel,
-	sectionPaths,
 	unitNumber,
 	validFolderName,
 } from "../shared/project.ts";
@@ -417,14 +416,13 @@ export function addCourseLanguage(
 	if (gradeEntry === undefined || course === undefined)
 		return failure("invalidProject");
 	try {
-		const base = `${gradeEntry.folder}/${course.folder}`;
-		mkdirSync(join(root, ...base.split("/")), { recursive: true });
-		for (const section of sectionPaths(gradeEntry, course))
-			mkdirSync(join(root, ...section.rel.split("/")), { recursive: true });
-		for (const exam of examFolders(course.subject, subjects))
-			mkdirSync(join(root, ...`${base}/Exam/${exam}`.split("/")), {
-				recursive: true,
-			});
+		for (const folder of courseFolders(
+			gradeEntry,
+			course,
+			added.project.periods,
+			subjects,
+		))
+			mkdirSync(join(root, ...folder.split("/")), { recursive: true });
 	} catch {
 		return failure("unreadable");
 	}

@@ -8,8 +8,10 @@
 // imports the app or Electron, so the check script can run it with plain Node.
 
 import { rowCourse, tokenCourse } from "./convert.ts";
+import type { BundlePeriod } from "./format/bundle.ts";
 import { LANGUAGE_CODES } from "./format/bundle.ts";
 import type { FileField, FileRow } from "./model.ts";
+import { rowPeriodIds, termOfFolders, yearIsSplit } from "./terms.ts";
 
 /** One row of a work folder's index.csv, as the file writes it (every value a text). */
 export type IndexRow = {
@@ -533,6 +535,9 @@ export type ProjectPlaces = {
 	grades: Record<string, number>;
 	/** "<grade folder>/<subject folder>" → the course it holds. */
 	courses: Record<string, { subject: string; language: string }>;
+	/** The year's periods, so a term folder ("Term 1", "الفصل الأول") names the file's period
+	 * (task 249). */
+	periods?: readonly BundlePeriod[];
 };
 
 /** The project's places, from its grades and their course folders. */
@@ -542,8 +547,9 @@ export function projectPlaces(
 		folder: string;
 		subjects: readonly { subject: string; folder: string; language: string }[];
 	}[],
+	periods: readonly BundlePeriod[] = [],
 ): ProjectPlaces {
-	const places: ProjectPlaces = { grades: {}, courses: {} };
+	const places: ProjectPlaces = { grades: {}, courses: {}, periods };
 	for (const grade of grades) {
 		const gradeKey = grade.folder.trim().toLowerCase();
 		places.grades[gradeKey] = grade.grade;
@@ -594,7 +600,10 @@ export function fileRow(input: RowInput): FileRow {
 				? (input.places?.grades[gradeKey] ?? gradeOf(gradeFolder))
 				: null,
 		...course,
-		block: blockOf(inside),
+		// A term folder of a split year names the period; else "Block N" in the path does.
+		block:
+			termOfFolders(parts.slice(0, -1), input.places?.periods ?? []) ??
+			blockOf(inside),
 		kind,
 		pages: read.pages,
 		authority: authorityOf(kind, inside, input.rules),
@@ -699,13 +708,23 @@ export type LookReason =
 	| { code: "noSubject" }
 	| { code: "noGrade" }
 	| { code: "error"; detail: string }
-	| { code: "copy"; id: string };
+	| { code: "copy"; id: string }
+	| { code: "noTerm" };
 
-/** The reasons this file needs a look, or none. A missing block is not one: blocks are KESTREL's. */
-export function lookReasons(row: FileRow): LookReason[] {
+/**
+ * The reasons this file needs a look, or none. In a year split into terms a file with no term
+ * is one (task 249): the units step can't tell which term it is for. A year that is not split
+ * needs none.
+ */
+export function lookReasons(
+	row: FileRow,
+	periods: readonly BundlePeriod[] = [],
+): LookReason[] {
 	const why: LookReason[] = [];
 	if (row.subject === "unknown") why.push({ code: "noSubject" });
 	if (row.grade === null) why.push({ code: "noGrade" });
+	if (yearIsSplit(periods) && rowPeriodIds(row.block, periods).length === 0)
+		why.push({ code: "noTerm" });
 	if (row.error !== "") why.push({ code: "error", detail: row.error });
 	if (row.dupOf !== "") why.push({ code: "copy", id: row.dupOf });
 	return why;
@@ -871,6 +890,8 @@ export type ReportInput = {
 	changes: Changes;
 	courses: readonly ReportCourse[];
 	today: Date;
+	/** The year's periods, so a file with no term in a split year needs a look (task 249). */
+	periods?: readonly BundlePeriod[];
 };
 
 /** The report register.py writes, as the data the panel shows instead of a Markdown file. */
@@ -897,7 +918,7 @@ export function newMaterial(input: ReportInput): NewMaterial {
 		group.rows = [...group.rows].sort((a, b) => a.path.localeCompare(b.path));
 	const currentYear = currentAcademicYear(input.today);
 	const look = [...input.changes.new, ...input.changes.copies]
-		.map((row) => ({ row, why: lookReasons(row) }))
+		.map((row) => ({ row, why: lookReasons(row, input.periods) }))
 		.filter((entry) => entry.why.length > 0);
 	return {
 		at: input.at,
