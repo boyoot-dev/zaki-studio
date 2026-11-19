@@ -8,6 +8,7 @@ import type { RecentProject } from "../shared/api";
 import type { Lang } from "../shared/i18n";
 import { LanguageSwitch } from "./Chrome";
 import { useSay } from "./i18n";
+import { useAi } from "./Settings";
 
 export function StartScreen({
 	lang,
@@ -27,6 +28,7 @@ export function StartScreen({
 	onRecent: (root: string) => Promise<void>;
 }) {
 	const say = useSay();
+	const { openSettings } = useAi();
 	const [recent, setRecent] = useState<RecentProject[]>([]);
 
 	useEffect(() => {
@@ -46,7 +48,16 @@ export function StartScreen({
 					<h1 className="brand">{say("app.name")}</h1>
 					<p className="tagline">{say("app.tagline")}</p>
 				</div>
-				<LanguageSwitch lang={lang} onChange={onLanguage} />
+				<div className="head-tools">
+					<button
+						type="button"
+						className="btn btn-quiet"
+						onClick={openSettings}
+					>
+						{say("settings.open")}
+					</button>
+					<LanguageSwitch lang={lang} onChange={onLanguage} />
+				</div>
 			</header>
 
 			{/* One start for a teacher with a book; the other three are for what they already

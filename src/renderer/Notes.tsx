@@ -11,7 +11,7 @@
 
 import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import { costWords } from "../shared/ai";
 import type {
 	JobCollected,
 	JobMade,
@@ -29,6 +29,7 @@ import {
 import { KINDS } from "../shared/register.ts";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
+import { useAi, useAiGate } from "./Settings";
 import { WindowedList } from "./WindowedList";
 
 /** A word of the window, as the panel's helpers take it. */
@@ -81,13 +82,18 @@ export function Notes({
 	// The range of rows the window last asked for, so a reload can fetch those pages again.
 	const wanted = useRef({ start: 0, end: 0 });
 
-	const [keySet, setKeySet] = useState(false);
+	// How the author uses AI, from Settings (task 244): the key way writes here, the tool way
+	// prepares a job; nothing about the key or the model is set on this page any more.
+	const { ai } = useAi();
+	const { gate, ready } = useAiGate();
+	const keySet = ai?.keySet === true;
+	const limit = ai?.notes.limit ?? 2;
+	const way = ai?.choice?.way ?? null;
+	const tool: JobTool =
+		ai?.choice?.way === "tool" ? ai.choice.tool : "claude-code";
 	const [jobs, setJobs] = useState<JobSummary[]>([]);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [plan, setPlan] = useState<NotesPlan | null>(null);
-	const [limit, setLimit] = useState(2);
-	const [keyInput, setKeyInput] = useState("");
-	const [modelInput, setModelInput] = useState("");
 	const [writing, setWriting] = useState(false);
 	const [progress, setProgress] = useState<NotesProgress | null>(null);
 	// True when the list is narrowed at all, so the chosen count can say a hidden file counts.
@@ -98,7 +104,6 @@ export function Notes({
 		filter.years.length > 0 ||
 		filter.kinds.length > 0 ||
 		!filter.onlyMissing;
-	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [prepared, setPrepared] = useState<JobMade | null>(null);
 	const [collected, setCollected] = useState<JobCollected | null>(null);
 	// The job action running now ("prepare" or "collect:<job>"), so its button says so (task 240).
@@ -166,9 +171,6 @@ export function Notes({
 		}
 		setTotalMissing(state.missing);
 		setFacets(state.facets);
-		setLimit(state.settings.limit);
-		setModelInput(state.settings.model);
-		setKeySet(state.keySet);
 		setJobs(state.jobs);
 		// A note landing moves the rows, so every page is fetched again when the window reaches
 		// it. The pages on screen are fetched now, over the rows already drawn: the window is
@@ -266,46 +268,6 @@ export function Notes({
 			for (const id of shown) next.delete(id);
 			return next;
 		});
-
-	/** Saves the model and the limit, so the next plan uses them. */
-	const saveSettings = async () => {
-		const answer = await window.studio.saveNoteSettings(modelInput, limit);
-		if (!answer.ok) {
-			onNotify(failureText(lang, answer));
-			return;
-		}
-		setLimit(answer.settings.limit);
-		onNotify(say("notes.saved"));
-		// The price may have changed with the model: work the run out again.
-		if (selected.size > 0) {
-			const plan = await window.studio.notesPlan(root, [...selected]);
-			setPlan(plan.ok ? plan.plan : null);
-		}
-	};
-
-	const saveKey = async () => {
-		const answer = await window.studio.saveKey(keyInput);
-		if (!answer.ok) {
-			onNotify(failureText(lang, answer));
-			return;
-		}
-		// The key is not kept on the page at all: only the boolean stays.
-		setKeyInput("");
-		setKeySet(true);
-		onNotify(say("notes.keySaved"));
-	};
-
-	const clearKey = async () => {
-		await window.studio.clearKey();
-		setKeySet(false);
-		onNotify(say("notes.keyCleared"));
-	};
-
-	const testKey = async () => {
-		onNotify(say("notes.testing"));
-		const answer = await window.studio.testKey();
-		onNotify(answer.ok ? say("notes.testOk") : failureText(lang, answer));
-	};
 
 	/** Writes the notes of the ticked files with the author's key. */
 	const write = async () => {
@@ -454,88 +416,7 @@ export function Notes({
 				</div>
 			</header>
 
-			<section className="notes-settings">
-				<h3>{say("notes.settings")}</h3>
-				<div className="notes-row">
-					<label className="field">
-						<span className="field-label">{say("notes.model")}</span>
-						<input
-							type="text"
-							value={modelInput}
-							onChange={(event) => setModelInput(event.target.value)}
-							dir="ltr"
-						/>
-					</label>
-					<label className="field">
-						<span className="field-label">{say("notes.limit")}</span>
-						<input
-							type="number"
-							min="0.01"
-							max="100"
-							step="0.5"
-							value={limit}
-							onChange={(event) => setLimit(Number(event.target.value) || 0)}
-						/>
-					</label>
-					<button
-						type="button"
-						className="btn btn-quiet"
-						onClick={() => void saveSettings()}
-					>
-						{say("notes.saveSettings")}
-					</button>
-				</div>
-
-				<p className="muted">
-					{keySet ? say("notes.keySet") : say("notes.keyMissing")}
-				</p>
-				<div className="notes-row">
-					<label className="field">
-						<span className="field-label">{say("notes.key")}</span>
-						<input
-							type="password"
-							value={keyInput}
-							placeholder={say("notes.keyPlaceholder")}
-							onChange={(event) => setKeyInput(event.target.value)}
-							dir="ltr"
-							autoComplete="off"
-						/>
-					</label>
-					<button
-						type="button"
-						className="btn"
-						disabled={keyInput.trim() === ""}
-						onClick={() => void saveKey()}
-					>
-						{say("notes.saveKey")}
-					</button>
-					{keySet && (
-						<>
-							<button
-								type="button"
-								className="btn btn-quiet"
-								onClick={() => void testKey()}
-							>
-								{say("notes.testKey")}
-							</button>
-							<button
-								type="button"
-								className="btn btn-quiet btn-danger"
-								onClick={() => void clearKey()}
-							>
-								{say("notes.clearKey")}
-							</button>
-						</>
-					)}
-				</div>
-				<p className="muted">{say("notes.keyHint")}</p>
-				{plan !== null && !plan.readsImages && (
-					<p className="issues">{say("notes.noVision")}</p>
-				)}
-				{plan !== null && !plan.found && (
-					<p className="issues">{say("notes.unknownModel")}</p>
-				)}
-			</section>
+			{gate}
 
 			<section>
 				<h3>{say("notes.files")}</h3>
@@ -716,7 +597,7 @@ export function Notes({
 					</WindowedList>
 				)}
 
-				{selected.size > 0 && (
+				{ready && way === "key" && selected.size > 0 && (
 					<div className="notes-actions">
 						<p className="muted">
 							{plan === null
@@ -728,10 +609,16 @@ export function Notes({
 										cost:
 											plan.estimateUsd === null
 												? say("notes.costUnknown")
-												: `$${plan.estimateUsd.toFixed(4)}`,
+												: costWords(plan.estimateUsd, lang),
 										model: plan.model,
 									})}
 						</p>
+						{plan !== null && !plan.readsImages && (
+							<p className="issues">{say("notes.noVision")}</p>
+						)}
+						{plan !== null && !plan.found && (
+							<p className="issues">{say("notes.unknownModel")}</p>
+						)}
 						<div className="notes-row">
 							<button
 								type="button"
@@ -741,9 +628,6 @@ export function Notes({
 							>
 								{say("notes.write")}
 							</button>
-							{!keySet && (
-								<span className="muted">{say("notes.noKeyHint")}</span>
-							)}
 						</div>
 						{writing && (
 							<p className="muted">
@@ -776,101 +660,95 @@ export function Notes({
 				)}
 			</section>
 
-			<section className="notes-job">
-				<h3>{say("notes.jobTitle")}</h3>
-				<p className="muted">{say("notes.jobIntro")}</p>
-				<div className="notes-row">
-					<label className="field">
-						<span className="field-label">{say("notes.jobTool")}</span>
-						<select
-							value={tool}
-							onChange={(event) => setTool(event.target.value as JobTool)}
-						>
-							<option value="claude-code">
-								{say("notes.tool.claude-code")}
-							</option>
-							<option value="other">{say("notes.tool.other")}</option>
-						</select>
-					</label>
-					<button
-						type="button"
-						className="btn btn-quiet"
-						disabled={selected.size === 0 || busy !== null}
-						onClick={() => void busily("prepare", prepare)}
-					>
-						{busy === "prepare" ? say("notes.preparing") : say("notes.prepare")}
-					</button>
-				</div>
-				{prepared?.ok && (
-					<div className="job-prompt">
-						<p className="muted">
-							{say("notes.promptHint", { path: prepared.path })}
-						</p>
-						<textarea readOnly value={prepared.prompt} dir="ltr" rows={10} />
+			{ready && way === "tool" && (
+				<section className="notes-job">
+					<h3>{say("notes.jobTitle")}</h3>
+					<p className="muted">{say("notes.jobIntro")}</p>
+					<div className="notes-row">
 						<button
 							type="button"
-							className="btn"
-							onClick={() => void copyPrompt()}
+							className="btn btn-quiet"
+							disabled={selected.size === 0 || busy !== null}
+							onClick={() => void busily("prepare", prepare)}
 						>
-							{say("notes.copy")}
+							{busy === "prepare"
+								? say("notes.preparing")
+								: say("notes.prepare")}
 						</button>
 					</div>
-				)}
+					{prepared?.ok && (
+						<div className="job-prompt">
+							<p className="muted">
+								{say("notes.promptHint", { path: prepared.path })}
+							</p>
+							<textarea readOnly value={prepared.prompt} dir="ltr" rows={10} />
+							<button
+								type="button"
+								className="btn"
+								onClick={() => void copyPrompt()}
+							>
+								{say("notes.copy")}
+							</button>
+						</div>
+					)}
 
-				<h3>{say("notes.jobs")}</h3>
-				{jobs.length === 0 ? (
-					<p className="muted">{say("notes.jobsNone")}</p>
-				) : (
-					<ul className="new-list">
-						{jobs.map((job) => (
-							<li key={job.name}>
-								<span dir="ltr">{job.name}</span>
-								<span className="muted">
-									{" "}
-									{say("notes.jobLine", {
-										created: job.created,
-										tool: say(`notes.tool.${job.tool}` as TextKey),
-										files: job.files,
-									})}
-								</span>
-								<button
-									type="button"
-									className="btn btn-quiet"
-									disabled={busy !== null}
-									onClick={() =>
-										void busily(`collect:${job.name}`, () => collect(job.name))
-									}
-								>
-									{busy === `collect:${job.name}`
-										? say("notes.collecting")
-										: say("notes.collect")}
-								</button>
-								<button
-									type="button"
-									className="btn btn-quiet btn-danger"
-									onClick={() => void removeJob(job.name)}
-								>
-									{say("notes.deleteJob")}
-								</button>
-							</li>
-						))}
-					</ul>
-				)}
-				{collected?.ok && (
-					<div>
-						<p className="muted">{collectedText(collected, say)}</p>
-						{collected.refused.length > 0 && (
-							<ul className="new-list issues">
-								{collected.refused.map((entry) => (
-									<li key={entry.name} dir="auto">
-										{entry.name}: {refusalText(entry.code, say)}
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
-				)}
-			</section>
+					<h3>{say("notes.jobs")}</h3>
+					{jobs.length === 0 ? (
+						<p className="muted">{say("notes.jobsNone")}</p>
+					) : (
+						<ul className="new-list">
+							{jobs.map((job) => (
+								<li key={job.name}>
+									<span dir="ltr">{job.name}</span>
+									<span className="muted">
+										{" "}
+										{say("notes.jobLine", {
+											created: job.created,
+											tool: say(`notes.tool.${job.tool}` as TextKey),
+											files: job.files,
+										})}
+									</span>
+									<button
+										type="button"
+										className="btn btn-quiet"
+										disabled={busy !== null}
+										onClick={() =>
+											void busily(`collect:${job.name}`, () =>
+												collect(job.name),
+											)
+										}
+									>
+										{busy === `collect:${job.name}`
+											? say("notes.collecting")
+											: say("notes.collect")}
+									</button>
+									<button
+										type="button"
+										className="btn btn-quiet btn-danger"
+										onClick={() => void removeJob(job.name)}
+									>
+										{say("notes.deleteJob")}
+									</button>
+								</li>
+							))}
+						</ul>
+					)}
+					{collected?.ok && (
+						<div>
+							<p className="muted">{collectedText(collected, say)}</p>
+							{collected.refused.length > 0 && (
+								<ul className="new-list issues">
+									{collected.refused.map((entry) => (
+										<li key={entry.name} dir="auto">
+											{entry.name}: {refusalText(entry.code, say)}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
+				</section>
+			)}
 		</div>
 	);
 }

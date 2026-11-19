@@ -3,6 +3,7 @@
 // path stays inside it, so the page never gets a file system, a shell or a network door. The
 // renderer and the preload share these types; nothing here runs.
 
+import type { AiChoice } from "./ai.ts";
 import type { CourseNumberWarnings } from "./exam-numbers.ts";
 import type { JobSummary, JobTool } from "./job.ts";
 import type { LanguageWarning } from "./languages.ts";
@@ -318,6 +319,19 @@ export type ExamTargetView = {
 /** The units model and the spending limit; never the key. */
 export type ChangeSettings = { model: string; limit: number };
 
+/** The Settings screen's state: the AI choice (null until chosen), each step's model and
+ * limit, and whether a key is set; never the key itself. */
+export type AiState = {
+	ok: true;
+	choice: AiChoice | null;
+	notes: NoteSettings;
+	units: ChangeSettings;
+	keySet: boolean;
+};
+
+/** What keeping a choice gives. */
+export type AiSaved = { ok: true; choice: AiChoice } | Failure;
+
 /** What "Changes to review" shows: the periods, the sets, and the units and exams jobs. */
 export type ChangesState =
 	| {
@@ -566,6 +580,10 @@ export type StudioApi = {
 	): Promise<NotesWritten>;
 	/** Tells the page how far a notes run has got. */
 	onNotesProgress(callback: (progress: NotesProgress) => void): () => void;
+	/** How the author uses AI on this computer, and the settings the Settings screen shows. */
+	aiState(): Promise<AiState>;
+	/** Keeps how the author uses AI (task 244). */
+	saveAi(choice: AiChoice): Promise<AiSaved>;
 	/** Keeps the OpenRouter key in safeStorage; the page only learns that it was kept. */
 	saveKey(key: string): Promise<Done>;
 	/** Forgets the key on this computer. */

@@ -20,6 +20,7 @@ import { Toast } from "./Chrome";
 import { LanguageProvider } from "./i18n";
 import { OpenBundle } from "./OpenBundle";
 import { ProjectView } from "./ProjectView";
+import { AiProvider } from "./Settings";
 import { StartScreen } from "./StartScreen";
 
 export { failureText };
@@ -141,68 +142,72 @@ export function App() {
 
 	return (
 		<LanguageProvider lang={lang}>
-			{screen.kind === "start" && (
-				<StartScreen
-					lang={lang}
-					onLanguage={setLang}
-					onNew={async () => {
-						const root = await chooseFolder("new");
-						if (root !== null) setScreen({ kind: "wizard", root, guess: [] });
-					}}
-					onOpen={async () => {
-						const root = await chooseFolder("open");
-						if (root !== null) await openRoot(root);
-					}}
-					onAdopt={async () => {
-						const opened = await window.studio.adoptProject();
-						// A folder adopted before opens as it is; say so, so the author knows
-						// nothing was written a second time.
-						if (opened.ok && opened.already === true)
-							sayMessage("toast.alreadyProject");
-						showOpened(opened.ok ? opened.root : "", opened);
-					}}
-					onBundle={async () => showBundle(await window.studio.chooseBundle())}
-					onRecent={openRecent}
-				/>
-			)}
-			{screen.kind === "wizard" && (
-				<Wizard
-					root={screen.root}
-					guess={screen.guess}
-					lang={lang}
-					onLanguage={setLang}
-					onCancel={() => setScreen({ kind: "start" })}
-					onCreated={onOpened}
-					subjects={studioSubjects}
-				/>
-			)}
-			{screen.kind === "project" && (
-				<ProjectView
-					key={screen.root}
-					root={screen.root}
-					project={screen.project}
-					tree={screen.tree}
-					lang={lang}
-					onLanguage={setLang}
-					onNotify={say}
-					onStart={() => setScreen({ kind: "start" })}
-					onProjectReload={() => {
-						void openRoot(screen.root);
-					}}
-				/>
-			)}
-			{bundle !== null && (
-				<OpenBundle
-					lang={lang}
-					info={bundle.info}
-					issues={bundle.issues}
-					onClose={() => setBundle(null)}
-					onOpened={(opened) => {
-						setBundle(null);
-						onOpened(opened);
-					}}
-				/>
-			)}
+			<AiProvider onNotify={say}>
+				{screen.kind === "start" && (
+					<StartScreen
+						lang={lang}
+						onLanguage={setLang}
+						onNew={async () => {
+							const root = await chooseFolder("new");
+							if (root !== null) setScreen({ kind: "wizard", root, guess: [] });
+						}}
+						onOpen={async () => {
+							const root = await chooseFolder("open");
+							if (root !== null) await openRoot(root);
+						}}
+						onAdopt={async () => {
+							const opened = await window.studio.adoptProject();
+							// A folder adopted before opens as it is; say so, so the author knows
+							// nothing was written a second time.
+							if (opened.ok && opened.already === true)
+								sayMessage("toast.alreadyProject");
+							showOpened(opened.ok ? opened.root : "", opened);
+						}}
+						onBundle={async () =>
+							showBundle(await window.studio.chooseBundle())
+						}
+						onRecent={openRecent}
+					/>
+				)}
+				{screen.kind === "wizard" && (
+					<Wizard
+						root={screen.root}
+						guess={screen.guess}
+						lang={lang}
+						onLanguage={setLang}
+						onCancel={() => setScreen({ kind: "start" })}
+						onCreated={onOpened}
+						subjects={studioSubjects}
+					/>
+				)}
+				{screen.kind === "project" && (
+					<ProjectView
+						key={screen.root}
+						root={screen.root}
+						project={screen.project}
+						tree={screen.tree}
+						lang={lang}
+						onLanguage={setLang}
+						onNotify={say}
+						onStart={() => setScreen({ kind: "start" })}
+						onProjectReload={() => {
+							void openRoot(screen.root);
+						}}
+					/>
+				)}
+				{bundle !== null && (
+					<OpenBundle
+						lang={lang}
+						info={bundle.info}
+						issues={bundle.issues}
+						onClose={() => setBundle(null)}
+						onOpened={(opened) => {
+							setBundle(null);
+							onOpened(opened);
+						}}
+					/>
+				)}
+			</AiProvider>
 			<Toast text={toast} />
 		</LanguageProvider>
 	);
