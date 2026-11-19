@@ -55,7 +55,15 @@ export type Edit =
 	| { kind: "unit.add"; period: string; title: string }
 	| { kind: "unit.delete"; unit: number }
 	| { kind: "unit.move"; unit: number; by: -1 | 1 }
-	| { kind: "unit.period"; unit: number; period: string };
+	| { kind: "unit.period"; unit: number; period: string }
+	| { kind: "unit.keywords"; unit: number; text: string }
+	| { kind: "unit.evidence"; unit: number; text: string }
+	| {
+			kind: "lesson.activity";
+			unit: number;
+			lesson: number;
+			activity: "reading" | "writing" | null;
+	  };
 
 /** What an edit gave: the new course, or why it can't be made. */
 export type Edited =
@@ -80,6 +88,9 @@ const KINDS = new Set<Edit["kind"]>([
 	"unit.delete",
 	"unit.move",
 	"unit.period",
+	"unit.keywords",
+	"unit.evidence",
+	"lesson.activity",
 ]);
 
 /** A whole number in a range, or null. */
@@ -114,7 +125,16 @@ export function cleanEdit(value: unknown): Edit | null {
 	const after = int(raw.after, -1, 999) ?? -1;
 	const to = int(raw.to, 0, 999) ?? 0;
 	const by: -1 | 1 = raw.by === -1 ? -1 : 1;
-	const text = line(raw.text, BUNDLE_LIMITS.factChars + 1);
+	// An add takes several lines (task 251), so its text may be as long as a full lesson.
+	const text = line(
+		raw.text,
+		(BUNDLE_LIMITS.factChars + 1) *
+			Math.max(BUNDLE_LIMITS.facts, BUNDLE_LIMITS.listItems),
+	);
+	const activity =
+		raw.activity === "reading" || raw.activity === "writing"
+			? raw.activity
+			: null;
 	const title = line(raw.title, BUNDLE_LIMITS.title + 1);
 	const period = line(raw.period, 40);
 	return {
@@ -129,7 +149,16 @@ export function cleanEdit(value: unknown): Edit | null {
 		text,
 		title,
 		period,
+		activity,
 	} as Edit;
+}
+
+/** The non-empty lines of a text, trimmed: one fact, skill or list item each. */
+function linesOf(text: string): string[] {
+	return text
+		.split(/\r?\n/)
+		.map((entry) => entry.trim())
+		.filter((entry) => entry !== "");
 }
 
 /** A deep copy, so an edit never changes the course it was given. */
@@ -218,12 +247,19 @@ export function applyEdit(
 				return done();
 			}
 			case "fact.add": {
-				if (lesson.facts.length >= BUNDLE_LIMITS.facts)
+				// Each non-empty line is one fact, in order (task 251).
+				const lines = linesOf(edit.text);
+				if (lines.length === 0) return fail("Write the fact first.");
+				if (lesson.facts.length + lines.length > BUNDLE_LIMITS.facts)
 					return fail(`A lesson has at most ${BUNDLE_LIMITS.facts} facts.`);
-				const text = checked(edit.text, BUNDLE_LIMITS.factChars);
-				if (!text.ok) return fail(text.issue);
+				const facts: ModelFact[] = [];
+				for (const entry of lines) {
+					const text = checked(entry, BUNDLE_LIMITS.factChars);
+					if (!text.ok) return fail(text.issue);
+					facts.push(ownFact(text.text));
+				}
 				const at = Math.min(Math.max(edit.after + 1, 0), lesson.facts.length);
-				lesson.facts.splice(at, 0, ownFact(text.text));
+				lesson.facts.splice(at, 0, ...facts);
 				return done();
 			}
 			case "fact.delete":
@@ -245,11 +281,15 @@ export function applyEdit(
 				return done();
 			}
 			case "skill.add": {
-				if (lesson.skills.length >= BUNDLE_LIMITS.skills)
+				const lines = linesOf(edit.text);
+				if (lines.length === 0) return fail("Write the skill first.");
+				if (lesson.skills.length + lines.length > BUNDLE_LIMITS.skills)
 					return fail(`A lesson has at most ${BUNDLE_LIMITS.skills} skills.`);
-				const text = checked(edit.text, BUNDLE_LIMITS.skillChars);
-				if (!text.ok) return fail(text.issue);
-				lesson.skills.push({ id: newId(), code: null, text: text.text });
+				for (const entry of lines) {
+					const text = checked(entry, BUNDLE_LIMITS.skillChars);
+					if (!text.ok) return fail(text.issue);
+					lesson.skills.push({ id: newId(), code: null, text: text.text });
+				}
 				return done();
 			}
 			case "skill.delete":
@@ -370,6 +410,29 @@ export function applyEdit(
 				return fail("That unit can't move that way.");
 			renumberUnits(course);
 			return done();
+		case "unit.keywords":
+		case "unit.evidence": {
+			const unit = findUnit(edit.unit);
+			if (unit === null) return fail("That unit is not there any more.");
+			const lines = linesOf(edit.text);
+			if (lines.length > BUNDLE_LIMITS.listItems)
+				return fail(`At most ${BUNDLE_LIMITS.listItems} lines.`);
+			const list: string[] = [];
+			for (const entry of lines) {
+				const text = checked(entry, BUNDLE_LIMITS.listChars);
+				if (!text.ok) return fail(text.issue);
+				list.push(text.text);
+			}
+			if (edit.kind === "unit.keywords") unit.keywords = list;
+			else unit.evidence = list;
+			return done();
+		}
+		case "lesson.activity": {
+			const lesson = findLesson(findUnit(edit.unit), edit.lesson);
+			if (lesson === null) return fail("That lesson is not there any more.");
+			lesson.activity = edit.activity;
+			return done();
+		}
 		case "unit.period": {
 			const unit = findUnit(edit.unit);
 			if (unit === null) return fail("That unit is not there any more.");

@@ -282,3 +282,112 @@ describe("what a page sends", () => {
 		});
 	});
 });
+
+describe("typing a curriculum by hand (task 251)", () => {
+	it("adds several facts and skills in one edit, one per line, in order", () => {
+		const added = edited({
+			kind: "fact.add",
+			unit: 1,
+			lesson: 2,
+			after: 0,
+			text: "First\n\n  Second  \nThird\n",
+		});
+		expect(facts(added, 0, 1)).toEqual(["D", "First", "Second", "Third"]);
+		expect(
+			added.units[0]?.lessons[1]?.facts.every(
+				(fact) => fact.text === "D" || fact.own,
+			),
+		).toBe(true);
+		const skills = edited({
+			kind: "skill.add",
+			unit: 1,
+			lesson: 1,
+			text: "one\ntwo",
+		});
+		expect(
+			skills.units[0]?.lessons[0]?.skills.map((skill) => skill.text),
+		).toEqual(["a skill", "one", "two"]);
+	});
+
+	it("refuses the whole paste when it passes a limit or a line is too long", () => {
+		const many = Array.from(
+			{ length: BUNDLE_LIMITS.facts },
+			(_, i) => `F${i}`,
+		).join("\n");
+		expect(
+			applyEdit(
+				course(),
+				{ kind: "fact.add", unit: 1, lesson: 1, after: 2, text: many },
+				PERIODS,
+				newId,
+			).ok,
+		).toBe(false);
+		expect(
+			applyEdit(
+				course(),
+				{
+					kind: "fact.add",
+					unit: 1,
+					lesson: 1,
+					after: 2,
+					text: `fine\n${"x".repeat(BUNDLE_LIMITS.factChars + 1)}`,
+				},
+				PERIODS,
+				newId,
+			).ok,
+		).toBe(false);
+		// A paste of many facts passes the clamp whole.
+		const clamped = cleanEdit({
+			kind: "fact.add",
+			unit: 1,
+			lesson: 1,
+			after: 0,
+			text: "a\n".repeat(20),
+		});
+		expect(clamped).toMatchObject({ text: "a\n".repeat(20) });
+	});
+
+	it("edits a unit's key words and evidence, one per line, and a lesson's activity", () => {
+		const words = edited({
+			kind: "unit.keywords",
+			unit: 1,
+			text: "cell\nnucleus\n",
+		});
+		expect(words.units[0]?.keywords).toEqual(["cell", "nucleus"]);
+		const evidence = edited({
+			kind: "unit.evidence",
+			unit: 2,
+			text: "label a diagram, 4 marks",
+		});
+		expect(evidence.units[1]?.evidence).toEqual(["label a diagram, 4 marks"]);
+		const tooMany = Array.from(
+			{ length: BUNDLE_LIMITS.listItems + 1 },
+			(_, i) => `w${i}`,
+		).join("\n");
+		expect(
+			applyEdit(
+				course(),
+				{ kind: "unit.keywords", unit: 1, text: tooMany },
+				PERIODS,
+				newId,
+			).ok,
+		).toBe(false);
+		const reading = edited({
+			kind: "lesson.activity",
+			unit: 1,
+			lesson: 1,
+			activity: "reading",
+		});
+		expect(reading.units[0]?.lessons[0]?.activity).toBe("reading");
+		expect(
+			cleanEdit({
+				kind: "lesson.activity",
+				unit: 1,
+				lesson: 1,
+				activity: "dancing",
+			}),
+		).toMatchObject({
+			activity: null,
+		});
+	});
+});

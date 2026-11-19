@@ -88,16 +88,21 @@ function FirstStepsList({
 	onExport: () => void;
 }) {
 	const say = useSay();
+	// A curriculum typed by hand has units and no book: its book steps are not needed (task 251).
+	const typed = steps?.units === true && steps.material !== true;
 	const rows: {
 		done: boolean;
 		text: TextKey;
 		action?: { label: TextKey; run: () => void };
 	}[] = [
-		{ done: steps?.material === true, text: "steps.put" },
 		{
-			done: steps?.read === true,
-			text: "steps.read",
-			action: { label: "new.scan", run: onRead },
+			done: steps?.material === true || typed,
+			text: typed ? "steps.notNeeded" : "steps.put",
+		},
+		{
+			done: steps?.read === true || typed,
+			text: typed ? "steps.notNeeded" : "steps.read",
+			action: typed ? undefined : { label: "new.scan", run: onRead },
 		},
 		{
 			done: steps?.units === true,
@@ -114,8 +119,9 @@ function FirstStepsList({
 		<section className="first-steps" aria-label={say("steps.title")}>
 			<h2>{say("steps.title")}</h2>
 			<ol>
-				{rows.map((row) => (
-					<li key={row.text} className={row.done ? "step-done" : ""}>
+				{rows.map((row, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: the four steps never move.
+					<li key={index} className={row.done ? "step-done" : ""}>
 						<span className="step-tick" aria-hidden="true">
 							{row.done ? "✓" : ""}
 						</span>
