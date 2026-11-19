@@ -635,6 +635,8 @@ export type ChangeReview = {
 	exams: ReviewExam[];
 	open: OpenQuestion[];
 	refused: ChangeRefusal[];
+	/** What the teacher asked for, when the proposal answers one request (task 248); "" else. */
+	request: string;
 };
 
 /** The set paired with the course as it is now, for the review's side by side. */

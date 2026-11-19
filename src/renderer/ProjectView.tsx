@@ -636,6 +636,7 @@ export function ProjectView({
 						openCourse={coursePick}
 						onChanged={reloadProject}
 						onBuild={setBook}
+						onOpenReview={() => setTab("changes")}
 					/>
 				</div>
 			)}

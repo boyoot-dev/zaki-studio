@@ -16,6 +16,7 @@ import type { Failure } from "../shared/api.ts";
 import type { CurriculumModel, FileRow } from "../shared/model.ts";
 import { emptyCourse } from "../shared/model.ts";
 import { cost } from "../shared/notes.ts";
+import { requestScope } from "../shared/request.ts";
 import {
 	changeEstimate,
 	changeInput,
@@ -176,6 +177,9 @@ export type WriteChangeInput = {
 	/** A test passes its own; the app gets the real OpenRouter request. */
 	ask?: AskNotes;
 	now?: () => Date;
+	/** One teacher's request (task 248): the answer must keep to this unit, and the request
+	 * is kept with the proposal for Review. */
+	request?: { unit: number; text: string };
 };
 
 /** What writing one change set gave: what was kept, and what it spent. */
@@ -260,6 +264,12 @@ export async function writeChangeSet(
 					code: "refused",
 					detail: "the reply is not a change set's JSON",
 				};
+			const outside =
+				input.request === undefined
+					? null
+					: requestScope(value, input.request.unit);
+			if (outside !== null)
+				return { ok: false, code: "refused", detail: outside };
 			const saved = saveChangeSet(
 				input.root,
 				input.model,
@@ -269,6 +279,7 @@ export async function writeChangeSet(
 				"key",
 				input.modelName,
 				input.today,
+				input.request?.text,
 			);
 			if (!saved.ok) return saved;
 			return { ok: true, spentUsd: spent };

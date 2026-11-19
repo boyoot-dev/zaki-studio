@@ -439,6 +439,14 @@ export type EditReply =
 	  }
 	| Failure;
 
+/** What one request would cost with the key (task 248); null without a price. */
+export type RequestCost = { ok: true; costUsd: number | null } | Failure;
+
+/** The browser way's one round for a request: the file (shown in Explorer) and the message. */
+export type RequestUpload =
+	| { ok: true; path: string; message: string }
+	| Failure;
+
 /** How far a build with a key is. */
 export type BookProgress =
 	| { stage: "reading" }
@@ -724,6 +732,32 @@ export type StudioApi = {
 		language: string,
 		edit: import("./edit").Edit,
 	): Promise<EditReply>;
+	/** What one request to the AI would cost with the key (task 248). */
+	requestCost(
+		root: string,
+		request: import("./request").UnitRequest,
+	): Promise<RequestCost>;
+	/** Prepares a units job for one request, for the author's AI tool. */
+	prepareRequest(
+		root: string,
+		request: import("./request").UnitRequest,
+	): Promise<JobMade>;
+	/** Sends one request with the key, and keeps the answer for review. */
+	sendRequest(
+		root: string,
+		request: import("./request").UnitRequest,
+	): Promise<ChangesWritten>;
+	/** Writes the browser way's upload for one request and shows it in Explorer. */
+	requestUpload(
+		root: string,
+		request: import("./request").UnitRequest,
+	): Promise<RequestUpload>;
+	/** Checks a pasted answer to one request and keeps it for review. */
+	answerRequest(
+		root: string,
+		request: import("./request").UnitRequest,
+		answer: string,
+	): Promise<RoundAnswered>;
 	/** Undoes the last hand edit of this session. */
 	undoEdit(root: string): Promise<EditReply>;
 	/** Where a course period's browser rounds are. */

@@ -2010,3 +2010,12 @@ details.older > summary {
 	font-size: 0.75rem;
 	opacity: 0.75;
 }
+
+/* "You asked: …" on a proposal that answers one request (task 248). */
+.asked {
+	margin: 4px 0 0;
+	padding: 6px 10px;
+	border-inline-start: 3px solid var(--accent);
+	background: var(--accent-soft);
+	border-radius: 4px;
+}

@@ -54,6 +54,7 @@ import { type JobTool, jobModel, validJobName } from "../shared/job.ts";
 import type { CurriculumModel, FileRow, ModelCourse } from "../shared/model.ts";
 import { emptyCourse, sameCourse } from "../shared/model.ts";
 import { DEFAULT_LIMIT_USD, isoDay } from "../shared/notes.ts";
+import { requestScope } from "../shared/request.ts";
 import {
 	type AcceptChoice,
 	acceptKey,
@@ -247,6 +248,8 @@ export type StoredChange = {
 	newUnits?: boolean;
 	/** The course's teaching language; a set from before task 224 has none and is converted. */
 	language?: string;
+	/** What the teacher asked for, when the set answers one request (task 248). */
+	request?: string;
 	set: unknown;
 };
 
@@ -275,6 +278,9 @@ function storedAt(path: string | null): StoredChange | null {
 				: [],
 			newUnits: raw.newUnits === true,
 			...(typeof raw.language === "string" ? { language: raw.language } : {}),
+			...(typeof raw.request === "string"
+				? { request: raw.request.slice(0, 600) }
+				: {}),
 			set: raw.set,
 		};
 	} catch {
@@ -415,6 +421,7 @@ export function readChangeSets(
 			source: stored.source,
 			model: stored.model,
 			accepted: stored.accepted,
+			request: stored.request ?? "",
 		};
 		// A set from before task 224 names a language copy (`chemistry-ar`) and no language.
 		const named =
@@ -533,6 +540,8 @@ export function saveChangeSet(
 	source: "key" | "job",
 	modelName: string,
 	today: Date,
+	/** What the teacher asked for, when the set answers one request (task 248). */
+	request?: string,
 ): Failure | { ok: true } {
 	// A set written for a period with no unit yet may still add its units after the author has
 	// accepted one of them; the set on disk remembers that it was made that way.
@@ -549,6 +558,7 @@ export function saveChangeSet(
 		model: modelName,
 		accepted: [],
 		newUnits: allowNewUnits || given.units.length === 0,
+		...(request === undefined ? {} : { request }),
 		set,
 	});
 }
@@ -903,6 +913,22 @@ export function collectUnitsJob(
 	return collectUnitsFrom({ ...input, folder });
 }
 
+/** The request a units job answers, from its request.json, or null for an ordinary job. */
+export function jobRequest(
+	folder: string,
+): { unit: number; text: string } | null {
+	try {
+		const value = JSON.parse(
+			readFileSync(join(folder, "request.json"), "utf8"),
+		) as Record<string, unknown>;
+		return typeof value.unit === "number" && typeof value.text === "string"
+			? { unit: value.unit, text: value.text.slice(0, 600) }
+			: null;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Keeps every change set in a units folder's out/ that passes the checks. `files` are the rows
  * a source may name: the whole register, or for a "Build from my book" job only its course's
@@ -915,6 +941,8 @@ export function collectUnitsFrom(
 	const folder = input.folder;
 	const record = jobRecord(folder);
 	if (record?.kind !== "units") return failure("invalidName");
+	// A job for one teacher's request carries it (task 248).
+	const asked = jobRequest(folder);
 	const folders = new Map(
 		record.courses.flatMap((course) => {
 			const target = targetOf(
@@ -980,9 +1008,10 @@ export function collectUnitsFrom(
 		const given = givenFor(input.root, input.model, input.files, wanted);
 		const parsed = parseChangeSet(value, given);
 		const outside =
-			input.strictSources === true &&
-			parsed.ok &&
-			parsed.refused.some((item) => /\.sources\[\d+\]$/.test(item.path));
+			(input.strictSources === true &&
+				parsed.ok &&
+				parsed.refused.some((item) => /\.sources\[\d+\]$/.test(item.path))) ||
+			(asked !== null && requestScope(value, asked.unit) !== null);
 		if (!parsed.ok || outside) {
 			outcome.refused.push({ name: entry, code: "invalid" });
 			continue;
@@ -1001,6 +1030,7 @@ export function collectUnitsFrom(
 			"job",
 			jobModel(record.tool),
 			input.today,
+			asked?.text,
 		);
 		if (saved.ok) outcome.collected.push(target ?? entry);
 		else outcome.refused.push({ name: entry, code: "invalid" });

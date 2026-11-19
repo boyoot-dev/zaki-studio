@@ -61,6 +61,8 @@ import type {
 	NoteText,
 	ProjectOpen,
 	RecentProject,
+	RequestCost,
+	RequestUpload,
 	RoundAnswered,
 	RoundsReply,
 	Scanned,
@@ -82,6 +84,7 @@ import { notingOrder } from "../shared/notes.ts";
 import { ALL_NOTES, notesFilterOf } from "../shared/notes-filter.ts";
 import { rememberRecent } from "../shared/recent.ts";
 import { currentAcademicYear } from "../shared/register.ts";
+import { cleanRequest } from "../shared/request.ts";
 import {
 	type AcceptChoice,
 	changeName,
@@ -189,6 +192,12 @@ import {
 import { ocrEngine } from "./ocr.ts";
 import { modelInfo, testKey } from "./openrouter.ts";
 import { openRenderer } from "./render.ts";
+import {
+	answerRequest,
+	prepareRequestJob,
+	requestContext,
+	requestUpload,
+} from "./request.ts";
 import { studioRootPath } from "./root.ts";
 import { answerRound, readRounds, roundsView, startRounds } from "./rounds.ts";
 import { scanProject } from "./scan.ts";
@@ -1406,6 +1415,140 @@ export function registerIpc(): void {
 			undo: got.undo,
 		};
 	});
+
+	// One teacher's request to the AI (task 248), the three ways.
+	/** The request and its context, or why not; every field of the request is clamped first. */
+	const requestFor = (where: string, value: unknown) => {
+		const request = cleanRequest(value);
+		if (request === null) return failure("invalidName");
+		const model = readModel(where);
+		if (!model.ok) return model;
+		const files = readFiles(where);
+		if (!files.ok) return files;
+		const unitRules = unitsRulesText();
+		if (unitRules === "") return failure("missing");
+		const context = requestContext(
+			model.model,
+			files.files,
+			request,
+			unitRules,
+		);
+		if (!("target" in context)) return context;
+		return { request, context, model: model.model, files: files.files };
+	};
+
+	ipcMain.handle(
+		"studio:requestCost",
+		async (event, root: unknown, value: unknown): Promise<RequestCost> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const got = requestFor(where, value);
+			if ("ok" in got) return got;
+			const plan = await planChangeSet(
+				where,
+				got.context.model,
+				got.context.rows,
+				got.context.target,
+				got.context.rules,
+				readUnitsSettings(userData()).model,
+			).catch(() => null);
+			return { ok: true, costUsd: plan?.estimateUsd ?? null };
+		},
+	);
+
+	ipcMain.handle(
+		"studio:prepareRequest",
+		(event, root: unknown, value: unknown): JobMade => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const choice = readAi(userData());
+			if (choice?.way !== "tool") return failure("missing");
+			const got = requestFor(where, value);
+			if ("ok" in got) return got;
+			const made = prepareRequestJob({
+				root: where,
+				context: got.context,
+				request: got.request,
+				curriculum: basename(where),
+				tool: choice.tool,
+				now: new Date(),
+			});
+			return made.ok ? { ...made, files: 1 } : made;
+		},
+	);
+
+	ipcMain.handle(
+		"studio:sendRequest",
+		async (event, root: unknown, value: unknown): Promise<ChangesWritten> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const key = loadKey(userData(), secrets);
+			if (key === null) return { ok: false, code: "noKey" };
+			const got = requestFor(where, value);
+			if ("ok" in got) return got;
+			const settings = readUnitsSettings(userData());
+			const prices = await modelInfo(settings.model).catch(() => null);
+			const written = await writeChangeSet({
+				root: where,
+				model: got.context.model,
+				rows: got.context.rows,
+				target: got.context.target,
+				rules: got.context.rules,
+				key,
+				modelName: settings.model,
+				priceIn: prices?.priceIn ?? null,
+				priceOut: prices?.priceOut ?? null,
+				limitUsd: settings.limit,
+				today: new Date(),
+				request: { unit: got.request.unit, text: got.request.text },
+			});
+			if (!written.ok) return written;
+			return { ok: true, spent: written.spentUsd };
+		},
+	);
+
+	ipcMain.handle(
+		"studio:requestUpload",
+		(event, root: unknown, value: unknown): RequestUpload => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const got = requestFor(where, value);
+			if ("ok" in got) return got;
+			const upload = requestUpload({
+				root: where,
+				context: got.context,
+				request: got.request,
+				now: new Date(),
+			});
+			if (!upload.ok) return upload;
+			// The Studio's own file, shown in Explorer so the teacher can drag it into the chat.
+			shell.showItemInFolder(upload.path);
+			return upload;
+		},
+	);
+
+	ipcMain.handle(
+		"studio:answerRequest",
+		(event, root: unknown, value: unknown, answer: unknown): RoundAnswered => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const got = requestFor(where, value);
+			if ("ok" in got) return got;
+			const pasted =
+				typeof answer === "string" ? answer.slice(0, 2_000_000) : "";
+			const kept = answerRequest({
+				root: where,
+				model: got.model,
+				rows: got.files,
+				request: got.request,
+				text: pasted,
+				today: new Date(),
+			});
+			return kept.ok
+				? { ok: true, accepted: true, issue: "", view: null }
+				: { ok: true, accepted: false, issue: kept.issue, view: null };
+		},
+	);
 
 	ipcMain.handle(
 		"studio:prepareBook",
