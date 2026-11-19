@@ -900,6 +900,19 @@ export function collectUnitsJob(
 	// link or a junction that leads elsewhere; only real folders the Studio made are read.
 	if (!realFolder(folder) || !realFolder(join(folder, "out")))
 		return failure("unreadable");
+	return collectUnitsFrom({ ...input, folder });
+}
+
+/**
+ * Keeps every change set in a units folder's out/ that passes the checks. `files` are the rows
+ * a source may name: the whole register, or for a "Build from my book" job only its course's
+ * files. With `strictSources` (a book job) a set with any source outside those files is
+ * refused whole: its sources must be the notes the job carried (task 246).
+ */
+export function collectUnitsFrom(
+	input: CollectUnitsInput & { folder: string; strictSources?: boolean },
+): UnitsCollected | Failure {
+	const folder = input.folder;
 	const record = jobRecord(folder);
 	if (record?.kind !== "units") return failure("invalidName");
 	const folders = new Map(
@@ -966,7 +979,11 @@ export function collectUnitsJob(
 		}
 		const given = givenFor(input.root, input.model, input.files, wanted);
 		const parsed = parseChangeSet(value, given);
-		if (!parsed.ok) {
+		const outside =
+			input.strictSources === true &&
+			parsed.ok &&
+			parsed.refused.some((item) => /\.sources\[\d+\]$/.test(item.path));
+		if (!parsed.ok || outside) {
 			outcome.refused.push({ name: entry, code: "invalid" });
 			continue;
 		}
