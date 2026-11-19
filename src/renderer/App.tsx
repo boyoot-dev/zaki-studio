@@ -9,6 +9,7 @@ import type {
 	BundleChoice,
 	BundleInfo,
 	Failure,
+	FolderPurpose,
 	GuessFolder,
 	ProjectOpen,
 	TreeNode,
@@ -107,8 +108,8 @@ export function App() {
 		showOpened(root, await window.studio.openRecent(root));
 
 	/** Asks for a folder with the system dialog; null when the author changed their mind. */
-	const chooseFolder = async (): Promise<string | null> =>
-		await window.studio.chooseFolder();
+	const chooseFolder = async (purpose: FolderPurpose): Promise<string | null> =>
+		await window.studio.chooseFolder(purpose);
 
 	/** Shows a curriculum file the main process read: its summary, or why it can't open. */
 	const showBundle = useCallback(
@@ -148,11 +149,11 @@ export function App() {
 					lang={lang}
 					onLanguage={setLang}
 					onNew={async () => {
-						const root = await chooseFolder();
+						const root = await chooseFolder("new");
 						if (root !== null) setScreen({ kind: "wizard", root, guess: [] });
 					}}
 					onOpen={async () => {
-						const root = await chooseFolder();
+						const root = await chooseFolder("open");
 						if (root !== null) await openRoot(root);
 					}}
 					onAdopt={async () => {

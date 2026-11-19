@@ -9,7 +9,7 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { NotesProgress, ScanProgress, StudioApi } from "../shared/api";
 
 const api: StudioApi = {
-	chooseFolder: () => ipcRenderer.invoke("studio:chooseFolder"),
+	chooseFolder: (purpose) => ipcRenderer.invoke("studio:chooseFolder", purpose),
 	openProject: (root) => ipcRenderer.invoke("studio:openProject", root),
 	adoptProject: () => ipcRenderer.invoke("studio:adoptProject"),
 	readModel: (root) => ipcRenderer.invoke("studio:model", root),

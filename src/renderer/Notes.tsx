@@ -371,12 +371,7 @@ export function Notes({
 		setCollected(answer);
 		setSelected(new Set());
 		setPlan(null);
-		onNotify(
-			say("notes.collected", {
-				n: answer.collected,
-				skipped: answer.skipped,
-			}),
-		);
+		onNotify(collectedText(answer, say));
 		await load();
 		onChanged();
 	};
@@ -845,12 +840,7 @@ export function Notes({
 				)}
 				{collected?.ok && (
 					<div>
-						<p className="muted">
-							{say("notes.collected", {
-								n: collected.collected,
-								skipped: collected.skipped,
-							})}
-						</p>
+						<p className="muted">{collectedText(collected, say)}</p>
 						{collected.refused.length > 0 && (
 							<ul className="new-list issues">
 								{collected.refused.map((entry) => (
@@ -908,6 +898,19 @@ function subjectName(id: string, lang: Lang): string {
 	const subject = studioSubjects.find((entry) => entry.id === id);
 	if (subject === undefined) return id;
 	return lang === "ar" ? subject.nameAr : subject.nameEn;
+}
+
+/** What collecting a job kept and skipped; a skip count of zero is left out. */
+function collectedText(
+	answer: { collected: number; skipped: number },
+	say: Say,
+): string {
+	return answer.skipped > 0
+		? say("notes.collectedSkipped", {
+				n: answer.collected,
+				skipped: answer.skipped,
+			})
+		: say("notes.collected", { n: answer.collected });
 }
 
 /** A file's own name, as the list shows it. */

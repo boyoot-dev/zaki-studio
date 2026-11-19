@@ -484,12 +484,19 @@ function examContext(
 	return { model: model.model, rows: files.files, target };
 }
 
+/** The folder dialog's title, which says what the chosen folder is for (task 238). */
+function folderTitle(purpose: unknown): string {
+	if (purpose === "new") return "Choose an empty folder for the new curriculum";
+	if (purpose === "open") return "Open a project folder";
+	return "Open a folder";
+}
+
 /** Registers every channel. */
 export function registerIpc(): void {
 	ipcMain.handle(
 		"studio:chooseFolder",
-		async (event): Promise<string | null> => {
-			const picked = await pickFolder({ title: "Open a folder" });
+		async (event, purpose): Promise<string | null> => {
+			const picked = await pickFolder({ title: folderTitle(purpose) });
 			// The one place a folder becomes usable: the author chose it themselves.
 			if (picked !== null) grant(event.sender, picked);
 			return picked;

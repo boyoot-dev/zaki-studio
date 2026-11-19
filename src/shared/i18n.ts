@@ -44,7 +44,7 @@ const en = {
 	"wizard.grades.title": "Which grades and subjects?",
 	"wizard.grades.hint":
 		"Choose the grades, then the subjects that belong to each.",
-	"wizard.grades.subjects": "{n} subjects",
+	"wizard.grades.subjects": "{n:subject}",
 	"wizard.grades.fix": "Choose at least one grade and one subject.",
 	"wizard.year.title": "How is the year split?",
 	"wizard.year.hint":
@@ -85,7 +85,7 @@ const en = {
 	"project.pickFile": "Choose a file to see it here.",
 	"project.pickFolder": "Choose a folder in the tree to drop files into it.",
 	"project.empty": "This folder is empty.",
-	"project.files": "{n} files",
+	"project.files": "{n:file}",
 	"project.tab.files": "Files",
 	"project.tab.curriculum": "Curriculum",
 	"project.export": "Export curriculum…",
@@ -147,8 +147,8 @@ const en = {
 	"curriculum.pageText": "The page's text",
 	"curriculum.noPageText": "No text was read from this page.",
 	"curriculum.fileMissing": "That file is not in the project any more.",
-	"curriculum.factCount": "{n} facts",
-	"curriculum.lessonCount": "{n} lessons",
+	"curriculum.factCount": "{n:fact}",
+	"curriculum.lessonCount": "{n:lesson}",
 	"curriculum.hideSource": "Hide the source",
 	"curriculum.showSource": "Show the source",
 
@@ -162,11 +162,11 @@ const en = {
 	// Export.
 	"export.title": "Export curriculum",
 	"export.summary": "This file will have:",
-	"export.courses": "{n} courses",
-	"export.units": "{n} units",
-	"export.lessons": "{n} lessons",
-	"export.facts": "{n} facts",
-	"export.exams": "{n} exams",
+	"export.courses": "{n:course}",
+	"export.units": "{n:unit}",
+	"export.lessons": "{n:lesson}",
+	"export.facts": "{n:fact}",
+	"export.exams": "{n:exam}",
 	"export.version": "Version {n}",
 	"export.author": "Your name, as the author",
 	"export.rights": "The rights sentence a parent reads before importing",
@@ -176,7 +176,7 @@ const en = {
 	"export.problems": "Nothing was written. These problems stop the file:",
 	"export.working": "Checking the file…",
 	"export.examWarnings":
-		"{n} exam numbers don't add up. The export still works.",
+		"Exam numbers that don't add up: {n:number}. The export still works.",
 	"export.examWarningCourse": "{course} · {n}",
 	"export.openExamCourse": "Open the course",
 
@@ -198,8 +198,8 @@ const en = {
 	"viewer.noText": "This Word file holds no text.",
 
 	// Actions and their results.
-	"toast.added": "Added {n} file(s).",
-	"toast.addedSkipped": "Added {n} file(s), skipped {skipped}.",
+	"toast.added": "Added {n:file}.",
+	"toast.addedSkipped": "Added {n:file}, skipped {skipped:file}.",
 	"toast.moved": "Moved.",
 	"toast.renamed": "Renamed.",
 	"toast.deleted": "Moved to the Recycle Bin.",
@@ -277,22 +277,22 @@ const en = {
 	"notes.tickShown": "Tick all shown ({n})",
 	"notes.untickShown": "Untick all shown",
 	"notes.none": "Every file has a note.",
-	"notes.chosen": "{n} chosen",
-	"notes.pages": "{n} pages",
+	"notes.chosen": "Chosen: {n:file}",
+	"notes.pages": "{n:page}",
 	"notes.estimating": "Working out the cost…",
 	"notes.estimate":
-		"Write notes for {files} files ({pages} pages, {images} image pages): about {cost} with {model}.",
+		"Write notes for {files:file} ({pages:page}, {images:imagePage}): about {cost} with {model}.",
 	"notes.costUnknown": "an unknown cost",
 	"notes.write": "Write the notes",
 	"notes.noKeyHint":
 		"Save a key, or prepare a job folder for your own AI tool below.",
 	"notes.starting": "Starting…",
 	"notes.progress": "Writing note {done} of {total}…",
-	"notes.wrote": "Wrote {n} notes.",
-	"notes.stopped": "Wrote {n} notes, then stopped at your spending limit.",
+	"notes.wrote": "Wrote {n:note}.",
+	"notes.stopped": "Wrote {n:note}, then stopped at your spending limit.",
 	"notes.failedLine": "{name} failed: {reason}",
 	"notes.failedTitle": "Files that were not written",
-	"notes.failedMore": "… and {n} more files that were not written.",
+	"notes.failedMore": "… and {n:file} without a note.",
 	"notes.jobTitle": "Write with your own AI tool",
 	"notes.jobIntro":
 		"The Studio writes a folder with a fixed prompt. Paste the prompt into your tool; it writes the notes into the folder, and you collect them here. The Studio never runs another program.",
@@ -300,15 +300,17 @@ const en = {
 	"notes.tool.claude-code": "Claude Code",
 	"notes.tool.other": "Another AI tool",
 	"notes.prepare": "Prepare a job for my AI tool",
-	"notes.jobReady": "The job is ready for {n} files.",
+	"notes.jobReady": "The job is ready for {n:file}.",
 	"notes.promptHint": "The job folder is {path}. Paste this into your tool:",
 	"notes.copy": "Copy the prompt",
 	"notes.copied": "Copied.",
 	"notes.jobs": "Jobs",
 	"notes.jobsNone": "No job yet.",
-	"notes.jobLine": "{created} · {tool} · {files} files",
+	"notes.jobLine": "{created} · {tool} · {files:file}",
 	"notes.collect": "Collect the notes",
-	"notes.collected": "Kept {n} notes, and skipped {skipped} already kept.",
+	"notes.collected": "Kept: {n:note}.",
+	"notes.collectedSkipped":
+		"Kept: {n:note}. Skipped, already kept: {skipped:note}.",
 	"notes.deleteJob": "Delete",
 	"notes.refusal.name": "not a note of this job (the name must be <id>.md)",
 	"notes.refusal.link": "it is a link, not a file",
@@ -344,9 +346,9 @@ const en = {
 	"changes.saveSettings": "Save",
 	"changes.targets": "Course periods",
 	"changes.targetLine":
-		"{units} units · {lessons} lessons · {files} files · {notes} with a note",
+		"{units:unit} · {lessons:lesson} · {files:file} · {notes} with a note",
 	"changes.pending": "a change set is waiting",
-	"changes.plan": "{units} units and {notes} notes: about {cost} with {model}.",
+	"changes.plan": "{units:unit} and {notes:note}: about {cost} with {model}.",
 	"changes.noPrice":
 		"The model's price is not known, so the cost cannot be shown.",
 	"changes.write": "Write with my key",
@@ -360,12 +362,14 @@ const en = {
 	"changes.jobIntro":
 		"The Studio writes a folder with a fixed prompt. Paste it into your tool; it writes one change set per course folder, and you collect them here. The Studio never drives another program.",
 	"changes.prepare": "Prepare a job for my AI tool",
-	"changes.jobReady": "The job is ready for {n} course folders.",
+	"changes.jobReady": "The job is ready for {n:courseFolder}.",
 	"changes.collect": "Collect the change sets",
-	"changes.collected": "Collected {n}; skipped {skipped} already waiting.",
+	"changes.collected": "Collected: {n:changeSet}.",
+	"changes.collectedSkipped":
+		"Collected: {n:changeSet}. Skipped, already waiting: {skipped:changeSet}.",
 	"changes.jobs": "Jobs",
 	"changes.jobsNone": "No job yet.",
-	"changes.jobLine": "{created} · {tool} · {n} course folders",
+	"changes.jobLine": "{created} · {tool} · {n:courseFolder}",
 	"changes.review": "Waiting for review",
 	"changes.none": "No change set is waiting.",
 	"changes.now": "Now",
@@ -406,15 +410,15 @@ const en = {
 	"changes.examTargets": "Courses with exam papers",
 	"changes.examTargetsNone":
 		"No course has an exam paper or mark scheme with a note yet.",
-	"changes.examTargetLine": "{exams} exams · {files} files · {notes} notes",
+	"changes.examTargetLine": "{exams:exam} · {files:file} · {notes:note}",
 	"changes.examYears": "Older years left out: {years}",
 	"changes.examPlan":
-		"{exams} exams and {notes} notes: about {cost} with {model}.",
+		"{exams:exam} and {notes:note}: about {cost} with {model}.",
 	"changes.examJobTitle": "Exam papers with my AI tool",
 	"changes.examJobIntro":
 		"Prepare one folder per course with its exam notes, then collect the exam change sets your tool writes.",
 	"changes.examPrepare": "Prepare an exams job",
-	"changes.examJobReady": "The exams job is ready for {n} course folders.",
+	"changes.examJobReady": "The exams job is ready for {n:courseFolder}.",
 	"changes.examWrite": "Write the exams with my key",
 	"changes.examPickHint": "Tick the courses to put in one exams job.",
 	"changes.examsNone": "No exam change set is waiting.",
@@ -427,9 +431,9 @@ const en = {
 	"changes.sources": "Read from",
 
 	// The numbers an exam states about the same thing (task 192).
-	"examNumbers.summary": "{n} numbers don't add up.",
+	"examNumbers.summary": "Numbers that don't add up: {n:number}.",
 	"examNumbers.fix": "Fix",
-	"examNumbers.count-types": "{sum} typed questions, but the count is {count}",
+	"examNumbers.count-types": "{sum:question} typed, but the count is {count}",
 	"examNumbers.total-each":
 		"marksEach {each} × {count} is not totalMarks {total}",
 	"examNumbers.total-by-type":
@@ -478,13 +482,13 @@ const en = {
 	"new.scan": "Look for new material",
 	"new.stop": "Stop",
 	"new.starting": "Looking…",
-	"new.reading": "Looking in the folders… {found} files, {read} read",
+	"new.reading": "Looking in the folders… {found:file}, {read} read",
 	"new.pictures": "Drawing the pages that are pictures… {done} of {pages}",
 	"new.ocr": "Reading the picture pages… {done} of {pages}",
-	"new.finished": "Finished: {done} of {pages} pages read.",
+	"new.finished": "Finished: {done} of {pages:page} read.",
 	"new.firstScan": "The first look.",
 	"new.since": "Since {since}.",
-	"new.counts": "{found} files · {read} read · {new} new",
+	"new.counts": "{found:file} · {read} read · {new} new",
 	"new.emptyFirst": "Nothing new on the first look.",
 	"new.none": "Nothing new since {since}.",
 	"new.noGrade": "no grade",
@@ -494,7 +498,7 @@ const en = {
 	"new.year.none": "no year",
 	"new.noDate": "no date",
 	"new.authority": "authority {n}",
-	"new.pages": "{n} pages ({images} from pictures)",
+	"new.pages": "{n:page} ({images} from pictures)",
 	"new.affected": "The units it touches",
 	"new.affected.noCourse": "No course for this grade and subject yet.",
 	"new.affected.noUnit": "No unit for block {block}.",
@@ -509,11 +513,11 @@ const en = {
 	"new.why.noGrade": "no grade",
 	"new.why.error": "error: {detail}",
 	"new.why.copy": "a copy of {id}",
-	"new.copies": "Copies: {n}",
-	"new.moved": "Moved: {n}",
-	"new.removed": "Removed from the folders: {n}",
+	"new.copies": "Copied: {n:file}",
+	"new.moved": "Moved: {n:file}",
+	"new.removed": "Removed from the folders: {n:file}",
 	"new.tessdata":
-		"Some pages are still pictures. Run npm run tessdata, then look again.",
+		"Some pages are pictures the Studio could not read. Reinstall the Studio to fix this.",
 	"new.nothingYet": "Nothing has been looked for yet.",
 	"toast.scanned": "Looked for new material.",
 	"toast.saved": "Saved.",
@@ -559,7 +563,7 @@ const ar: Record<TextKey, string> = {
 	"wizard.name.fix": "صحِّح الحقول المعلَّمة.",
 	"wizard.grades.title": "أي صفوف ومواد؟",
 	"wizard.grades.hint": "اختر الصفوف، ثم المواد التي تتبع كل صف.",
-	"wizard.grades.subjects": "{n} مواد",
+	"wizard.grades.subjects": "{n:subject}",
 	"wizard.grades.fix": "اختر صفًا واحدًا ومادة واحدة على الأقل.",
 	"wizard.year.title": "كيف تُقسَّم السنة؟",
 	"wizard.year.hint": "كل وحدة تتبع جزءًا من السنة. والأسماء لك تغييرها.",
@@ -598,7 +602,7 @@ const ar: Record<TextKey, string> = {
 	"project.pickFile": "اختر ملفًا لعرضه هنا.",
 	"project.pickFolder": "اختر مجلدًا من الشجرة لإفلات الملفات فيه.",
 	"project.empty": "هذا المجلد فارغ.",
-	"project.files": "{n} ملفات",
+	"project.files": "{n:file}",
 	"project.tab.files": "الملفات",
 	"project.tab.curriculum": "المنهج",
 	"project.export": "صدِّر المنهج…",
@@ -658,8 +662,8 @@ const ar: Record<TextKey, string> = {
 	"curriculum.pageText": "نص الصفحة",
 	"curriculum.noPageText": "لم يُقرأ نصّ من هذه الصفحة.",
 	"curriculum.fileMissing": "هذا الملف لم يعد في المشروع.",
-	"curriculum.factCount": "{n} حقيقة",
-	"curriculum.lessonCount": "{n} درسًا",
+	"curriculum.factCount": "{n:fact}",
+	"curriculum.lessonCount": "{n:lesson}",
 	"curriculum.hideSource": "أخفِ المصدر",
 	"curriculum.showSource": "أظهر المصدر",
 
@@ -671,11 +675,11 @@ const ar: Record<TextKey, string> = {
 
 	"export.title": "تصدير المنهج",
 	"export.summary": "سيكون في هذا الملف:",
-	"export.courses": "{n} مقررًا",
-	"export.units": "{n} وحدة",
-	"export.lessons": "{n} درسًا",
-	"export.facts": "{n} حقيقة",
-	"export.exams": "{n} اختبارًا",
+	"export.courses": "{n:course}",
+	"export.units": "{n:unit}",
+	"export.lessons": "{n:lesson}",
+	"export.facts": "{n:fact}",
+	"export.exams": "{n:exam}",
 	"export.version": "الإصدار {n}",
 	"export.author": "اسمك، بصفتك المؤلف",
 	"export.rights": "جملة الحقوق التي يقرأها ولي الأمر قبل الاستيراد",
@@ -684,7 +688,8 @@ const ar: Record<TextKey, string> = {
 	"export.copy": "تُحفظ نسخة في هذا المشروع.",
 	"export.problems": "لم يُكتب شيء. هذه المشكلات تمنع الملف:",
 	"export.working": "جارٍ فحص الملف…",
-	"export.examWarnings": "{n} رقمًا في الامتحانات لا يتطابق. والتصدير يعمل.",
+	"export.examWarnings":
+		"أرقام في الامتحانات لا تتطابق: {n:number}. والتصدير يعمل.",
 	"export.examWarningCourse": "{course} · {n}",
 	"export.openExamCourse": "افتح المقرر",
 
@@ -703,8 +708,8 @@ const ar: Record<TextKey, string> = {
 	"viewer.loading": "جارٍ القراءة…",
 	"viewer.noText": "لا يوجد نص في ملف وورد هذا.",
 
-	"toast.added": "أُضيف {n} ملف.",
-	"toast.addedSkipped": "أُضيف {n} ملف، وتُخطِّي {skipped}.",
+	"toast.added": "المضاف: {n:file}.",
+	"toast.addedSkipped": "المضاف: {n:file}، والمتخطّى: {skipped:file}.",
 	"toast.moved": "نُقل.",
 	"toast.renamed": "أُعيدت التسمية.",
 	"toast.deleted": "نُقل إلى سلة المحذوفات.",
@@ -780,21 +785,21 @@ const ar: Record<TextKey, string> = {
 	"notes.tickShown": "تحديد كل المعروض ({n})",
 	"notes.untickShown": "إلغاء تحديد كل المعروض",
 	"notes.none": "لكل ملف ملاحظة.",
-	"notes.chosen": "اخترت {n}",
-	"notes.pages": "{n} صفحة",
+	"notes.chosen": "المختار: {n:file}",
+	"notes.pages": "{n:page}",
 	"notes.estimating": "جارٍ حساب الكلفة…",
 	"notes.estimate":
-		"كتابة الملاحظات لـ {files} ملفًا ({pages} صفحة، و{images} صفحة مصوّرة): نحو {cost} بالنموذج {model}.",
+		"كتابة الملاحظات لـ{files:file} ({pages:page}، و{images:imagePage}): نحو {cost} بالنموذج {model}.",
 	"notes.costUnknown": "كلفة غير معروفة",
 	"notes.write": "اكتب الملاحظات",
 	"notes.noKeyHint": "احفظ مفتاحًا، أو جهّز مجلد عمل لأداتك في الأسفل.",
 	"notes.starting": "جارٍ البدء…",
 	"notes.progress": "جارٍ كتابة الملاحظة {done} من {total}…",
-	"notes.wrote": "كُتبت {n} ملاحظة.",
-	"notes.stopped": "كُتبت {n} ملاحظة، ثم توقّف عند حدّ الإنفاق.",
+	"notes.wrote": "المكتوب: {n:note}.",
+	"notes.stopped": "المكتوب: {n:note}، ثم توقّف عند حدّ الإنفاق.",
 	"notes.failedLine": "فشل {name}: {reason}",
 	"notes.failedTitle": "ملفات لم تُكتب",
-	"notes.failedMore": "… و{n} ملفات أخرى لم تُكتب.",
+	"notes.failedMore": "… و{n:file} بلا ملاحظة.",
 	"notes.jobTitle": "الكتابة بأداتك",
 	"notes.jobIntro":
 		"يكتب الاستوديو مجلدًا فيه طلب ثابت. ألصق الطلب في أداتك؛ تكتب الملاحظات في المجلد، ثم تجمعها هنا. ولا يشغّل الاستوديو برنامجًا آخر.",
@@ -802,15 +807,17 @@ const ar: Record<TextKey, string> = {
 	"notes.tool.claude-code": "Claude Code",
 	"notes.tool.other": "أداة أخرى",
 	"notes.prepare": "جهّز عملًا لأداتي",
-	"notes.jobReady": "العمل جاهز لـ {n} ملفًا.",
+	"notes.jobReady": "العمل جاهز لـ{n:file}.",
 	"notes.promptHint": "مجلد العمل هو {path}. ألصق هذا في أداتك:",
 	"notes.copy": "انسخ الطلب",
 	"notes.copied": "نُسخ.",
 	"notes.jobs": "الأعمال",
 	"notes.jobsNone": "لا يوجد عمل بعد.",
-	"notes.jobLine": "{created} · {tool} · {files} ملفًا",
+	"notes.jobLine": "{created} · {tool} · {files:file}",
 	"notes.collect": "اجمع الملاحظات",
-	"notes.collected": "حُفظت {n} ملاحظة، وتُخطّي {skipped} محفوظة من قبل.",
+	"notes.collected": "المحفوظ: {n:note}.",
+	"notes.collectedSkipped":
+		"المحفوظ: {n:note}. والمتخطّى لأنه محفوظ: {skipped:note}.",
 	"notes.deleteJob": "احذف",
 	"notes.refusal.name": "ليس ملاحظة لهذا العمل (الاسم <id>.md)",
 	"notes.refusal.link": "رابط وليس ملفًا",
@@ -846,9 +853,9 @@ const ar: Record<TextKey, string> = {
 	"changes.saveSettings": "احفظ",
 	"changes.targets": "مراحل المقررات",
 	"changes.targetLine":
-		"{units} وحدة · {lessons} درسًا · {files} ملفًا · {notes} بملاحظة",
+		"{units:unit} · {lessons:lesson} · {files:file} · {notes} بملاحظة",
 	"changes.pending": "يوجد تغيير ينتظر",
-	"changes.plan": "{units} وحدة و{notes} ملاحظة: نحو {cost} بالنموذج {model}.",
+	"changes.plan": "{units:unit} و{notes:note}: نحو {cost} بالنموذج {model}.",
 	"changes.noPrice": "سعر النموذج غير معروف، فلا يمكن عرض الكلفة.",
 	"changes.write": "اكتب بمفتاحي",
 	"changes.confirmWrite": "اكتبه",
@@ -861,15 +868,17 @@ const ar: Record<TextKey, string> = {
 	"changes.jobIntro":
 		"يكتب الاستوديو مجلدًا فيه طلب ثابت. ألصق الطلب في أداتك؛ تكتب تغييرات لكل مجلد مقرر، ثم تجمعها هنا. ولا يشغّل الاستوديو برنامجًا آخر.",
 	"changes.prepare": "جهّز عملًا لأداتي",
-	"changes.jobReady": "العمل جاهز لـ {n} مجلد مقرر.",
+	"changes.jobReady": "العمل جاهز لـ{n:courseFolder}.",
 	"changes.collect": "اجمع التغييرات",
-	"changes.collected": "جُمع {n}، وتُخطّي {skipped} ينتظر من قبل.",
+	"changes.collected": "المجمّع: {n:changeSet}.",
+	"changes.collectedSkipped":
+		"المجمّع: {n:changeSet}. والمتخطّى لأنه ينتظر من قبل: {skipped:changeSet}.",
 	"changes.jobs": "الأعمال",
 	"changes.jobsNone": "لا يوجد عمل بعد.",
-	"changes.jobLine": "{created} · {tool} · {n} مجلد مقرر",
+	"changes.jobLine": "{created} · {tool} · {n:courseFolder}",
 	"changes.review": "تنتظر المراجعة",
 	"changes.none": "لا يوجد تغيير ينتظر.",
-	"changes.now": "الآن",
+	"changes.now": "الحالي",
 	"changes.proposed": "المقترح",
 	"changes.unit": "الوحدة {number}",
 	"changes.lesson": "الدرس {number}",
@@ -907,14 +916,14 @@ const ar: Record<TextKey, string> = {
 	"changes.examTargets": "المواد التي لها أوراق امتحان",
 	"changes.examTargetsNone":
 		"لا توجد مادة لها ورقة امتحان أو نموذج إجابة بملاحظة بعد.",
-	"changes.examTargetLine": "{exams} امتحانًا · {files} ملفًا · {notes} ملاحظة",
+	"changes.examTargetLine": "{exams:exam} · {files:file} · {notes:note}",
 	"changes.examYears": "السنوات الأقدم المستبعدة: {years}",
-	"changes.examPlan": "{exams} امتحانًا و{notes} ملاحظة: نحو {cost} مع {model}.",
+	"changes.examPlan": "{exams:exam} و{notes:note}: نحو {cost} مع {model}.",
 	"changes.examJobTitle": "أوراق الامتحان بأداتي",
 	"changes.examJobIntro":
 		"جهّز مجلدًا لكل مادة مع ملاحظات امتحاناتها، ثم اجمع تغييرات الامتحانات التي تكتبها أداتك.",
 	"changes.examPrepare": "جهّز مهمة امتحانات",
-	"changes.examJobReady": "مهمة الامتحانات جاهزة لـ {n} مجلد مادة.",
+	"changes.examJobReady": "مهمة الامتحانات جاهزة لـ{n:courseFolder}.",
 	"changes.examWrite": "اكتب الامتحانات بمفتاحي",
 	"changes.examPickHint": "علّم المواد التي تريد وضعها في مهمة امتحانات واحدة.",
 	"changes.examsNone": "لا يوجد تغيير امتحان في الانتظار.",
@@ -927,9 +936,9 @@ const ar: Record<TextKey, string> = {
 	"changes.sources": "مقروء من",
 
 	// أرقام الامتحان التي تصف الشيء نفسه (مهمة 192).
-	"examNumbers.summary": "{n} رقمًا لا يتطابق.",
+	"examNumbers.summary": "أرقام لا تتطابق: {n:number}.",
 	"examNumbers.fix": "صحِّح",
-	"examNumbers.count-types": "الأسئلة المحددة الأنواع {sum}، لكن العدد {count}",
+	"examNumbers.count-types": "{sum:question} محدَّدة الأنواع، لكن العدد {count}",
 	"examNumbers.total-each":
 		"marksEach {each} × {count} لا يساوي totalMarks {total}",
 	"examNumbers.total-by-type": "الأنواع تساوي {sum}، لا totalMarks {total}",
@@ -973,13 +982,13 @@ const ar: Record<TextKey, string> = {
 	"new.scan": "ابحث عن مواد جديدة",
 	"new.stop": "أوقف",
 	"new.starting": "جارٍ البحث…",
-	"new.reading": "جارٍ النظر في المجلدات… {found} ملفًا، قُرئ {read}",
+	"new.reading": "جارٍ النظر في المجلدات… {found:file}، قُرئ {read}",
 	"new.pictures": "جارٍ رسم الصفحات المصوّرة… {done} من {pages}",
 	"new.ocr": "جارٍ قراءة الصفحات المصوّرة… {done} من {pages}",
-	"new.finished": "انتهى: {done} من {pages} صفحة.",
+	"new.finished": "انتهى: {done} من {pages:page}.",
 	"new.firstScan": "أول فحص.",
 	"new.since": "منذ {since}.",
-	"new.counts": "{found} ملفًا · قُرئ {read} · الجديد {new}",
+	"new.counts": "{found:file} · قُرئ {read} · الجديد {new}",
 	"new.emptyFirst": "لا شيء جديد في أول فحص.",
 	"new.none": "لا شيء جديد منذ {since}.",
 	"new.noGrade": "بلا صف",
@@ -989,7 +998,7 @@ const ar: Record<TextKey, string> = {
 	"new.year.none": "بلا سنة",
 	"new.noDate": "بلا تاريخ",
 	"new.authority": "الجهة {n}",
-	"new.pages": "{n} صفحة ({images} من الصور)",
+	"new.pages": "{n:page} ({images} من الصور)",
 	"new.affected": "الوحدات المتأثرة",
 	"new.affected.noCourse": "لا يوجد مقرر لهذا الصف وهذه المادة بعد.",
 	"new.affected.noUnit": "لا توجد وحدة للمرحلة {block}.",
@@ -1003,11 +1012,11 @@ const ar: Record<TextKey, string> = {
 	"new.why.noGrade": "بلا صف",
 	"new.why.error": "خطأ: {detail}",
 	"new.why.copy": "نسخة من {id}",
-	"new.copies": "النسخ: {n}",
-	"new.moved": "المنقول: {n}",
-	"new.removed": "المحذوف من المجلدات: {n}",
+	"new.copies": "نُسخ: {n:file}",
+	"new.moved": "نُقل: {n:file}",
+	"new.removed": "حُذف من المجلدات: {n:file}",
 	"new.tessdata":
-		"بعض الصفحات ما زالت صورًا. شغِّل npm run tessdata ثم ابحث مرة أخرى.",
+		"بعض الصفحات صور لم يستطع الاستوديو قراءتها. أعد تثبيت الاستوديو لإصلاح ذلك.",
 	"new.nothingYet": "لم يُجرَ فحص بعد.",
 	"toast.scanned": "بحث عن مواد جديدة.",
 	"toast.saved": "حُفظ.",
@@ -1027,7 +1036,243 @@ export const studioText: {
 	ar,
 };
 
-/** The text for `key` in `lang`, with {name} placeholders filled from `vars`. */
+/** A noun's forms for counting: English one/other; Arabic by Intl.PluralRules("ar"). */
+type Counted = {
+	en: { one: string; other: string };
+	ar: {
+		zero: string;
+		one: string;
+		two: string;
+		few: string;
+		many: string;
+		other: string;
+	};
+};
+
+/** Every noun a count string may put a number before. */
+type Noun =
+	| "file"
+	| "page"
+	| "note"
+	| "unit"
+	| "lesson"
+	| "fact"
+	| "course"
+	| "exam"
+	| "skill"
+	| "courseFolder"
+	| "changeSet"
+	| "paper"
+	| "question"
+	| "imagePage"
+	| "number"
+	| "subject";
+
+/**
+ * Each noun's forms for counting, with "#" where the digits go. Arabic uses the six forms
+ * Intl.PluralRules("ar") names: zero, one, two, few (3–10, 103–110 …), many (11–99, 111–199 …)
+ * and other (100, 101, 102 …).
+ */
+const countedNouns: Record<Noun, Counted> = {
+	file: {
+		en: { one: "1 file", other: "# files" },
+		ar: {
+			zero: "لا ملفات",
+			one: "ملف واحد",
+			two: "ملفان",
+			few: "# ملفات",
+			many: "# ملفًا",
+			other: "# ملف",
+		},
+	},
+	page: {
+		en: { one: "1 page", other: "# pages" },
+		ar: {
+			zero: "لا صفحات",
+			one: "صفحة واحدة",
+			two: "صفحتان",
+			few: "# صفحات",
+			many: "# صفحة",
+			other: "# صفحة",
+		},
+	},
+	note: {
+		en: { one: "1 note", other: "# notes" },
+		ar: {
+			zero: "لا ملاحظات",
+			one: "ملاحظة واحدة",
+			two: "ملاحظتان",
+			few: "# ملاحظات",
+			many: "# ملاحظة",
+			other: "# ملاحظة",
+		},
+	},
+	unit: {
+		en: { one: "1 unit", other: "# units" },
+		ar: {
+			zero: "لا وحدات",
+			one: "وحدة واحدة",
+			two: "وحدتان",
+			few: "# وحدات",
+			many: "# وحدة",
+			other: "# وحدة",
+		},
+	},
+	lesson: {
+		en: { one: "1 lesson", other: "# lessons" },
+		ar: {
+			zero: "لا دروس",
+			one: "درس واحد",
+			two: "درسان",
+			few: "# دروس",
+			many: "# درسًا",
+			other: "# درس",
+		},
+	},
+	fact: {
+		en: { one: "1 fact", other: "# facts" },
+		ar: {
+			zero: "لا حقائق",
+			one: "حقيقة واحدة",
+			two: "حقيقتان",
+			few: "# حقائق",
+			many: "# حقيقة",
+			other: "# حقيقة",
+		},
+	},
+	course: {
+		en: { one: "1 course", other: "# courses" },
+		ar: {
+			zero: "لا مقررات",
+			one: "مقرر واحد",
+			two: "مقرران",
+			few: "# مقررات",
+			many: "# مقررًا",
+			other: "# مقرر",
+		},
+	},
+	exam: {
+		en: { one: "1 exam", other: "# exams" },
+		ar: {
+			zero: "لا اختبارات",
+			one: "اختبار واحد",
+			two: "اختباران",
+			few: "# اختبارات",
+			many: "# اختبارًا",
+			other: "# اختبار",
+		},
+	},
+	skill: {
+		en: { one: "1 skill", other: "# skills" },
+		ar: {
+			zero: "لا مهارات",
+			one: "مهارة واحدة",
+			two: "مهارتان",
+			few: "# مهارات",
+			many: "# مهارة",
+			other: "# مهارة",
+		},
+	},
+	courseFolder: {
+		en: { one: "1 course folder", other: "# course folders" },
+		ar: {
+			zero: "لا مجلدات مقررات",
+			one: "مجلد مقرر واحد",
+			two: "مجلدا مقرر",
+			few: "# مجلدات مقررات",
+			many: "# مجلد مقرر",
+			other: "# مجلد مقرر",
+		},
+	},
+	changeSet: {
+		en: { one: "1 change set", other: "# change sets" },
+		ar: {
+			zero: "لا مجموعات تغييرات",
+			one: "مجموعة تغييرات واحدة",
+			two: "مجموعتا تغييرات",
+			few: "# مجموعات تغييرات",
+			many: "# مجموعة تغييرات",
+			other: "# مجموعة تغييرات",
+		},
+	},
+	paper: {
+		en: { one: "1 paper", other: "# papers" },
+		ar: {
+			zero: "لا أوراق",
+			one: "ورقة واحدة",
+			two: "ورقتان",
+			few: "# أوراق",
+			many: "# ورقة",
+			other: "# ورقة",
+		},
+	},
+	question: {
+		en: { one: "1 question", other: "# questions" },
+		ar: {
+			zero: "لا أسئلة",
+			one: "سؤال واحد",
+			two: "سؤالان",
+			few: "# أسئلة",
+			many: "# سؤالًا",
+			other: "# سؤال",
+		},
+	},
+	imagePage: {
+		en: { one: "1 image page", other: "# image pages" },
+		ar: {
+			zero: "لا صفحات مصوّرة",
+			one: "صفحة مصوّرة واحدة",
+			two: "صفحتان مصوّرتان",
+			few: "# صفحات مصوّرة",
+			many: "# صفحة مصوّرة",
+			other: "# صفحة مصوّرة",
+		},
+	},
+	number: {
+		en: { one: "1 number", other: "# numbers" },
+		ar: {
+			zero: "لا أرقام",
+			one: "رقم واحد",
+			two: "رقمان",
+			few: "# أرقام",
+			many: "# رقمًا",
+			other: "# رقم",
+		},
+	},
+	subject: {
+		en: { one: "1 subject", other: "# subjects" },
+		ar: {
+			zero: "لا مواد",
+			one: "مادة واحدة",
+			two: "مادتان",
+			few: "# مواد",
+			many: "# مادة",
+			other: "# مادة",
+		},
+	},
+};
+
+/** True when `name` is a noun the count strings know. */
+export function isCountedNoun(name: string): name is Noun {
+	return name in countedNouns;
+}
+
+const arabicPlural = new Intl.PluralRules("ar");
+
+/** A count and its noun in `lang`: "3 files", "لا ملفات", "11 ملفًا". */
+export function countText(lang: Lang, noun: Noun, count: number): string {
+	const forms = countedNouns[noun];
+	const digits = String(count);
+	if (lang === "en")
+		return (count === 1 ? forms.en.one : forms.en.other).replace("#", digits);
+	const form = forms.ar[arabicPlural.select(count) as keyof typeof forms.ar];
+	return form.replace("#", digits);
+}
+
+/**
+ * The text for `key` in `lang`, with {name} placeholders filled from `vars`. A count written
+ * `{n:noun}` also takes the noun's form for that number, in both languages.
+ */
 export function t(
 	lang: Lang,
 	key: TextKey,
@@ -1035,8 +1280,15 @@ export function t(
 ): string {
 	const value = studioText[lang][key];
 	if (vars === undefined) return value;
-	return value.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
-		name in vars ? String(vars[name]) : placeholder,
+	return value.replace(
+		/\{(\w+)(?::(\w+))?\}/g,
+		(placeholder, name: string, noun: string | undefined) => {
+			if (!(name in vars)) return placeholder;
+			if (noun === undefined) return String(vars[name]);
+			if (!isCountedNoun(noun))
+				throw new Error(`unknown counted noun: ${noun}`);
+			return countText(lang, noun, Number(vars[name]));
+		},
 	);
 }
 

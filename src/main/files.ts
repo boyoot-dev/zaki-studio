@@ -128,8 +128,8 @@ function compareEntries(
 }
 
 /**
- * The project's tree, read from disk. The Studio's own .studio folder is left out: it is
- * memory, not material, and the author never sorts it.
+ * The project's tree, read from disk. The Studio's own .studio folder and the project file
+ * are left out: they are memory, not material, and the author never sorts them.
  */
 export function readTree(root: string): TreeNode[] {
 	const walk = (absolute: string, rel: string, depth: number): TreeNode[] => {
@@ -142,7 +142,8 @@ export function readTree(root: string): TreeNode[] {
 		}
 		const nodes: TreeNode[] = [];
 		for (const name of entries) {
-			if (rel === "" && name === STUDIO_DIR) continue;
+			if (rel === "" && (name === STUDIO_DIR || name === PROJECT_FILE))
+				continue;
 			if (name.startsWith(".") && rel === "") continue;
 			const childAbsolute = join(absolute, name);
 			const childRel = rel === "" ? name : `${rel}/${name}`;
@@ -215,7 +216,11 @@ export function readLevel(root: string, rel: string): TreeNode[] | Failure {
 		return nodes;
 	}
 	for (const name of entries) {
-		if (rel === "" && (name === STUDIO_DIR || name.startsWith("."))) continue;
+		if (
+			rel === "" &&
+			(name === STUDIO_DIR || name === PROJECT_FILE || name.startsWith("."))
+		)
+			continue;
 		const childRel = rel === "" ? name : `${rel}/${name}`;
 		const absolute = join(folder, name);
 		let info: ReturnType<typeof lstatSync>;

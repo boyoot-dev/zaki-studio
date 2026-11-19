@@ -34,6 +34,7 @@ import {
 	moveEntry,
 	openable,
 	readBytes,
+	readLevel,
 	readProject,
 	readText,
 	readTree,
@@ -137,6 +138,15 @@ describe("the tree", () => {
 		expect(tree[0]?.name).toBe("Inbox");
 		expect(rels(tree)).not.toContain(".studio");
 		expect(rels(tree)).toContain("Grade 7/Science/Exam/past-papers");
+	});
+
+	it("leaves the project file out of the top level", () => {
+		createProject(root, project());
+		expect(rels(readTree(root))).not.toContain("curriculum.json");
+		const level = readLevel(root, "");
+		expect(
+			Array.isArray(level) && level.map((node) => node.name),
+		).not.toContain("curriculum.json");
 	});
 
 	it("sorts folders before files, and numbers in names as numbers", () => {
