@@ -47,6 +47,15 @@ export function hasSource(view: PanesView): boolean {
 	return view === "curriculum";
 }
 
+/**
+ * The row width to lay the panes out for. A hidden row (a tab that is put away) measures
+ * 0, which is not a width: the last real measurement stays. The next real one is used as it
+ * is.
+ */
+export function nextTotal(previous: number, measured: number): number {
+	return measured > 0 ? measured : previous;
+}
+
 /** How many side panes the row holds at its ends: the start one, and the source viewer. */
 function sideCount(view: PanesView, collapsed: boolean): number {
 	return hasSource(view) && !collapsed ? 2 : 1;

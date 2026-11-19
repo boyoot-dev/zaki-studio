@@ -13,6 +13,7 @@ import {
 	hasSource,
 	MIN_MIDDLE,
 	MIN_SIDE,
+	nextTotal,
 	type PaneWidths,
 	paneColumns,
 	parseSaved,
@@ -63,6 +64,19 @@ describe("the widths of a row", () => {
 				total,
 			);
 		}
+	});
+});
+
+describe("a hidden row", () => {
+	it("keeps the last real width when the row measures 0", () => {
+		expect(nextTotal(1280, 0)).toBe(1280);
+		// Before the first real measurement there is no width to keep.
+		expect(nextTotal(0, 0)).toBe(0);
+	});
+
+	it("goes on with the next real measurement", () => {
+		expect(nextTotal(1280, 960)).toBe(960);
+		expect(nextTotal(960, 1280)).toBe(1280);
 	});
 });
 
