@@ -46,8 +46,17 @@ export function PdfView({
 		//     PDF ran script inside pdf.js. Since v5 the eval path is gone entirely, so this
 		//     version (6.4.299) has no isEvalSupported option left to turn off; pdf.test.ts
 		//     holds the version above the fix, so a downgrade cannot pass quietly.
+		//   - disableFontFace: true. With it false (the default) pdf.js hands each embedded
+		//     font to the browser as a FontFace; when that fails, an Arabic book is drawn in
+		//     a system font with its letters apart and jumbled, as the owner saw on
+		//     2026-11-19. With it true pdf.js draws every glyph as a path instead, which is
+		//     what it already does in Node (see reader.ts), and the page comes out as printed.
 		// The worker is our own build, so nothing of the document runs on the page.
-		const task = getDocument({ data: bytes.slice(), enableXfa: false });
+		const task = getDocument({
+			data: bytes.slice(),
+			enableXfa: false,
+			disableFontFace: true,
+		});
 		task.promise.then(
 			(loaded) => {
 				if (!alive) {

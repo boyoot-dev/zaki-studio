@@ -19,6 +19,7 @@ import {
 	defaultWidths,
 	dragPanes,
 	MIN_SIDE,
+	nextTotal,
 	type PanesView,
 	type PaneWidths,
 	paneColumns,
@@ -81,6 +82,8 @@ export function usePanes(view: PanesView): Panes {
 	const [state, setState] = useState<PaneWidths>(() => defaultWidths(view));
 	// The widths as they are now, for the pointer, which can arrive before the next render.
 	const live = useRef<PaneWidths>(state);
+	// The last real row width. A row in a hidden tab measures 0, and nextTotal keeps this.
+	const lastTotal = useRef(window.innerWidth);
 	const [total, setTotal] = useState(() => window.innerWidth);
 
 	/** Keeps a new set of widths, and remembers it for the width the window has now. */
@@ -99,13 +102,16 @@ export function usePanes(view: PanesView): Panes {
 		[total, view],
 	);
 
-	// The row is measured as it is, and again whenever the window changes size. The widths of
-	// that size come back when it does; a size the author never dragged in takes the nearest
-	// widths the app has, and a first window takes the defaults.
+	// The row is measured as it is, and again whenever the window changes size. A tab that is
+	// put away measures 0, which nextTotal ignores, so its columns are never worked out for a
+	// row with no width. The widths of that size come back when it does; a size the author
+	// never dragged in takes the nearest widths the app has, and a first window takes the
+	// defaults.
 	useEffect(() => {
 		if (row === null) return;
 		const measure = () => {
-			const width = row.clientWidth;
+			const width = nextTotal(lastTotal.current, row.clientWidth);
+			lastTotal.current = width;
 			setTotal(width);
 			if (widthBucket(width) === bucket.current) return;
 			bucket.current = widthBucket(width);

@@ -15,6 +15,11 @@ async function draw(job: ReaderJob): Promise<Uint8Array> {
 	const task = getDocument({
 		data: job.bytes.slice(),
 		enableXfa: false,
+		// Glyphs are drawn as paths, not handed to the browser as FontFaces: an Arabic page
+		// that falls back to a system font draws its letters apart and jumbled (found
+		// 2026-11-19 in the viewer), and OCR would read that wrong. reader.ts sees the same
+		// pdf.js and the same fonts, so it takes the same setting.
+		disableFontFace: true,
 		verbosity: 0,
 	});
 	try {
