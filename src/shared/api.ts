@@ -312,6 +312,8 @@ export type ExamTargetView = {
 	notes: number;
 	/** The academic years older than the newest three that an exams request leaves out. */
 	yearsLeftOut: string[];
+	/** The files counted as exam papers (at most 30), by path and kind. */
+	papers: { path: string; kind: string }[];
 	/** True when an exam change set for it waits for review. */
 	pending: boolean;
 	/** True when the project has no course for this grade and subject yet (task 178). */

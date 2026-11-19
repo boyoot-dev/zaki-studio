@@ -1868,3 +1868,43 @@ details.notes-actions > summary {
 	width: 100%;
 	font: inherit;
 }
+
+/* The Review page: one row per course with exam papers, and the folded older items (task 241). */
+.exam-rows {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 12px;
+}
+
+.exam-row {
+	display: grid;
+	gap: 6px;
+	padding: 10px 12px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+
+.exam-row-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.exam-row-head > span:first-child {
+	font-weight: 600;
+}
+
+.exam-papers {
+	margin: 0;
+	padding-inline-start: 18px;
+	font-size: 0.9rem;
+}
+
+details.older > summary {
+	cursor: pointer;
+	font-weight: 600;
+	margin: 8px 0;
+}
