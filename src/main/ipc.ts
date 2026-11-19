@@ -26,6 +26,8 @@ import {
 } from "electron";
 
 import type {
+	AiSaved,
+	AiState,
 	BundleChoice,
 	ChangesCollected,
 	ChangesState,
@@ -78,6 +80,7 @@ import {
 	targetRows,
 } from "../shared/targets.ts";
 import { adoptMaterial } from "./adopt.ts";
+import { readAi, writeAi } from "./ai.ts";
 import {
 	acceptChange,
 	acceptExamChange,
@@ -1275,6 +1278,26 @@ export function registerIpc(): void {
 		if (saved.code === "invalid") return { ok: false, code: "invalidName" };
 		if (saved.code === "noStorage") return { ok: false, code: "noStorage" };
 		return { ok: false, code: "unreadable" };
+	});
+
+	// How the author uses AI, kept per computer (task 244), with what the Settings screen shows:
+	// the two steps' model and limit, and only whether a key is set.
+	ipcMain.handle(
+		"studio:aiState",
+		(): AiState => ({
+			ok: true,
+			choice: readAi(userData()),
+			notes: readNoteSettings(userData()),
+			units: readUnitsSettings(userData()),
+			keySet: readKeyState(userData(), secrets).set,
+		}),
+	);
+
+	ipcMain.handle("studio:saveAi", (_event, value: unknown): AiSaved => {
+		const choice = writeAi(userData(), value);
+		return choice === null
+			? { ok: false, code: "invalidName" }
+			: { ok: true, choice };
 	});
 
 	ipcMain.handle("studio:clearKey", (): Done => {

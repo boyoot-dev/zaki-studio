@@ -33,6 +33,29 @@ const en = {
 	"tree.hint.extra": "worksheets, practice and assessment books",
 	"tree.hint.exam": "past exam papers",
 
+	// Settings: how the author uses AI, chosen once per computer (task 244).
+	"settings.open": "Settings",
+	"settings.title": "Settings",
+	"settings.close": "Close",
+	"ai.question": "How do you use AI?",
+	"ai.firstTime": "Before the first AI step: how do you use AI?",
+	"ai.tool": "My AI tool on this computer (Claude Code or Claude Desktop)",
+	"ai.toolHint":
+		"The Studio prepares a folder and a message; you give the message to your tool, then press Collect.",
+	"ai.key": "An OpenRouter key (advanced)",
+	"ai.keyHint":
+		"The Studio sends your material to OpenRouter with your key and pays per use.",
+	"ai.whichTool": "Which tool",
+	"ai.usingTool": "Using: {tool}",
+	"ai.usingKey": "Using: your OpenRouter key",
+	"ai.change": "Change in Settings",
+	"ai.keyMissing": "Your OpenRouter key is not saved on this computer yet.",
+	"ai.openSettings": "Open Settings",
+	"ai.notesStep": "Reading your files (notes)",
+	"ai.unitsStep": "Units and exams",
+	"cost.cents": "about {usd} ({n:cent})",
+	"cost.dollars": "about {usd}",
+
 	// The wizard.
 	"wizard.secondLanguage": "+ another language",
 	"wizard.secondLanguageLabel": "Also taught in",
@@ -603,6 +626,28 @@ const ar: Record<TextKey, string> = {
 	"tree.hint.extra": "أوراق العمل والتدريبات وكتب التقويم",
 	"tree.hint.exam": "امتحانات سابقة",
 
+	"settings.open": "الإعدادات",
+	"settings.title": "الإعدادات",
+	"settings.close": "إغلاق",
+	"ai.question": "كيف تستخدم الذكاء الاصطناعي؟",
+	"ai.firstTime": "قبل أول خطوة بالذكاء الاصطناعي: كيف تستخدمه؟",
+	"ai.tool":
+		"أداة ذكاء اصطناعي على هذا الحاسوب (Claude Code أو Claude Desktop)",
+	"ai.toolHint":
+		"يجهّز الاستوديو مجلدًا ورسالة؛ تعطي الرسالة لأداتك، ثم تضغط «اجمع».",
+	"ai.key": "مفتاح OpenRouter (متقدّم)",
+	"ai.keyHint":
+		"يرسل الاستوديو موادّك إلى OpenRouter بمفتاحك، وتدفع حسب الاستخدام.",
+	"ai.whichTool": "أي أداة",
+	"ai.usingTool": "تستخدم: {tool}",
+	"ai.usingKey": "تستخدم: مفتاح OpenRouter الخاص بك",
+	"ai.change": "غيّر من الإعدادات",
+	"ai.keyMissing": "لم يُحفظ مفتاح OpenRouter على هذا الحاسوب بعد.",
+	"ai.openSettings": "افتح الإعدادات",
+	"ai.notesStep": "قراءة ملفاتك (الملاحظات)",
+	"ai.unitsStep": "الوحدات والامتحانات",
+	"cost.cents": "نحو {usd} دولار ({n:cent})",
+	"cost.dollars": "نحو {usd} دولار",
 	"wizard.secondLanguage": "+ لغة أخرى",
 	"wizard.secondLanguageLabel": "تُدرَّس أيضًا بـ",
 	"wizard.secondLanguageRemove": "احذف اللغة الثانية",
@@ -1156,7 +1201,8 @@ type Noun =
 	| "question"
 	| "imagePage"
 	| "number"
-	| "subject";
+	| "subject"
+	| "cent";
 
 /**
  * Each noun's forms for counting, with "#" where the digits go. Arabic uses the six forms
@@ -1305,6 +1351,17 @@ const countedNouns: Record<Noun, Counted> = {
 			few: "# أسئلة",
 			many: "# سؤالًا",
 			other: "# سؤال",
+		},
+	},
+	cent: {
+		en: { one: "1 US cent", other: "# US cents" },
+		ar: {
+			zero: "لا سنتات",
+			one: "سنت واحد",
+			two: "سنتان",
+			few: "# سنتات",
+			many: "# سنتًا",
+			other: "# سنت",
 		},
 	},
 	imagePage: {

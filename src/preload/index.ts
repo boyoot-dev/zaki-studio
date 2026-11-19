@@ -118,6 +118,8 @@ const api: StudioApi = {
 			ipcRenderer.removeListener("studio:notesProgress", listener);
 		};
 	},
+	aiState: () => ipcRenderer.invoke("studio:aiState"),
+	saveAi: (choice) => ipcRenderer.invoke("studio:saveAi", choice),
 	saveKey: (key) => ipcRenderer.invoke("studio:saveKey", key),
 	clearKey: () => ipcRenderer.invoke("studio:clearKey"),
 	testKey: () => ipcRenderer.invoke("studio:testKey"),

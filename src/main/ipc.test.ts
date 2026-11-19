@@ -193,6 +193,36 @@ afterEach(() => {
 	rmSync(base, { recursive: true, force: true });
 });
 
+describe("how the author uses AI (task 244)", () => {
+	it("is not chosen at first, is kept once chosen, and refuses a way it doesn't know", async () => {
+		expect(await ask("studio:aiState")).toMatchObject({
+			ok: true,
+			choice: null,
+			keySet: false,
+		});
+		expect(await ask("studio:saveAi", { way: "tool", tool: "other" })).toEqual({
+			ok: true,
+			choice: { way: "tool", tool: "other" },
+		});
+		expect(await ask("studio:aiState")).toMatchObject({
+			choice: { way: "tool", tool: "other" },
+		});
+		expect(await ask("studio:saveAi", { way: "magic" })).toMatchObject({
+			ok: false,
+		});
+		expect(await ask("studio:aiState")).toMatchObject({
+			choice: { way: "tool", tool: "other" },
+		});
+		expect(await ask("studio:saveAi", { way: "key" })).toMatchObject({
+			ok: true,
+		});
+		await ask("studio:saveKey", KEY);
+		const state = await ask("studio:aiState");
+		expect(state).toMatchObject({ choice: { way: "key" }, keySet: true });
+		expect(JSON.stringify(state)).not.toContain(KEY);
+	});
+});
+
 describe("the key on the IPC surface", () => {
 	it("is saved once, and the page only learns whether one is set", async () => {
 		expect(await ask("studio:saveKey", KEY)).toEqual({ ok: true });

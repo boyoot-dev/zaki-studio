@@ -6,6 +6,7 @@
 
 import studioSubjects from "virtual:subjects";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { costWords } from "../shared/ai";
 import type {
 	ChangesCollected,
 	ChangesState,
@@ -42,6 +43,7 @@ import { fileLabel, parseSource } from "../shared/model";
 import type { OpenQuestion } from "../shared/open-questions";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
+import { useAi, useAiGate } from "./Settings";
 import { WindowedList } from "./WindowedList";
 
 /** A word of the window, as the panel's helpers take it. */
@@ -994,11 +996,16 @@ export function Changes({
 	const [paths, setPaths] = useState<
 		Record<string, { path: string; size: number }>
 	>({});
-	const [modelInput, setModelInput] = useState("");
-	const [limit, setLimit] = useState(2);
+	// How the author uses AI, from Settings (task 244): the key way prices and writes here, the
+	// tool way ticks periods for a job; no key, model or tool is set on this page any more.
+	const { ai } = useAi();
+	const { gate, ready } = useAiGate();
+	const limit = ai?.units.limit ?? 2;
+	const way = ready ? (ai?.choice?.way ?? null) : null;
+	const tool: JobTool =
+		ai?.choice?.way === "tool" ? ai.choice.tool : "claude-code";
 	const [picked, setPicked] = useState<Set<string>>(new Set());
 	const [examPicked, setExamPicked] = useState<Set<string>>(new Set());
-	const [tool, setTool] = useState<JobTool>("claude-code");
 	const [plan, setPlan] = useState<{
 		target: ChangeTargetView;
 		view: UnitsPlanView;
@@ -1029,8 +1036,6 @@ export function Changes({
 		}
 		setError("");
 		setState(next);
-		setLimit(next.settings.limit);
-		setModelInput(next.settings.model);
 	}, [lang, onNotify, root]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the trigger — the project changed while this tab stayed open.
@@ -1081,7 +1086,7 @@ export function Changes({
 	const rejected = state?.ok === true ? state.rejected : [];
 	const jobs = state?.ok === true ? state.jobs : [];
 	const examJobs = state?.ok === true ? state.examJobs : [];
-	const keySet = state?.ok === true && state.keySet;
+	const keySet = ai?.keySet === true;
 
 	/** Ticks or unticks one period for the job folder way. */
 	const toggle = (target: ChangeTargetView) => {
@@ -1103,17 +1108,6 @@ export function Changes({
 			else next.add(key);
 			return next;
 		});
-	};
-
-	const saveSettings = async () => {
-		const answer = await window.studio.saveUnitsSettings(modelInput, limit);
-		if (!answer.ok) {
-			onNotify(failureText(lang, answer));
-			return;
-		}
-		setLimit(answer.settings.limit);
-		onNotify(say("notes.saved"));
-		await load();
 	};
 
 	/** Prices one period, so the author sees the cost before the request is sent. */
@@ -1452,41 +1446,7 @@ export function Changes({
 				</div>
 			</header>
 
-			<section className="notes-settings">
-				<h3>{say("changes.settings")}</h3>
-				<div className="notes-row">
-					<label className="field">
-						<span className="field-label">{say("changes.model")}</span>
-						<input
-							type="text"
-							value={modelInput}
-							onChange={(event) => setModelInput(event.target.value)}
-							dir="ltr"
-						/>
-					</label>
-					<label className="field">
-						<span className="field-label">{say("changes.limit")}</span>
-						<input
-							type="number"
-							min="0.01"
-							max="100"
-							step="0.5"
-							value={limit}
-							onChange={(event) => setLimit(Number(event.target.value) || 0)}
-						/>
-					</label>
-					<button
-						type="button"
-						className="btn btn-quiet"
-						onClick={() => void saveSettings()}
-					>
-						{say("changes.saveSettings")}
-					</button>
-				</div>
-				<p className="muted">
-					{keySet ? say("notes.keySet") : say("notes.keyMissing")}
-				</p>
-			</section>
+			{gate}
 
 			<section>
 				<h3>{say("changes.targets")}</h3>
@@ -1507,6 +1467,7 @@ export function Changes({
 								<label className="check">
 									<input
 										type="checkbox"
+										hidden={way !== "tool"}
 										checked={picked.has(key)}
 										onChange={() => toggle(target)}
 									/>
@@ -1533,14 +1494,16 @@ export function Changes({
 								{target.newBlock && (
 									<span className="tag">{say("changes.newBlock")}</span>
 								)}
-								<button
-									type="button"
-									className="btn btn-quiet"
-									disabled={target.notes === 0}
-									onClick={() => void priceIt(target)}
-								>
-									{say("changes.write")}
-								</button>
+								{way === "key" && (
+									<button
+										type="button"
+										className="btn btn-quiet"
+										disabled={target.notes === 0}
+										onClick={() => void priceIt(target)}
+									>
+										{say("changes.write")}
+									</button>
+								)}
 							</li>
 						);
 					}}
@@ -1558,7 +1521,7 @@ export function Changes({
 								: say("changes.plan", {
 										units: plan.view.plan.units,
 										notes: plan.view.plan.notes,
-										cost: `$${plan.view.plan.estimateUsd.toFixed(4)}`,
+										cost: costWords(plan.view.plan.estimateUsd, lang),
 										model: plan.view.plan.model,
 									})}
 						</p>
@@ -1571,9 +1534,6 @@ export function Changes({
 							>
 								{writing ? say("changes.writing") : say("changes.confirmWrite")}
 							</button>
-							{!keySet && (
-								<span className="muted">{say("changes.noKeyHint")}</span>
-							)}
 							<button
 								type="button"
 								className="btn btn-quiet"
@@ -1609,6 +1569,7 @@ export function Changes({
 								<label className="check">
 									<input
 										type="checkbox"
+										hidden={way !== "tool"}
 										checked={examPicked.has(key)}
 										onChange={() => toggleExam(target)}
 									/>
@@ -1637,14 +1598,16 @@ export function Changes({
 								{target.newCourse && (
 									<span className="tag">{say("changes.newCourse")}</span>
 								)}
-								<button
-									type="button"
-									className="btn btn-quiet"
-									disabled={target.notes === 0}
-									onClick={() => void priceExam(target)}
-								>
-									{say("changes.examWrite")}
-								</button>
+								{way === "key" && (
+									<button
+										type="button"
+										className="btn btn-quiet"
+										disabled={target.notes === 0}
+										onClick={() => void priceExam(target)}
+									>
+										{say("changes.examWrite")}
+									</button>
+								)}
 							</li>
 						);
 					}}
@@ -1661,7 +1624,7 @@ export function Changes({
 								: say("changes.examPlan", {
 										exams: examPlan.view.plan.exams,
 										notes: examPlan.view.plan.notes,
-										cost: `$${examPlan.view.plan.estimateUsd.toFixed(4)}`,
+										cost: costWords(examPlan.view.plan.estimateUsd, lang),
 										model: examPlan.view.plan.model,
 									})}
 						</p>
@@ -1683,9 +1646,6 @@ export function Changes({
 									? say("changes.writing")
 									: say("changes.confirmWrite")}
 							</button>
-							{!keySet && (
-								<span className="muted">{say("changes.noKeyHint")}</span>
-							)}
 							<button
 								type="button"
 								className="btn btn-quiet"
@@ -1699,232 +1659,212 @@ export function Changes({
 				<p className="muted">{say("changes.examPickHint")}</p>
 			</section>
 
-			<section className="notes-job">
-				<h3>{say("changes.jobTitle")}</h3>
-				<p className="muted">{say("changes.jobIntro")}</p>
-				<div className="notes-row">
-					<label className="field">
-						<span className="field-label">{say("notes.jobTool")}</span>
-						<select
-							value={tool}
-							onChange={(event) => setTool(event.target.value as JobTool)}
-						>
-							<option value="claude-code">
-								{say("notes.tool.claude-code")}
-							</option>
-							<option value="other">{say("notes.tool.other")}</option>
-						</select>
-					</label>
-					<button
-						type="button"
-						className="btn btn-quiet"
-						disabled={pickedCount === 0 || busy !== null}
-						onClick={() => void busily("prepare", prepare)}
-					>
-						{busy === "prepare"
-							? say("changes.preparing")
-							: say("changes.prepare")}
-					</button>
-				</div>
-				{prepared?.ok === true && (
-					<div className="job-prompt">
-						<p className="muted">
-							{say("notes.promptHint", { path: prepared.path })}
-						</p>
-						<textarea readOnly value={prepared.prompt} dir="ltr" rows={10} />
+			{way === "tool" && (
+				<section className="notes-job">
+					<h3>{say("changes.jobTitle")}</h3>
+					<p className="muted">{say("changes.jobIntro")}</p>
+					<div className="notes-row">
 						<button
 							type="button"
-							className="btn"
-							onClick={() => void copyPrompt()}
+							className="btn btn-quiet"
+							disabled={pickedCount === 0 || busy !== null}
+							onClick={() => void busily("prepare", prepare)}
 						>
-							{say("notes.copy")}
+							{busy === "prepare"
+								? say("changes.preparing")
+								: say("changes.prepare")}
 						</button>
 					</div>
-				)}
+					{prepared?.ok === true && (
+						<div className="job-prompt">
+							<p className="muted">
+								{say("notes.promptHint", { path: prepared.path })}
+							</p>
+							<textarea readOnly value={prepared.prompt} dir="ltr" rows={10} />
+							<button
+								type="button"
+								className="btn"
+								onClick={() => void copyPrompt()}
+							>
+								{say("notes.copy")}
+							</button>
+						</div>
+					)}
 
-				<h3>{say("changes.jobs")}</h3>
-				{jobs.length === 0 ? (
-					<p className="muted">{say("changes.jobsNone")}</p>
-				) : (
-					<WindowedList
-						count={jobs.length}
-						rowHeight={36}
-						className="jobs-list"
-						itemClassName="jobs-item"
-						listRole="list"
-						ariaLabel={say("changes.jobs")}
-					>
-						{(index) => {
-							const job = jobs[index];
-							if (job === undefined) return null;
-							return (
-								<li className="job-row">
-									<span dir="ltr">{job.name}</span>
-									<span className="muted">
-										{" "}
-										{say("changes.jobLine", {
-											created: job.created,
-											tool: say(`notes.tool.${job.tool}` as TextKey),
-											n: job.files,
-										})}
-									</span>
-									<button
-										type="button"
-										className="btn btn-quiet"
-										disabled={busy !== null}
-										onClick={() =>
-											void busily(`collect:${job.name}`, () =>
-												collect(job.name),
-											)
-										}
-									>
-										{busy === `collect:${job.name}`
-											? say("changes.collecting")
-											: say("changes.collect")}
-									</button>
-									<button
-										type="button"
-										className="btn btn-quiet btn-danger"
-										onClick={() => void removeJob(job.name)}
-									>
-										{say("notes.deleteJob")}
-									</button>
-								</li>
-							);
-						}}
-					</WindowedList>
-				)}
-				{collected?.ok === true && (
-					<div>
-						<p className="muted">{collectedText(collected, say)}</p>
-						{collected.refused.length > 0 && (
-							<ul className="new-list issues">
-								{collected.refused.map((entry) => (
-									<li key={entry.name} dir="auto">
-										{entry.name}: {refusalText(entry.code, say)}
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
-				)}
-			</section>
-
-			<section className="notes-job">
-				<h3>{say("changes.examJobTitle")}</h3>
-				<p className="muted">{say("changes.examJobIntro")}</p>
-				<div className="notes-row">
-					<label className="field">
-						<span className="field-label">{say("notes.jobTool")}</span>
-						<select
-							value={tool}
-							onChange={(event) => setTool(event.target.value as JobTool)}
+					<h3>{say("changes.jobs")}</h3>
+					{jobs.length === 0 ? (
+						<p className="muted">{say("changes.jobsNone")}</p>
+					) : (
+						<WindowedList
+							count={jobs.length}
+							rowHeight={36}
+							className="jobs-list"
+							itemClassName="jobs-item"
+							listRole="list"
+							ariaLabel={say("changes.jobs")}
 						>
-							<option value="claude-code">
-								{say("notes.tool.claude-code")}
-							</option>
-							<option value="other">{say("notes.tool.other")}</option>
-						</select>
-					</label>
-					<button
-						type="button"
-						className="btn btn-quiet"
-						disabled={examPickedCount === 0 || busy !== null}
-						onClick={() => void busily("prepareExam", prepareExam)}
-					>
-						{busy === "prepareExam"
-							? say("changes.preparing")
-							: say("changes.examPrepare")}
-					</button>
-				</div>
-				{examPrepared?.ok === true && (
-					<div className="job-prompt">
-						<p className="muted">
-							{say("notes.promptHint", { path: examPrepared.path })}
-						</p>
-						<textarea
-							readOnly
-							value={examPrepared.prompt}
-							dir="ltr"
-							rows={10}
-						/>
+							{(index) => {
+								const job = jobs[index];
+								if (job === undefined) return null;
+								return (
+									<li className="job-row">
+										<span dir="ltr">{job.name}</span>
+										<span className="muted">
+											{" "}
+											{say("changes.jobLine", {
+												created: job.created,
+												tool: say(`notes.tool.${job.tool}` as TextKey),
+												n: job.files,
+											})}
+										</span>
+										<button
+											type="button"
+											className="btn btn-quiet"
+											disabled={busy !== null}
+											onClick={() =>
+												void busily(`collect:${job.name}`, () =>
+													collect(job.name),
+												)
+											}
+										>
+											{busy === `collect:${job.name}`
+												? say("changes.collecting")
+												: say("changes.collect")}
+										</button>
+										<button
+											type="button"
+											className="btn btn-quiet btn-danger"
+											onClick={() => void removeJob(job.name)}
+										>
+											{say("notes.deleteJob")}
+										</button>
+									</li>
+								);
+							}}
+						</WindowedList>
+					)}
+					{collected?.ok === true && (
+						<div>
+							<p className="muted">{collectedText(collected, say)}</p>
+							{collected.refused.length > 0 && (
+								<ul className="new-list issues">
+									{collected.refused.map((entry) => (
+										<li key={entry.name} dir="auto">
+											{entry.name}: {refusalText(entry.code, say)}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
+				</section>
+			)}
+
+			{way === "tool" && (
+				<section className="notes-job">
+					<h3>{say("changes.examJobTitle")}</h3>
+					<p className="muted">{say("changes.examJobIntro")}</p>
+					<div className="notes-row">
 						<button
 							type="button"
-							className="btn"
-							onClick={() => void copyExamPrompt()}
+							className="btn btn-quiet"
+							disabled={examPickedCount === 0 || busy !== null}
+							onClick={() => void busily("prepareExam", prepareExam)}
 						>
-							{say("notes.copy")}
+							{busy === "prepareExam"
+								? say("changes.preparing")
+								: say("changes.examPrepare")}
 						</button>
 					</div>
-				)}
+					{examPrepared?.ok === true && (
+						<div className="job-prompt">
+							<p className="muted">
+								{say("notes.promptHint", { path: examPrepared.path })}
+							</p>
+							<textarea
+								readOnly
+								value={examPrepared.prompt}
+								dir="ltr"
+								rows={10}
+							/>
+							<button
+								type="button"
+								className="btn"
+								onClick={() => void copyExamPrompt()}
+							>
+								{say("notes.copy")}
+							</button>
+						</div>
+					)}
 
-				<h3>{say("changes.jobs")}</h3>
-				{examJobs.length === 0 ? (
-					<p className="muted">{say("changes.jobsNone")}</p>
-				) : (
-					<WindowedList
-						count={examJobs.length}
-						rowHeight={36}
-						className="jobs-list"
-						itemClassName="jobs-item"
-						listRole="list"
-						ariaLabel={say("changes.jobs")}
-					>
-						{(index) => {
-							const job = examJobs[index];
-							if (job === undefined) return null;
-							return (
-								<li className="job-row">
-									<span dir="ltr">{job.name}</span>
-									<span className="muted">
-										{" "}
-										{say("changes.jobLine", {
-											created: job.created,
-											tool: say(`notes.tool.${job.tool}` as TextKey),
-											n: job.files,
-										})}
-									</span>
-									<button
-										type="button"
-										className="btn btn-quiet"
-										disabled={busy !== null}
-										onClick={() =>
-											void busily(`collectExam:${job.name}`, () =>
-												collectExam(job.name),
-											)
-										}
-									>
-										{busy === `collectExam:${job.name}`
-											? say("changes.collecting")
-											: say("changes.collect")}
-									</button>
-									<button
-										type="button"
-										className="btn btn-quiet btn-danger"
-										onClick={() => void removeExamJob(job.name)}
-									>
-										{say("notes.deleteJob")}
-									</button>
-								</li>
-							);
-						}}
-					</WindowedList>
-				)}
-				{examCollected?.ok === true && (
-					<div>
-						<p className="muted">{collectedText(examCollected, say)}</p>
-						{examCollected.refused.length > 0 && (
-							<ul className="new-list issues">
-								{examCollected.refused.map((entry) => (
-									<li key={entry.name} dir="auto">
-										{entry.name}: {refusalText(entry.code, say)}
+					<h3>{say("changes.jobs")}</h3>
+					{examJobs.length === 0 ? (
+						<p className="muted">{say("changes.jobsNone")}</p>
+					) : (
+						<WindowedList
+							count={examJobs.length}
+							rowHeight={36}
+							className="jobs-list"
+							itemClassName="jobs-item"
+							listRole="list"
+							ariaLabel={say("changes.jobs")}
+						>
+							{(index) => {
+								const job = examJobs[index];
+								if (job === undefined) return null;
+								return (
+									<li className="job-row">
+										<span dir="ltr">{job.name}</span>
+										<span className="muted">
+											{" "}
+											{say("changes.jobLine", {
+												created: job.created,
+												tool: say(`notes.tool.${job.tool}` as TextKey),
+												n: job.files,
+											})}
+										</span>
+										<button
+											type="button"
+											className="btn btn-quiet"
+											disabled={busy !== null}
+											onClick={() =>
+												void busily(`collectExam:${job.name}`, () =>
+													collectExam(job.name),
+												)
+											}
+										>
+											{busy === `collectExam:${job.name}`
+												? say("changes.collecting")
+												: say("changes.collect")}
+										</button>
+										<button
+											type="button"
+											className="btn btn-quiet btn-danger"
+											onClick={() => void removeExamJob(job.name)}
+										>
+											{say("notes.deleteJob")}
+										</button>
 									</li>
-								))}
-							</ul>
-						)}
-					</div>
-				)}
-			</section>
+								);
+							}}
+						</WindowedList>
+					)}
+					{examCollected?.ok === true && (
+						<div>
+							<p className="muted">{collectedText(examCollected, say)}</p>
+							{examCollected.refused.length > 0 && (
+								<ul className="new-list issues">
+									{examCollected.refused.map((entry) => (
+										<li key={entry.name} dir="auto">
+											{entry.name}: {refusalText(entry.code, say)}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
+				</section>
+			)}
 
 			<section>
 				<h3>{say("changes.review")}</h3>

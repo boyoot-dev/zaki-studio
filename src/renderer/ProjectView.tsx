@@ -35,6 +35,7 @@ import { NewMaterialPanel } from "./NewMaterial";
 import { Notes } from "./Notes";
 import { Divider, usePanes } from "./Panes";
 import { Prompt, type PromptSpec } from "./Prompt";
+import { useAi } from "./Settings";
 import { Tree } from "./Tree";
 import { Viewer } from "./Viewer";
 import { WindowedList } from "./WindowedList";
@@ -160,6 +161,7 @@ export function ProjectView({
 	onProjectReload: () => void;
 }) {
 	const say = useSay();
+	const { openSettings } = useAi();
 	const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 	// The page a review link asked for; it applies only while that same file is shown.
 	const [openAt, setOpenAt] = useState<{ rel: string; page: number } | null>(
@@ -561,6 +563,13 @@ export function ProjectView({
 						onClick={exportCurriculum}
 					>
 						{say("project.export")}
+					</button>
+					<button
+						type="button"
+						className="btn btn-quiet"
+						onClick={openSettings}
+					>
+						{say("settings.open")}
 					</button>
 					<LanguageSwitch lang={lang} onChange={onLanguage} />
 					<button type="button" className="btn btn-quiet" onClick={onStart}>

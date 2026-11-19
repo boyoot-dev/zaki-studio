@@ -1747,3 +1747,58 @@ details.notes-actions > summary {
 	align-items: center;
 	gap: 6px;
 }
+
+/* Settings and the AI choice (task 244). */
+.settings-dialog {
+	width: min(40rem, 100%);
+	max-height: 90vh;
+	overflow-y: auto;
+	display: grid;
+	gap: 16px;
+}
+
+.ai-ways {
+	display: grid;
+	gap: 10px;
+	margin: 0;
+	padding: 14px 16px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	min-width: 0;
+}
+
+.ai-ways legend {
+	font-weight: 700;
+	padding: 0 6px;
+}
+
+.ai-way {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 10px;
+	align-items: start;
+	cursor: pointer;
+}
+
+.ai-way > span {
+	display: grid;
+	gap: 2px;
+}
+
+.ai-way-title {
+	font-weight: 600;
+}
+
+.ai-tool {
+	margin-inline-start: 28px;
+	max-width: 20rem;
+}
+
+.ai-line p {
+	margin: 0 0 6px;
+}
+
+.settings-step h3 {
+	margin: 12px 0 6px;
+	font-size: 0.95rem;
+}
