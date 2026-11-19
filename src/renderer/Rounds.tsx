@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { RoundsReply } from "../shared/api";
 import { failureText } from "./App";
+import { CoverageLine } from "./Coverage";
 import { useLang, useSay } from "./i18n";
 
 type View = Extract<RoundsReply, { ok: true }>["view"];
@@ -147,6 +148,12 @@ export function Rounds({
 	return (
 		<div className="rounds">
 			<h3 dir="auto">{heading}</h3>
+			{view.gaps !== null && view.gaps.unused.length > 0 && (
+				<>
+					<CoverageLine coverage={view.gaps} heading={say("cover.gaps")} />
+					<p className="muted small">{say("cover.gapsHint")}</p>
+				</>
+			)}
 			<p>{say("rounds.steps")}</p>
 			<div className="notes-row">
 				<button type="button" className="btn" onClick={() => void show()}>

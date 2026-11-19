@@ -149,6 +149,18 @@ const en = {
 		"The answer changed more than this unit, or did not pass the check. Ask your tool again.",
 	"ask.youAsked": "You asked: {text}",
 
+	// The pages the AI never used (task 250).
+	"cover.used": "Used {used} of {total} pages with text.",
+	"cover.all": "Every page with text is used ({total}).",
+	"cover.notUsed": "Not used:",
+	"cover.warn":
+		"Many pages were not used. Check whether the AI skipped part of the material before you accept.",
+	"cover.gaps": "These pages with text are in no unit of the outline:",
+	"cover.gapsHint":
+		"If they hold lessons, press “Start again” and ask the chat to use every page.",
+	"cover.page": "p. {n}",
+	"cover.range": "p. {from}–{to}",
+
 	// The wizard.
 	"wizard.secondLanguage": "+ another language",
 	"wizard.secondLanguageLabel": "Also taught in",
@@ -835,6 +847,16 @@ const ar: Record<TextKey, string> = {
 	"ask.refused":
 		"غيّرت الإجابة أكثر من هذه الوحدة، أو لم تجتز الفحص. اطلب من أداتك مرة أخرى.",
 	"ask.youAsked": "طلبتَ: {text}",
+	"cover.used": "استُخدمت {used} من أصل {total} صفحة فيها نص.",
+	"cover.all": "استُخدمت كل الصفحات التي فيها نص ({total}).",
+	"cover.notUsed": "لم تُستخدم:",
+	"cover.warn":
+		"صفحات كثيرة لم تُستخدم. تحقّق هل تخطّى الذكاء الاصطناعي جزءًا من المادة قبل أن تقبل.",
+	"cover.gaps": "هذه الصفحات التي فيها نص ليست في أي وحدة من المخطط:",
+	"cover.gapsHint":
+		"إن كانت فيها دروس، اضغط «ابدأ من جديد» واطلب من المحادثة أن تستخدم كل الصفحات.",
+	"cover.page": "ص {n}",
+	"cover.range": "ص {from}–{to}",
 	"wizard.secondLanguage": "+ لغة أخرى",
 	"wizard.secondLanguageLabel": "تُدرَّس أيضًا بـ",
 	"wizard.secondLanguageRemove": "احذف اللغة الثانية",

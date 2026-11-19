@@ -49,6 +49,7 @@ function fileName(path: string): string {
 }
 
 import { KINDS } from "../shared/register";
+import { CoverageLine } from "./Coverage";
 import { WindowedList } from "./WindowedList";
 
 /** A word of the window, as the panel's helpers take it. */
@@ -1423,6 +1424,12 @@ export function Changes({
 											<p className="asked" dir="auto">
 												{say("ask.youAsked", { text: set.request })}
 											</p>
+										)}
+										{set.coverage !== undefined && (
+											<CoverageLine
+												coverage={set.coverage}
+												onOpenFile={onOpenFile}
+											/>
 										)}
 									</div>
 									<div className="notes-row">

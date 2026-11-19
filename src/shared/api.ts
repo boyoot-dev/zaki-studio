@@ -413,6 +413,7 @@ export type RoundsReply =
 				file: string;
 				message: string;
 				done: boolean;
+				gaps: import("./coverage").Coverage | null;
 			} | null;
 	  }
 	| Failure;
