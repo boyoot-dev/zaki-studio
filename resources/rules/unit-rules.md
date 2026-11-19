@@ -28,3 +28,13 @@ Write only a change set (JSON, the format below), nothing else.
   instead of guessing.
 - Facts marked "own": true were written by the author: never change or remove them; add
   yours beside them.
+- Open questions ("open"), for the author to read:
+  - Write them in the course's teaching language, the same as the facts.
+  - "decide": true only when the author must choose or confirm something: a conflict the
+    priority can't settle, a missing part, a grouping to confirm. Everything else is
+    "decide": false.
+  - At most 5 with "decide": true and 8 in all. Each is one or two short sentences.
+  - Never name a file by its id in the text. Put the pages it is about in "sources", as
+    "<id>#p<N>".
+  - Damaged text you simply skipped (unreadable scanned pages, scrambled tables) is one
+    "decide": false question at most, with those pages in "sources".

@@ -225,7 +225,35 @@ describe("an exam change set that passes", () => {
 		const questions = set.exams[0]?.papers[0]?.parts[0]?.questions;
 		expect(questions?.answerWords).toEqual([300, 400]);
 		expect(set.sources["ar9-w1"]).toEqual([ID, SCHEME]);
-		expect(set.open).toHaveLength(1);
+		expect(set.open).toEqual([
+			{
+				text: "2025: 60 minutes; 2026: 70 minutes",
+				decide: false,
+				sources: [],
+			},
+		]);
+	});
+
+	it("reads open questions in the new shape, dropping a source that is not a file", () => {
+		const outcome = parseExamChangeSet(
+			changeSet({
+				open: [
+					{
+						text: "هل الامتحان ورقة واحدة؟",
+						decide: true,
+						sources: ["cccccccccccc#p1"],
+					},
+				],
+			}),
+			given(),
+		);
+		if (!outcome.ok) throw new Error(outcome.issue);
+		expect(outcome.set.open).toEqual([
+			{ text: "هل الامتحان ورقة واحدة؟", decide: true, sources: [] },
+		]);
+		expect(outcome.refused.map((item) => item.path)).toEqual([
+			"open[0].sources[0]",
+		]);
 	});
 
 	it("refuses a set for another grade or subject", () => {
@@ -561,6 +589,16 @@ Write only an exam change set (JSON, in the format below), nothing else.
 - Use only what the notes say. If a number is not in them, leave the field out. Never fill a
   gap from general knowledge. When the papers disagree and the newest year can't decide, add
   an open question instead of guessing.
+- Open questions ("open"), for the author to read:
+  - Write them in the course's teaching language, the same as the facts.
+  - "decide": true only when the author must choose or confirm something: a conflict the
+    priority can't settle, a missing part, a grouping to confirm. Everything else is
+    "decide": false.
+  - At most 5 with "decide": true and 8 in all. Each is one or two short sentences.
+  - Never name a file by its id in the text. Put the pages it is about in "sources", as
+    "<id>#p<N>".
+  - Damaged text you simply skipped (unreadable scanned pages, scrambled tables) is one
+    "decide": false question at most, with those pages in "sources".
 - The course's exams list is the whole list you propose. Keep an exam whose papers the notes
   do not change, and keep every paper you are not changing exactly as it is.
 `);

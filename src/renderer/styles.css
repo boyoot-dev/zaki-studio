@@ -1624,3 +1624,26 @@ mark {
 .course-languages > .btn {
 	justify-self: start;
 }
+
+/* An open question's page link: a chip that opens the file at that page (task 242). */
+.chip-link {
+	cursor: pointer;
+	font: inherit;
+	border: 1px solid var(--line);
+	background: var(--surface);
+	color: var(--accent);
+}
+
+.chip-link:disabled {
+	cursor: default;
+	color: inherit;
+}
+
+.open-list p {
+	margin: 0 0 4px;
+}
+
+details.notes-actions > summary {
+	cursor: pointer;
+	font-weight: 600;
+}

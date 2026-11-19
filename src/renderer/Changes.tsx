@@ -39,6 +39,7 @@ import type { JobTool } from "../shared/job";
 import { languageName } from "../shared/languages";
 import type { ModelFact, ModelLesson, ModelUnit } from "../shared/model";
 import { fileLabel, parseSource } from "../shared/model";
+import type { OpenQuestion } from "../shared/open-questions";
 import { failureText } from "./App";
 import { useLang, useSay } from "./i18n";
 import { WindowedList } from "./WindowedList";
@@ -759,12 +760,14 @@ function ExamSet({
 	onAccept,
 	onFix,
 	onReject,
+	onOpenFile,
 }: {
 	set: ChangeReview;
 	paths: Record<string, { path: string; size: number }>;
 	lang: Lang;
 	say: Say;
 	busy: string | null;
+	onOpenFile: OpenFile;
 	onAccept: (exam?: number, paper?: number) => void;
 	onFix: (exam: number, fix: ExamNumberFix) => void;
 	onReject: () => void;
@@ -838,7 +841,7 @@ function ExamSet({
 					}
 				/>
 			))}
-			<SetNotes set={set} say={say} />
+			<SetNotes set={set} paths={paths} say={say} onOpenFile={onOpenFile} />
 		</section>
 	);
 }
@@ -861,22 +864,94 @@ function refusalText(code: string, say: Say): string {
 	);
 }
 
-/** A change set's refused items and open questions. */
-function SetNotes({ set, say }: { set: ChangeReview; say: Say }) {
+/** Opens a project file in the Files tab, at a page when there is one. */
+type OpenFile = (rel: string, page?: number) => void;
+
+/** One open question: its text, and a link per page it is about. */
+function OpenItem({
+	question,
+	paths,
+	onOpenFile,
+}: {
+	question: OpenQuestion;
+	paths: Record<string, { path: string; size: number }>;
+	onOpenFile: OpenFile;
+}) {
+	return (
+		<li>
+			<p dir="auto">{question.text}</p>
+			{question.sources.length > 0 && (
+				<div className="chips">
+					{question.sources.map((source) => {
+						const parsed = parseSource(source);
+						const known = parsed === null ? undefined : paths[parsed.id];
+						return (
+							<button
+								key={source}
+								type="button"
+								className="chip chip-link"
+								disabled={known === undefined}
+								onClick={() => {
+									if (known !== undefined)
+										onOpenFile(known.path, parsed?.from ?? undefined);
+								}}
+							>
+								{sourceLabel(source, paths)}
+							</button>
+						);
+					})}
+				</div>
+			)}
+		</li>
+	);
+}
+
+/** A change set's open questions (what needs the author first) and refused items. */
+function SetNotes({
+	set,
+	paths,
+	say,
+	onOpenFile,
+}: {
+	set: ChangeReview;
+	paths: Record<string, { path: string; size: number }>;
+	say: Say;
+	onOpenFile: OpenFile;
+}) {
 	const refused: ChangeRefusal[] = set.refused;
+	const decide = set.open.filter((question) => question.decide);
+	const info = set.open.filter((question) => !question.decide);
 	return (
 		<>
-			{set.open.length > 0 && (
+			{decide.length > 0 && (
 				<section className="notes-actions">
-					<h3>{say("changes.open")}</h3>
-					<ul className="new-list">
-						{set.open.map((question) => (
-							<li key={question} dir="auto">
-								{question}
-							</li>
+					<h3>{say("changes.openDecide")}</h3>
+					<ul className="new-list open-list">
+						{decide.map((question) => (
+							<OpenItem
+								key={question.text}
+								question={question}
+								paths={paths}
+								onOpenFile={onOpenFile}
+							/>
 						))}
 					</ul>
 				</section>
+			)}
+			{info.length > 0 && (
+				<details className="notes-actions">
+					<summary>{say("changes.openInfo", { n: info.length })}</summary>
+					<ul className="new-list open-list">
+						{info.map((question) => (
+							<OpenItem
+								key={question.text}
+								question={question}
+								paths={paths}
+								onOpenFile={onOpenFile}
+							/>
+						))}
+					</ul>
+				</details>
 			)}
 			{refused.length > 0 && (
 				<section className="notes-actions">
@@ -899,12 +974,15 @@ export function Changes({
 	project,
 	onNotify,
 	onChanged,
+	onOpenFile,
 	reloadKey,
 }: {
 	root: string;
 	project: { periods: BundlePeriod[] };
 	onNotify: (text: string) => void;
 	onChanged: () => void;
+	/** Opens a file an open question names, in the Files tab at its page. */
+	onOpenFile: OpenFile;
 	/** Bumped when the project changed elsewhere: the tab stays open now, so it re-reads. */
 	reloadKey: number;
 }) {
@@ -973,6 +1051,12 @@ export function Changes({
 							if (parsed !== null) ids.add(parsed.id);
 						}
 					}
+				}
+			}
+			for (const question of set.open) {
+				for (const source of question.sources) {
+					const parsed = parseSource(source);
+					if (parsed !== null) ids.add(parsed.id);
 				}
 			}
 			for (const exam of set.exams) {
@@ -1856,6 +1940,7 @@ export function Changes({
 								lang={lang}
 								say={say}
 								busy={busy}
+								onOpenFile={onOpenFile}
 								onAccept={(exam, paper) =>
 									void busily(
 										acceptKey(
@@ -1938,7 +2023,12 @@ export function Changes({
 										}
 									/>
 								))}
-								<SetNotes set={set} say={say} />
+								<SetNotes
+									set={set}
+									paths={paths}
+									say={say}
+									onOpenFile={onOpenFile}
+								/>
 							</section>
 						),
 					)
