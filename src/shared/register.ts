@@ -518,12 +518,43 @@ export type RowInput = {
 	/** The day this content was first seen, or "" for today. */
 	firstSeen: string;
 	folders: Record<string, SubjectFolder>;
+	/** The project's own grade and course folders (curriculum.json), read before the name
+	 * patterns, so a folder named in Arabic ("الصف 11/العلوم") is placed too (task 243). */
+	places?: ProjectPlaces;
 	rules: readonly AuthorityRule[];
 	today: Date;
 	currentYear: string;
 	/** The fields the author corrected, and their values; a scan keeps them. */
 	fixed: Partial<Record<FileField, number | string | null>>;
 };
+
+/** The grade and course folders a project names, keyed by folder name in lowercase. */
+export type ProjectPlaces = {
+	grades: Record<string, number>;
+	/** "<grade folder>/<subject folder>" → the course it holds. */
+	courses: Record<string, { subject: string; language: string }>;
+};
+
+/** The project's places, from its grades and their course folders. */
+export function projectPlaces(
+	grades: readonly {
+		grade: number;
+		folder: string;
+		subjects: readonly { subject: string; folder: string; language: string }[];
+	}[],
+): ProjectPlaces {
+	const places: ProjectPlaces = { grades: {}, courses: {} };
+	for (const grade of grades) {
+		const gradeKey = grade.folder.trim().toLowerCase();
+		places.grades[gradeKey] = grade.grade;
+		for (const course of grade.subjects)
+			places.courses[`${gradeKey}/${course.folder.trim().toLowerCase()}`] = {
+				subject: course.subject,
+				language: course.language,
+			};
+	}
+	return places;
+}
 
 /**
  * One register row, by the same rules extract.py uses: the grade from the first folder, the
@@ -542,16 +573,25 @@ export function fileRow(input: RowInput): FileRow {
 	// A folder in _subjects.csv names the course itself, language included; a folder name the
 	// school uses only names the subject, and an old id may still carry its language.
 	const named = subjectFromFolders(parts.slice(1), input.folders);
+	const gradeKey = gradeFolder.trim().toLowerCase();
+	const placed =
+		parts.length > 2
+			? input.places?.courses[
+					`${gradeKey}/${(parts[1] ?? "").trim().toLowerCase()}`
+				]
+			: undefined;
 	const course =
-		named.subject === ""
-			? tokenCourse(subjectOf(parts.slice(1)))
-			: { subject: named.subject, language: named.language };
+		placed !== undefined
+			? { ...placed }
+			: named.subject === ""
+				? tokenCourse(subjectOf(parts.slice(1)))
+				: { subject: named.subject, language: named.language };
 	const row: FileRow = {
 		id: input.id,
 		path: input.rel,
 		grade:
 			parts.length > 1 && gradeFolder !== undefined
-				? gradeOf(gradeFolder)
+				? (input.places?.grades[gradeKey] ?? gradeOf(gradeFolder))
 				: null,
 		...course,
 		block: blockOf(inside),

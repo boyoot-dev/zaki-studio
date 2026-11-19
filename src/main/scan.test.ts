@@ -27,6 +27,8 @@ import {
 	TEXT_DIR,
 } from "../shared/model.ts";
 import { NOTES_DIR } from "../shared/notes.ts";
+import { presetPeriods, wizardProject } from "../shared/project.ts";
+import { createProject } from "./files.ts";
 import { setFileFields } from "./model.ts";
 import { scanProject } from "./scan.ts";
 
@@ -229,6 +231,37 @@ afterEach(() => {
 // A scan reads real PDFs and runs OCR; GitHub's Windows runner needed more than Vitest's
 // default 5 s (v0.1.2 build, 2026-11-13).
 describe("a scan of a project", { timeout: 30_000 }, () => {
+	it("places a file in folders the wizard named in Arabic (task 243)", async () => {
+		const made = wizardProject(
+			{
+				nameEn: "Kestrel",
+				nameAr: "كسترل",
+				author: "A. Teacher",
+				rights: "For my own students only.",
+				grades: [{ grade: 11, subjects: ["chemistry"] }],
+				periods: presetPeriods("none"),
+				finalExam: false,
+				language: "ar",
+				folderLanguage: "ar",
+			},
+			[{ id: "chemistry", nameEn: "Chemistry", nameAr: "الكيمياء" }],
+			"6f1d2c9e-3b7a-4c1e-9a55-0d2f4b8e7a10",
+		);
+		if (!made.ok) throw new Error(JSON.stringify(made.issues));
+		expect(createProject(project, made.project).ok).toBe(true);
+		put("الصف 11/الكيمياء/Books/part1.pdf", pdf([{ text: "Atoms." }]));
+		const outcome = await scan();
+		if (!outcome.ok) throw new Error(outcome.code);
+		expect(outcome.files[0]).toMatchObject({
+			path: "الصف 11/الكيمياء/Books/part1.pdf",
+			grade: 11,
+			subject: "chemistry",
+			language: "ar",
+			kind: "book",
+			error: "",
+		});
+	});
+
 	it("registers a new file, reads it page by page, and draws its picture page", async () => {
 		put(
 			"Grade 3/2026-2027/Math/Math-B1-Sheet1 - Main.pdf",

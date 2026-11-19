@@ -20,6 +20,7 @@ import {
 	type ProjectIssue,
 	presetPeriods,
 	projectFolders,
+	wizardLanguage,
 	wizardProject,
 } from "../shared/project";
 import type { StudioSubject } from "../shared/subjects";
@@ -83,6 +84,9 @@ export function Wizard({
 	const [withFinalExam, setWithFinalExam] = useState(true);
 	// The language most courses are taught in (task 225); language subjects keep their own.
 	const [mainLanguage, setMainLanguage] = useState("en");
+	// A second teaching language per subject, keyed "<grade> <subject>" (task 243): the same
+	// book in English and Arabic is two courses.
+	const [second, setSecond] = useState<Record<string, string>>({});
 	const [busy, setBusy] = useState(false);
 	const [id] = useState(() => crypto.randomUUID());
 
@@ -95,6 +99,20 @@ export function Wizard({
 		periods,
 		finalExam: withFinalExam,
 		language: mainLanguage,
+		// Only for subjects still ticked: unticking one forgets its second language.
+		secondLanguages: Object.fromEntries(
+			Object.entries(second).filter(([key]) => {
+				const [grade, subject] = key.split(" ");
+				return grades.some(
+					(entry) =>
+						String(entry.grade) === grade &&
+						entry.subjects.includes(subject ?? ""),
+				);
+			}),
+		),
+		// A new project's grade and subject folders are named in the window's language; a
+		// folder that already holds material keeps the names it has (task 243).
+		folderLanguage: guess.length === 0 ? lang : ("en" as const),
 	};
 	const made = wizardProject(answers, subjects, id);
 	const issues = made.ok ? [] : made.issues;
@@ -106,7 +124,11 @@ export function Wizard({
 				return ["nameEn", "nameAr", "author", "rights", "id"].some((key) =>
 					issue.path.startsWith(key),
 				);
-			if (stepNumber === 2) return issue.path.startsWith("grades");
+			if (stepNumber === 2)
+				return (
+					issue.path.startsWith("grades") ||
+					issue.path.startsWith("secondLanguages")
+				);
 			return true;
 		});
 
@@ -268,19 +290,85 @@ export function Wizard({
 									</span>
 								</h2>
 								<div className="subject-list">
-									{subjects.map((subject) => (
-										<label className="subject" key={subject.id}>
-											<input
-												type="checkbox"
-												checked={entry.subjects.includes(subject.id)}
-												onChange={() => toggleSubject(entry.grade, subject.id)}
-											/>
-											<span aria-hidden="true">{subject.icon}</span>
-											<span>
-												{lang === "ar" ? subject.nameAr : subject.nameEn}
-											</span>
-										</label>
-									))}
+									{subjects.map((subject) => {
+										const key = `${entry.grade} ${subject.id}`;
+										const ticked = entry.subjects.includes(subject.id);
+										const first = wizardLanguage(
+											answers,
+											entry.grade,
+											subject,
+											subject.id,
+										);
+										const others = languageChoices(lang).filter(
+											(choice) => choice.code !== first,
+										);
+										const chosen = second[key];
+										return (
+											<div className="subject-item" key={subject.id}>
+												<label className="subject">
+													<input
+														type="checkbox"
+														checked={ticked}
+														onChange={() =>
+															toggleSubject(entry.grade, subject.id)
+														}
+													/>
+													<span aria-hidden="true">{subject.icon}</span>
+													<span>
+														{lang === "ar" ? subject.nameAr : subject.nameEn}
+													</span>
+												</label>
+												{ticked && chosen === undefined && (
+													<button
+														type="button"
+														className="link-button"
+														onClick={() =>
+															setSecond((current) => ({
+																...current,
+																[key]: others[0]?.code ?? "ar",
+															}))
+														}
+													>
+														{say("wizard.secondLanguage")}
+													</button>
+												)}
+												{ticked && chosen !== undefined && (
+													<span className="second-language">
+														<select
+															aria-label={say("wizard.secondLanguageLabel")}
+															value={chosen}
+															onChange={(event) =>
+																setSecond((current) => ({
+																	...current,
+																	[key]: event.target.value,
+																}))
+															}
+														>
+															{others.map((choice) => (
+																<option key={choice.code} value={choice.code}>
+																	{choice.name}
+																</option>
+															))}
+														</select>
+														<button
+															type="button"
+															className="link-button"
+															aria-label={say("wizard.secondLanguageRemove")}
+															onClick={() =>
+																setSecond((current) => {
+																	const next = { ...current };
+																	delete next[key];
+																	return next;
+																})
+															}
+														>
+															×
+														</button>
+													</span>
+												)}
+											</div>
+										);
+									})}
 								</div>
 							</section>
 						))}
@@ -391,7 +479,7 @@ export function Wizard({
 						<h2>{say("wizard.folders.title")}</h2>
 						<p className="muted">{say("wizard.folders.hint", { root })}</p>
 						<ul className="planned-folders" dir="ltr">
-							{projectFolders(made.project).map((folder) => (
+							{projectFolders(made.project, subjects).map((folder) => (
 								<li key={folder}>{`${folder}/`}</li>
 							))}
 						</ul>

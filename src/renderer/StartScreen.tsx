@@ -1,5 +1,5 @@
-// The start screen: make a new curriculum, open a folder, or open one of the projects the
-// author had open before. Recent projects are kept in the app's own folder (never in a
+// The start screen: start a new curriculum (the one big card), or open what the author already
+// has: a project, older material, a .zaki file, or one of the projects open before. Recent projects are kept in the app's own folder (never in a
 // project), and one that has been moved shows as gone rather than opening a stale path.
 
 import { useEffect, useState } from "react";
@@ -49,36 +49,46 @@ export function StartScreen({
 				<LanguageSwitch lang={lang} onChange={onLanguage} />
 			</header>
 
-			<div className="cards">
-				<button type="button" className="card card-new" onClick={onNew}>
-					<span className="card-sign" aria-hidden="true">
-						＋
-					</span>
-					<span className="card-title">{say("start.new")}</span>
-					<span className="card-hint">{say("start.newHint")}</span>
-				</button>
-				<button type="button" className="card" onClick={onOpen}>
-					<span className="card-sign" aria-hidden="true">
-						📂
-					</span>
-					<span className="card-title">{say("start.open")}</span>
-					<span className="card-hint">{say("start.openHint")}</span>
-				</button>
-				<button type="button" className="card" onClick={() => void onAdopt()}>
-					<span className="card-sign" aria-hidden="true">
-						🗃️
-					</span>
-					<span className="card-title">{say("start.adopt")}</span>
-					<span className="card-hint">{say("start.adoptHint")}</span>
-				</button>
-				<button type="button" className="card" onClick={() => void onBundle()}>
-					<span className="card-sign" aria-hidden="true">
-						📦
-					</span>
-					<span className="card-title">{say("start.bundle")}</span>
-					<span className="card-hint">{say("start.bundleHint")}</span>
-				</button>
-			</div>
+			{/* One start for a teacher with a book; the other three are for what they already
+			    have (task 243: in the walkthrough four equal cards made the choice hard). */}
+			<button type="button" className="card card-new card-main" onClick={onNew}>
+				<span className="card-sign" aria-hidden="true">
+					＋
+				</span>
+				<span className="card-title">{say("start.new")}</span>
+				<span className="card-hint">{say("start.newHint")}</span>
+			</button>
+
+			<section className="have" aria-label={say("start.have")}>
+				<h2>{say("start.have")}</h2>
+				<div className="cards cards-small">
+					<button type="button" className="card" onClick={onOpen}>
+						<span className="card-sign" aria-hidden="true">
+							📂
+						</span>
+						<span className="card-title">{say("start.open")}</span>
+						<span className="card-hint">{say("start.openHint")}</span>
+					</button>
+					<button type="button" className="card" onClick={() => void onAdopt()}>
+						<span className="card-sign" aria-hidden="true">
+							🗃️
+						</span>
+						<span className="card-title">{say("start.adopt")}</span>
+						<span className="card-hint">{say("start.adoptHint")}</span>
+					</button>
+					<button
+						type="button"
+						className="card"
+						onClick={() => void onBundle()}
+					>
+						<span className="card-sign" aria-hidden="true">
+							📦
+						</span>
+						<span className="card-title">{say("start.bundle")}</span>
+						<span className="card-hint">{say("start.bundleHint")}</span>
+					</button>
+				</div>
+			</section>
 
 			<section className="recent" aria-label={say("start.recent")}>
 				<h2>{say("start.recent")}</h2>

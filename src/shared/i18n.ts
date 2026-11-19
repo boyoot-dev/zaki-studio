@@ -13,20 +13,30 @@ const en = {
 	"app.startScreen": "Start screen",
 
 	// The start screen.
-	"start.new": "New curriculum",
+	"start.new": "Start a new curriculum",
 	"start.newHint":
-		"Name it, choose the grades and subjects, and the folders are made for you.",
-	"start.open": "Open a folder",
-	"start.openHint": "Open a project you made before, or a folder of material.",
+		"For a teacher with a school book: name it, choose grades and subjects, then add your book.",
+	"start.have": "I already have…",
+	"start.open": "A Studio project",
+	"start.openHint": "Open the folder of a project you made before.",
 	"start.recent": "Recent projects",
 	"start.recentEmpty":
 		"Nothing yet. The projects you open will be listed here.",
 	"start.recentMissing": "That folder is not there any more.",
-	"start.adopt": "Open my existing material",
+	"start.adopt": "A folder of material I organised before",
 	"start.adoptHint":
 		"Bring material you prepared before, the work done on it and the curriculum built from it into one project.",
 
+	// What goes in a subject's section folders, after their names in the tree (task 243).
+	"tree.hint.books": "the school book, whole or in parts",
+	"tree.hint.units": "one file per unit, if you have them",
+	"tree.hint.extra": "worksheets, practice and assessment books",
+	"tree.hint.exam": "past exam papers",
+
 	// The wizard.
+	"wizard.secondLanguage": "+ another language",
+	"wizard.secondLanguageLabel": "Also taught in",
+	"wizard.secondLanguageRemove": "Remove the second language",
 	"wizard.step": "Step {n} of 3",
 	"wizard.next": "Next",
 	"wizard.back": "Back",
@@ -81,9 +91,20 @@ const en = {
 	"project.section.Extra": "Extra",
 	"project.section.Exam": "Exam",
 	"project.dropHere": "Drop sheets here",
-	"project.dropHint": "Or paste with Ctrl+V. Files are copied in, never moved.",
-	"project.pickFile": "Choose a file to see it here.",
-	"project.pickFolder": "Choose a folder in the tree to drop files into it.",
+	"project.dropHint":
+		"Files dropped here go into the folder chosen in the tree, or into the Inbox when none is chosen. They are copied, never moved.",
+	// What to do next, when no file is open (task 243).
+	"steps.title": "What to do next",
+	"steps.put":
+		"Put your book in a subject's Books folder: drag it onto the folder in the tree, or select the folder and press Ctrl+V.",
+	"steps.read": "Let the Studio read it.",
+	"steps.build": "Build the units.",
+	"steps.buildGo": "Go to Changes",
+	"steps.export": "Export the curriculum.",
+	"steps.exportGo": "Export",
+	"steps.done": "(done)",
+	"steps.secondLanguage":
+		"Same book in another language? That is a second course: add it from the Curriculum tab.",
 	"project.empty": "This folder is empty.",
 	"project.files": "{n:file}",
 	"project.tab.files": "Files",
@@ -132,7 +153,7 @@ const en = {
 	"curriculum.source": "Where it came from",
 	"curriculum.noPage": "From the curriculum file, no page",
 	// Opening a curriculum file (task 214).
-	"start.bundle": "Open a curriculum file",
+	"start.bundle": "A curriculum file (.zaki)",
 	"start.bundleHint":
 		"Make a project from a .zaki file, then add a grade, a block or more material.",
 	"bundle.title": "Open a curriculum file",
@@ -560,17 +581,27 @@ const ar: Record<TextKey, string> = {
 	"app.language": "اللغة",
 	"app.startScreen": "شاشة البداية",
 
-	"start.new": "منهج جديد",
-	"start.newHint": "سمِّه، واختر الصفوف والمواد، وتُنشأ المجلدات لك.",
-	"start.open": "افتح مجلدًا",
-	"start.openHint": "افتح مشروعًا أنشأته من قبل، أو مجلدًا فيه مواد.",
+	"start.new": "ابدأ منهجًا جديدًا",
+	"start.newHint":
+		"للمعلم الذي لديه كتاب المدرسة: سمِّه، واختر الصفوف والمواد، ثم أضف كتابك.",
+	"start.have": "لديّ بالفعل…",
+	"start.open": "مشروع استوديو",
+	"start.openHint": "افتح مجلد مشروع أنشأته من قبل.",
 	"start.recent": "المشروعات الأخيرة",
 	"start.recentEmpty": "لا شيء بعد. ستظهر هنا المشروعات التي تفتحها.",
 	"start.recentMissing": "هذا المجلد لم يعد موجودًا.",
-	"start.adopt": "افتح موادّي الحالية",
+	"start.adopt": "مجلد مواد نظّمتُه من قبل",
 	"start.adoptHint":
 		"اجمع موادًّا أعددتَها من قبل، والعمل الذي تمّ عليها، والمنهج المبنيّ منها، في مشروع واحد.",
 
+	"tree.hint.books": "كتاب المدرسة كاملًا أو أجزاءً",
+	"tree.hint.units": "ملف لكل وحدة إن وُجد",
+	"tree.hint.extra": "أوراق العمل والتدريبات وكتب التقويم",
+	"tree.hint.exam": "امتحانات سابقة",
+
+	"wizard.secondLanguage": "+ لغة أخرى",
+	"wizard.secondLanguageLabel": "تُدرَّس أيضًا بـ",
+	"wizard.secondLanguageRemove": "احذف اللغة الثانية",
 	"wizard.step": "الخطوة {n} من 3",
 	"wizard.next": "التالي",
 	"wizard.back": "السابق",
@@ -622,9 +653,19 @@ const ar: Record<TextKey, string> = {
 	"project.section.Extra": "إضافي",
 	"project.section.Exam": "الاختبار",
 	"project.dropHere": "أفلِت الأوراق هنا",
-	"project.dropHint": "أو الصق بـ Ctrl+V. تُنسخ الملفات ولا تُنقل.",
-	"project.pickFile": "اختر ملفًا لعرضه هنا.",
-	"project.pickFolder": "اختر مجلدًا من الشجرة لإفلات الملفات فيه.",
+	"project.dropHint":
+		"الملفات التي تُفلتها هنا تذهب إلى المجلد المختار في الشجرة، أو إلى «Inbox» إن لم تختر مجلدًا. تُنسخ ولا تُنقل.",
+	"steps.title": "ماذا تفعل الآن",
+	"steps.put":
+		"ضع كتابك في مجلد «Books» لمادته: اسحبه إلى المجلد في الشجرة، أو اختر المجلد واضغط Ctrl+V.",
+	"steps.read": "دع الاستوديو يقرؤه.",
+	"steps.build": "ابنِ الوحدات.",
+	"steps.buildGo": "اذهب إلى التغييرات",
+	"steps.export": "صدِّر المنهج.",
+	"steps.exportGo": "صدِّر",
+	"steps.done": "(تمّ)",
+	"steps.secondLanguage":
+		"الكتاب نفسه بلغة أخرى؟ هذا مقرر ثانٍ: أضفه من تبويب «المنهج».",
 	"project.empty": "هذا المجلد فارغ.",
 	"project.files": "{n:file}",
 	"project.tab.files": "الملفات",
@@ -671,7 +712,7 @@ const ar: Record<TextKey, string> = {
 	"curriculum.examStyle": "أسلوب الاختبار",
 	"curriculum.source": "من أين جاءت",
 	"curriculum.noPage": "من ملف المنهج، بلا صفحة",
-	"start.bundle": "افتح ملف منهج",
+	"start.bundle": "ملف منهج (‎.zaki)",
 	"start.bundleHint":
 		"أنشئ مشروعًا من ملف ‎.zaki، ثم أضف صفًا أو فترة أو مواد أكثر.",
 	"bundle.title": "فتح ملف منهج",

@@ -26,6 +26,7 @@ import {
 	langCourses,
 	type NewMaterial,
 	newMaterial,
+	projectPlaces,
 	type ReportCourse,
 	readIndex,
 	registerRows,
@@ -209,6 +210,7 @@ export async function scanProject(
 		work: workRows(root),
 		today,
 		cancelled: options.cancelled,
+		places: project.ok ? projectPlaces(project.project.grades) : undefined,
 		progress: (state) =>
 			options.onProgress?.({
 				stage: "reading",

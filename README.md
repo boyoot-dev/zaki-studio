@@ -99,7 +99,9 @@ Sunrise Curriculum/            the project
       Extra/
       Exam/
         past-papers/
-        listening-samples/
+    English/
+      … the same four, and in Exam/ also
+        listening-samples/     only for a language subject
         reading-samples/
   .studio/                     the Studio's memory (hidden on Windows): the model, the
                                register, each file's text, the pages' pictures and OCR
@@ -108,7 +110,8 @@ Sunrise Curriculum/            the project
 ```
 
 `curriculum.json` keeps each folder's name, so a folder renamed by hand in Explorer (or named
-in Arabic) stays mapped to its grade and subject. Its periods are the bundle's own period
+in Arabic: a wizard run in Arabic names them "الصف 7/العلوم") stays mapped to its grade and
+subject; a scan reads those names before the name patterns. Its periods are the bundle's own period
 shape, so export is a copy rather than a translation. The Studio's recent-projects list lives
 in the app's user-data folder, never in a project: sharing a project folder shares nothing
 about who opened it. The widths of the panes are kept there too, by the width the window had,

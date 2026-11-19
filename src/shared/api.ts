@@ -127,8 +127,18 @@ export type ScanState =
 			total: number;
 			/** The header of the last scan's report, or null when there is none. */
 			meta: ReportMeta | null;
+			/** The first steps a new project shows (task 243). */
+			steps: FirstSteps;
 	  }
 	| Failure;
+
+/** Which first steps are done: book in a folder, read by the Studio, units, exported. */
+export type FirstSteps = {
+	material: boolean;
+	read: boolean;
+	units: boolean;
+	exported: boolean;
+};
 
 /** What a scan found: the report's header, the register's size, and whether the author stopped it. */
 export type Scanned =

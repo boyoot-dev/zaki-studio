@@ -33,12 +33,30 @@ export const STUDIO_DIR = ".studio";
 export const INBOX_DIR = "Inbox";
 /** The four sections of a subject, in the order the tree shows them. */
 export const SECTION_FOLDERS = ["Units", "Books", "Extra", "Exam"] as const;
-/** The exam subfolders the wizard creates. Samples stay on the author's computer. */
-export const EXAM_FOLDERS = [
-	"past-papers",
-	"listening-samples",
-	"reading-samples",
-] as const;
+/** The exam subfolders a language subject gets on top of past papers; samples stay on the
+ * author's computer (task 243: a chemistry teacher in the walkthrough had no use for them). */
+const LANGUAGE_EXAM_FOLDERS = ["listening-samples", "reading-samples"] as const;
+
+/** The exam subfolders one subject gets: past papers, and samples for a language subject. */
+export function examFolders(
+	id: string,
+	subjects: readonly SubjectLabel[],
+): string[] {
+	return languageSubject(id, subjects)
+		? ["past-papers", ...LANGUAGE_EXAM_FOLDERS]
+		: ["past-papers"];
+}
+
+/** True for a language subject: one that studies a language, or Arabic. */
+export function languageSubject(
+	id: string,
+	subjects: readonly SubjectLabel[],
+): boolean {
+	if (id === "arabic") return true;
+	return subjects.some(
+		(entry) => entry.id === id && entry.studies !== undefined,
+	);
+}
 
 /**
  * One course of one grade: the subject id, the folder it lives in, the language it is taught
@@ -102,6 +120,13 @@ export type WizardAnswers = {
 	language?: string;
 	/** A course's own language when it differs, keyed "<grade> <subject>". */
 	courseLanguages?: Record<string, string>;
+	/** A second teaching language for a subject, keyed "<grade> <subject>" (task 243): the
+	 * same subject becomes a second course, as addCourseLanguage makes one. */
+	secondLanguages?: Record<string, string>;
+	/** The language the grade and subject folders are named in (task 243); "en" when not
+	 * given. The section folders (Units, Books, Extra, Exam) stay English: the register reads
+	 * them. */
+	folderLanguage?: "en" | "ar";
 };
 
 /**
@@ -271,9 +296,12 @@ export function subjectFolder(nameEn: string): string {
 	return RESERVED.test(safe) ? `${safe} subject` : safe;
 }
 
-/** A grade's folder name: "KG1", "KG2", "Grade 7". */
-export function gradeFolder(grade: number): string {
-	return gradeName(grade);
+/** A grade's folder name: "KG1", "KG2", "Grade 7"; in Arabic "الروضة الأولى", "الصف 7". */
+export function gradeFolder(grade: number, lang: "en" | "ar" = "en"): string {
+	if (lang === "en") return gradeName(grade);
+	if (grade === -1) return "الروضة الأولى";
+	if (grade === 0) return "الروضة الثانية";
+	return `الصف ${grade}`;
 }
 
 /** The number at the start of a unit folder name ("03 Energy" is 3), or null. */
@@ -437,12 +465,14 @@ export function wizardProject(
 		periods: copyPeriods(periods),
 		grades: answers.grades.map((entry) => ({
 			grade: entry.grade,
-			folder: gradeFolder(entry.grade),
+			folder: gradeFolder(entry.grade, answers.folderLanguage),
 			subjects: entry.subjects.map((subject) => {
 				const label = subjects.find((s) => s.id === subject);
+				const name =
+					answers.folderLanguage === "ar" ? label?.nameAr : label?.nameEn;
 				return {
 					subject,
-					folder: subjectFolder(label?.nameEn ?? subject),
+					folder: subjectFolder(name ?? subject),
 					language: wizardLanguage(answers, entry.grade, label, subject),
 					support: [],
 				};
@@ -463,7 +493,22 @@ export function wizardProject(
 		}
 	}
 	if (issues.length > 0) return { ok: false, issues };
-	return { ok: true, project };
+	// A second language makes a second course of the same subject, the way the Curriculum tab
+	// adds one, so the folder naming is the same: "Biology (English)".
+	let withSecond = project;
+	for (const [key, language] of Object.entries(answers.secondLanguages ?? {})) {
+		const [gradeText, subject] = key.split(" ");
+		const grade = Number(gradeText);
+		if (subject === undefined || !Number.isInteger(grade)) continue;
+		const added = addCourseLanguage(withSecond, grade, subject, language);
+		if (!added.ok) {
+			add(`secondLanguages.${key}`, added.message);
+			continue;
+		}
+		withSecond = added.project;
+	}
+	if (issues.length > 0) return { ok: false, issues };
+	return { ok: true, project: withSecond };
 }
 
 /** A deep copy of the periods, so the wizard can't change the project behind its back. */
@@ -515,8 +560,14 @@ function checkPeriods(
 		add("periods", `at most ${BUNDLE_LIMITS.periods} periods`);
 }
 
-/** Every folder of the project, relative to its root, in the order they are created. */
-export function projectFolders(project: Project): string[] {
+/**
+ * Every folder of the project, relative to its root, in the order they are created. Listening
+ * and reading samples are made only for a language subject.
+ */
+export function projectFolders(
+	project: Project,
+	subjects: readonly SubjectLabel[],
+): string[] {
 	const folders = [INBOX_DIR, STUDIO_DIR];
 	for (const grade of project.grades) {
 		const gradePath = grade.folder;
@@ -526,7 +577,7 @@ export function projectFolders(project: Project): string[] {
 			folders.push(subjectPath);
 			for (const section of SECTION_FOLDERS)
 				folders.push(`${subjectPath}/${section}`);
-			for (const exam of EXAM_FOLDERS)
+			for (const exam of examFolders(subject.subject, subjects))
 				folders.push(`${subjectPath}/Exam/${exam}`);
 		}
 	}

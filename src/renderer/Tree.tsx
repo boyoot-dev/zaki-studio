@@ -7,6 +7,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { TreeNode } from "../shared/api.ts";
+import type { TextKey } from "../shared/i18n.ts";
+import { SECTION_FOLDERS } from "../shared/project.ts";
 import { failureText } from "./App";
 import { fileSign } from "./Chrome";
 import { useLang, useSay } from "./i18n";
@@ -157,6 +159,17 @@ export function Tree({
 	);
 }
 
+/** What goes in a subject's section folder, as a hint after its name (task 243), or null. */
+function sectionHint(node: TreeNode): TextKey | null {
+	if (node.kind !== "folder") return null;
+	const parts = node.rel.split("/");
+	if (parts.length !== 3) return null;
+	const name = parts[2] as (typeof SECTION_FOLDERS)[number];
+	return SECTION_FOLDERS.includes(name)
+		? (`tree.hint.${name.toLowerCase()}` as TextKey)
+		: null;
+}
+
 /** One row of the tree: a folder to open, or a file to select. */
 const Row = memo(function Row({
 	node,
@@ -184,6 +197,7 @@ const Row = memo(function Row({
 	const say = useSay();
 	const [over, setOver] = useState(false);
 	const isFolder = node.kind === "folder";
+	const hint = sectionHint(node);
 
 	return (
 		<div
@@ -255,6 +269,7 @@ const Row = memo(function Row({
 			<span className="row-name" dir="auto">
 				{node.name}
 			</span>
+			{hint !== null && <span className="row-hint">{say(hint)}</span>}
 			{node.rel === "Inbox" && node.files > 0 && (
 				<span
 					className="badge"

@@ -229,6 +229,31 @@ h3 {
 	color: var(--ink-soft);
 }
 
+/* The one big start (task 243), then the smaller "I already have…" cards. */
+.card-main {
+	width: 100%;
+	padding: 28px;
+	border-color: var(--accent);
+}
+
+.card-main .card-title {
+	font-size: 1.35rem;
+}
+
+.have h2 {
+	margin: 0 0 10px;
+	font-size: 1rem;
+	color: var(--ink-soft);
+}
+
+.cards-small .card {
+	padding: 16px;
+}
+
+.cards-small .card-title {
+	font-size: 1rem;
+}
+
 .recent h2 {
 	margin-bottom: 10px;
 }
@@ -1646,4 +1671,79 @@ mark {
 details.notes-actions > summary {
 	cursor: pointer;
 	font-weight: 600;
+}
+
+/* What a section folder holds, after its name in the tree (task 243). */
+.row-name:has(+ .row-hint) {
+	flex: 0 1 auto;
+}
+
+.row-hint {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--ink-soft);
+	font-size: 0.78rem;
+}
+
+/* The empty middle area: what to do next (task 243), and a drop outline. */
+.pane-over {
+	outline: 2px dashed var(--accent);
+	outline-offset: -8px;
+}
+
+.first-steps {
+	max-width: 40rem;
+	text-align: start;
+}
+
+.first-steps h2 {
+	margin: 0 0 12px;
+}
+
+.first-steps ol {
+	list-style: none;
+	margin: 0 0 14px;
+	padding: 0;
+	display: grid;
+	gap: 10px;
+}
+
+.first-steps li {
+	display: grid;
+	grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+}
+
+.step-tick {
+	display: inline-grid;
+	place-items: center;
+	width: 1.4rem;
+	height: 1.4rem;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	color: var(--accent);
+	font-weight: 700;
+}
+
+.step-done .step-text {
+	color: var(--ink-soft);
+}
+
+/* A ticked subject with its "+ another language" link or select (task 243). */
+.subject-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 10px;
+	min-width: 0;
+}
+
+.second-language {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 }

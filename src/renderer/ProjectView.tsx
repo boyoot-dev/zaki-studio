@@ -7,11 +7,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { FileFields, ScanProgress, TreeNode } from "../shared/api.ts";
+import type {
+	FileFields,
+	FirstSteps,
+	ScanProgress,
+	TreeNode,
+} from "../shared/api.ts";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
 import type { ReportMeta } from "../shared/lists.ts";
 import type { FileRow } from "../shared/model.ts";
 import {
+	INBOX_DIR,
 	type Project,
 	type ProjectGrade,
 	type ProjectSubject,
@@ -65,6 +71,73 @@ function extensionOf(path: string): string {
 
 type Tab = "files" | "curriculum" | "new" | "notes" | "changes";
 
+/** What to do next in a project, with a tick for each step done (task 243). */
+function FirstStepsList({
+	steps,
+	onRead,
+	onBuild,
+	onExport,
+}: {
+	steps: FirstSteps | null;
+	onRead: () => void;
+	onBuild: () => void;
+	onExport: () => void;
+}) {
+	const say = useSay();
+	const rows: {
+		done: boolean;
+		text: TextKey;
+		action?: { label: TextKey; run: () => void };
+	}[] = [
+		{ done: steps?.material === true, text: "steps.put" },
+		{
+			done: steps?.read === true,
+			text: "steps.read",
+			action: { label: "new.scan", run: onRead },
+		},
+		{
+			done: steps?.units === true,
+			text: "steps.build",
+			action: { label: "steps.buildGo", run: onBuild },
+		},
+		{
+			done: steps?.exported === true,
+			text: "steps.export",
+			action: { label: "steps.exportGo", run: onExport },
+		},
+	];
+	return (
+		<section className="first-steps" aria-label={say("steps.title")}>
+			<h2>{say("steps.title")}</h2>
+			<ol>
+				{rows.map((row) => (
+					<li key={row.text} className={row.done ? "step-done" : ""}>
+						<span className="step-tick" aria-hidden="true">
+							{row.done ? "✓" : ""}
+						</span>
+						<span className="step-text">
+							{say(row.text)}
+							{row.done && (
+								<span className="sr-only"> {say("steps.done")}</span>
+							)}
+						</span>
+						{row.action !== undefined && (
+							<button
+								type="button"
+								className="btn btn-quiet"
+								onClick={row.action.run}
+							>
+								{say(row.action.label)}
+							</button>
+						)}
+					</li>
+				))}
+			</ol>
+			<p className="muted">{say("steps.secondLanguage")}</p>
+		</section>
+	);
+}
+
 export function ProjectView({
 	root,
 	project,
@@ -113,6 +186,10 @@ export function ProjectView({
 	// The register's row for the chosen file, and the last scan's report header.
 	const [row, setRow] = useState<FileRow | null>(null);
 	const [reportMeta, setReportMeta] = useState<ReportMeta | null>(null);
+	// The first steps the empty middle area lists, read again after every change (task 243).
+	const [steps, setSteps] = useState<FirstSteps | null>(null);
+	// True while files are dragged over the middle area, which takes them too.
+	const [dropOver, setDropOver] = useState(false);
 	const [scanning, setScanning] = useState(false);
 	const [progress, setProgress] = useState<ScanProgress | null>(null);
 	// Bumped when the folder changed on disk; the tree, the panels and the row re-read.
@@ -150,7 +227,10 @@ export function ProjectView({
 		let alive = true;
 		void (async () => {
 			const state = await window.studio.scanState(root);
-			if (alive && state.ok) setReportMeta(state.meta);
+			if (alive && state.ok) {
+				setReportMeta(state.meta);
+				setSteps(state.steps);
+			}
 		})();
 		return () => {
 			alive = false;
@@ -602,7 +682,28 @@ export function ProjectView({
 
 						<Divider spec={panes.divider(0)} />
 
-						<main className="pane">
+						<main
+							className={dropOver ? "pane pane-over" : "pane"}
+							onDragOver={(event) => {
+								if (!event.dataTransfer.types.includes("Files")) return;
+								event.preventDefault();
+								event.dataTransfer.dropEffect = "copy";
+								setDropOver(true);
+							}}
+							onDragLeave={(event) => {
+								if (event.currentTarget.contains(event.relatedTarget as Node))
+									return;
+								setDropOver(false);
+							}}
+							onDrop={(event) => {
+								setDropOver(false);
+								const dropped = Array.from(event.dataTransfer.files);
+								if (dropped.length === 0) return;
+								event.preventDefault();
+								const target = targetFolder(selectedNode);
+								void dropFiles(target === "" ? INBOX_DIR : target, dropped);
+							}}
+						>
 							{node !== null && node.kind === "file" && row !== null && (
 								<FileDetails
 									key={`${row.id}-${row.grade}-${row.block}`}
@@ -656,11 +757,12 @@ export function ProjectView({
 								)}
 							{node === null && (
 								<div className="empty-pane">
-									<p className="empty-sign" aria-hidden="true">
-										🗂️
-									</p>
-									<p className="muted">{say("project.pickFile")}</p>
-									<p className="muted">{say("project.pickFolder")}</p>
+									<FirstStepsList
+										steps={steps}
+										onRead={() => setTab("new")}
+										onBuild={() => setTab("changes")}
+										onExport={exportCurriculum}
+									/>
 									<p className="muted">{say("project.dropHint")}</p>
 								</div>
 							)}
