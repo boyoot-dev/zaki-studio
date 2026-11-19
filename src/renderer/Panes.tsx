@@ -83,7 +83,7 @@ export function usePanes(view: PanesView): Panes {
 	// The widths as they are now, for the pointer, which can arrive before the next render.
 	const live = useRef<PaneWidths>(state);
 	// The last real row width. A row in a hidden tab measures 0, and nextTotal keeps this.
-	const lastTotal = useRef(0);
+	const lastTotal = useRef(window.innerWidth);
 	const [total, setTotal] = useState(() => window.innerWidth);
 
 	/** Keeps a new set of widths, and remembers it for the width the window has now. */
