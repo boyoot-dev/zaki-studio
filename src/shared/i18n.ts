@@ -56,6 +56,38 @@ const en = {
 	"cost.cents": "about {usd} ({n:cent})",
 	"cost.dollars": "about {usd}",
 
+	// Build from my book (task 246).
+	"book.build": "Build from my book",
+	"book.update": "Update from my files",
+	"book.files": "The files it will use",
+	"book.fileLine": "{kind} · {n:page}",
+	"book.more": "and {n:file} more",
+	"book.toRead": "The Studio reads {n:file} first.",
+	"book.periods": "It builds: {periods}",
+	"book.time": "It should take about {n:minute}.",
+	"book.cost": "With your key it costs {cost}.",
+	"book.noTerm":
+		"{n:file} have no term and are left out: put them in a term's folder, or choose their term in the file's details.",
+	"book.noFiles":
+		"This course has no files to build from yet. Put your book in its Books folder first.",
+	"book.start": "Start",
+	"book.starting": "Studio is reading your book…",
+	"book.give":
+		"Give this message to {tool}. When it says it has finished, press Collect.",
+	"book.copy": "Copy the message",
+	"book.collect": "Collect",
+	"book.collected":
+		"Read: {read:file}. Waiting for your review: {sets:proposal}.",
+	"book.nothingYet":
+		"Nothing to collect yet. Wait until your tool says it has finished.",
+	"book.openReview": "Open Review",
+	"book.progressNotes": "Reading your files: {done} of {total}",
+	"book.progressUnits": "Proposing the units: {done} of {total}",
+	"book.built": "Done. Waiting for your review: {sets:proposal}.",
+	"book.stopped":
+		"The spending limit stopped the build. Raise it in Settings and press Start again.",
+	"book.lastJob": "A build prepared on {created} can be collected:",
+
 	// The wizard.
 	"wizard.secondLanguage": "+ another language",
 	"wizard.secondLanguageLabel": "Also taught in",
@@ -122,7 +154,7 @@ const en = {
 		"Put your book in a subject's Books folder: drag it onto the folder in the tree, or select the folder and press Ctrl+V.",
 	"steps.read": "Let the Studio read it.",
 	"steps.build": "Build the units.",
-	"steps.buildGo": "Go to Changes",
+	"steps.buildGo": "Build from my book",
 	"steps.export": "Export the curriculum.",
 	"steps.exportGo": "Export",
 	"steps.done": "(done)",
@@ -397,7 +429,8 @@ const en = {
 		"The spending limit stopped the run. Raise the limit or write fewer files.",
 
 	// The Changes tab (task 158).
-	"project.tab.changes": "Changes to review",
+	"project.tab.changes": "Review",
+	"project.advanced": "Advanced",
 	"changes.title": "Changes to review",
 	"changes.intro":
 		"AI proposes the units, lessons, skills, key words, evidence and facts of one period, from the notes of that period's files. Accept all of it, or one unit or lesson at a time. Nothing changes until you accept it.",
@@ -648,6 +681,33 @@ const ar: Record<TextKey, string> = {
 	"ai.unitsStep": "الوحدات والامتحانات",
 	"cost.cents": "نحو {usd} دولار ({n:cent})",
 	"cost.dollars": "نحو {usd} دولار",
+	"book.build": "ابنِ المنهج من كتابي",
+	"book.update": "حدّث من ملفاتي",
+	"book.files": "الملفات التي سيستخدمها",
+	"book.fileLine": "{kind} · {n:page}",
+	"book.more": "و{n:file} أخرى",
+	"book.toRead": "يقرأ الاستوديو {n:file} أولًا.",
+	"book.periods": "يبني: {periods}",
+	"book.time": "يستغرق نحو {n:minute}.",
+	"book.cost": "التكلفة بمفتاحك {cost}.",
+	"book.noTerm":
+		"{n:file} بلا فصل دراسي ولن تُستخدم: ضعها في مجلد فصلها، أو اختر فصلها في تفاصيل الملف.",
+	"book.noFiles":
+		"لا ملفات لهذا المقرر يُبنى منها بعد. ضع كتابك في مجلد «Books» الخاص به أولًا.",
+	"book.start": "ابدأ",
+	"book.starting": "يقرأ الاستوديو كتابك…",
+	"book.give": "أعطِ هذه الرسالة لـ{tool}. عندما يقول إنه انتهى، اضغط «اجمع».",
+	"book.copy": "انسخ الرسالة",
+	"book.collect": "اجمع",
+	"book.collected": "قُرئ: {read:file}. بانتظار مراجعتك: {sets:proposal}.",
+	"book.nothingYet": "لا شيء لجمعه بعد. انتظر حتى تقول أداتك إنها انتهت.",
+	"book.openReview": "افتح المراجعة",
+	"book.progressNotes": "قراءة ملفاتك: {done} من {total}",
+	"book.progressUnits": "اقتراح الوحدات: {done} من {total}",
+	"book.built": "تمّ. بانتظار مراجعتك: {sets:proposal}.",
+	"book.stopped":
+		"أوقف حدّ الإنفاق البناء. ارفعه من الإعدادات ثم اضغط «ابدأ» مرة أخرى.",
+	"book.lastJob": "يمكن جمع بناء جُهّز في {created}:",
 	"wizard.secondLanguage": "+ لغة أخرى",
 	"wizard.secondLanguageLabel": "تُدرَّس أيضًا بـ",
 	"wizard.secondLanguageRemove": "احذف اللغة الثانية",
@@ -709,7 +769,7 @@ const ar: Record<TextKey, string> = {
 		"ضع كتابك في مجلد «Books» لمادته: اسحبه إلى المجلد في الشجرة، أو اختر المجلد واضغط Ctrl+V.",
 	"steps.read": "دع الاستوديو يقرؤه.",
 	"steps.build": "ابنِ الوحدات.",
-	"steps.buildGo": "اذهب إلى التغييرات",
+	"steps.buildGo": "ابنِ المنهج من كتابي",
 	"steps.export": "صدِّر المنهج.",
 	"steps.exportGo": "صدِّر",
 	"steps.done": "(تمّ)",
@@ -967,7 +1027,8 @@ const ar: Record<TextKey, string> = {
 	"failure.limit": "أوقف حدّ الإنفاق الكتابة. ارفع الحدّ أو اكتب ملفات أقل.",
 
 	// تبويب التغييرات (المهمة 158).
-	"project.tab.changes": "تغييرات للمراجعة",
+	"project.tab.changes": "المراجعة",
+	"project.advanced": "متقدّم",
 	"changes.title": "تغييرات للمراجعة",
 	"changes.intro":
 		"يقترح الذكاء الاصطناعي وحدات مرحلة واحدة ودروسها ومهاراتها وكلماتها المفتاحية وأدلّتها وحقائقها، من ملاحظات ملفات تلك المرحلة. اقبلها كلها، أو وحدة أو درسًا واحدًا في كل مرة. ولا يتغيّر شيء قبل أن تقبل.",
@@ -1202,7 +1263,9 @@ type Noun =
 	| "imagePage"
 	| "number"
 	| "subject"
-	| "cent";
+	| "cent"
+	| "minute"
+	| "proposal";
 
 /**
  * Each noun's forms for counting, with "#" where the digits go. Arabic uses the six forms
@@ -1351,6 +1414,28 @@ const countedNouns: Record<Noun, Counted> = {
 			few: "# أسئلة",
 			many: "# سؤالًا",
 			other: "# سؤال",
+		},
+	},
+	minute: {
+		en: { one: "1 minute", other: "# minutes" },
+		ar: {
+			zero: "لا دقائق",
+			one: "دقيقة واحدة",
+			two: "دقيقتان",
+			few: "# دقائق",
+			many: "# دقيقة",
+			other: "# دقيقة",
+		},
+	},
+	proposal: {
+		en: { one: "1 proposal", other: "# proposals" },
+		ar: {
+			zero: "لا مقترحات",
+			one: "مقترح واحد",
+			two: "مقترحان",
+			few: "# مقترحات",
+			many: "# مقترحًا",
+			other: "# مقترح",
 		},
 	},
 	cent: {

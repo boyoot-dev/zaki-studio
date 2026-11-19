@@ -160,6 +160,8 @@ export type CourseHead = {
 	/** The course's teaching language and help languages, from the project (task 225). */
 	language: string;
 	support: string[];
+	/** How many units it has; 0 for a course of the project with none yet (task 246). */
+	units: number;
 };
 
 /** The curriculum's header and its courses' heads, for the Curriculum tab's nav. */
@@ -331,6 +333,72 @@ export type AiState = {
 
 /** What keeping a choice gives. */
 export type AiSaved = { ok: true; choice: AiChoice } | Failure;
+
+/** What "Build from my book" shows before it starts (task 246). */
+export type BookPlanView =
+	| {
+			ok: true;
+			/** The course's files it will use (at most 200 listed), and how many in all. */
+			files: { path: string; kind: string; pages: number; noted: boolean }[];
+			fileCount: number;
+			/** Files the Studio still has to read (no note yet). */
+			toRead: number;
+			/** The periods it will build. */
+			periods: string[];
+			/** About how long it takes, in minutes. */
+			minutes: number;
+			/** Files left out: the year is split and they have no term. */
+			noTerm: number;
+			/** With a key, about what it costs; null without a key or a price. */
+			costUsd: number | null;
+			/** The latest build jobs, newest first, to collect. */
+			jobs: JobSummary[];
+	  }
+	| Failure;
+
+/** A prepared build job: the message for the tool, and what it holds. */
+export type BookJobMade =
+	| {
+			ok: true;
+			name: string;
+			path: string;
+			prompt: string;
+			files: number;
+			notes: number;
+			periods: number;
+	  }
+	| Failure;
+
+/** What collecting a build job kept. */
+export type BookJobCollected =
+	| {
+			ok: true;
+			/** Files read (notes kept), and proposals kept for review. */
+			read: number;
+			sets: number;
+			skipped: number;
+			refused: { name: string; code: string }[];
+	  }
+	| Failure;
+
+/** What a build with a key gave. */
+export type BookBuiltView =
+	| {
+			ok: true;
+			read: number;
+			readFailed: number;
+			sets: number;
+			failed: number;
+			spent: number;
+			stopped: boolean;
+	  }
+	| Failure;
+
+/** How far a build with a key is. */
+export type BookProgress =
+	| { stage: "reading" }
+	| { stage: "notes"; done: number; total: number }
+	| { stage: "units"; done: number; total: number };
 
 /** What "Changes to review" shows: the periods, the sets, and the units and exams jobs. */
 export type ChangesState =
@@ -580,6 +648,31 @@ export type StudioApi = {
 	): Promise<NotesWritten>;
 	/** Tells the page how far a notes run has got. */
 	onNotesProgress(callback: (progress: NotesProgress) => void): () => void;
+	/** What "Build from my book" would use for a course (task 246). */
+	bookPlan(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+	): Promise<BookPlanView>;
+	/** Scans, then prepares one build job for the author's AI tool. */
+	prepareBook(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+	): Promise<BookJobMade>;
+	/** Collects a build job: its notes, then its proposals. */
+	collectBook(root: string, name: string): Promise<BookJobCollected>;
+	/** Scans, writes the missing notes and the proposals with the key. */
+	buildBook(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+	): Promise<BookBuiltView>;
+	/** Tells the page how far a build with a key has got. */
+	onBookProgress(callback: (progress: BookProgress) => void): () => void;
 	/** How the author uses AI on this computer, and the settings the Settings screen shows. */
 	aiState(): Promise<AiState>;
 	/** Keeps how the author uses AI (task 244). */

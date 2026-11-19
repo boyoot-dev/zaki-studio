@@ -16,6 +16,7 @@ import type { ModelCourse, ModelCurriculum } from "../shared/model.ts";
 import { fileLabel, parseSource } from "../shared/model.ts";
 import type { Project } from "../shared/project.ts";
 import { failureText } from "./App";
+import type { BookTarget } from "./Book";
 import { CourseLanguages } from "./CourseLanguages";
 import { useLang, useSay } from "./i18n";
 import { Divider, usePanes } from "./Panes";
@@ -122,9 +123,12 @@ export function Curriculum({
 	reloadKey,
 	openCourse,
 	onChanged,
+	onBuild,
 }: {
 	root: string;
 	project: Project;
+	/** Opens "Build from my book" for a course (task 246). */
+	onBuild: (course: BookTarget) => void;
 	onNotify: (text: string) => void;
 	/** Called after the author changed a course's languages, so the project is read again. */
 	onChanged: () => void;
@@ -320,6 +324,23 @@ export function Curriculum({
 						{subjectName(chosenCourse.subject, lang)} ·{" "}
 						{languageName(chosenCourse.language, lang)}
 					</h2>
+					<button
+						type="button"
+						className="btn"
+						onClick={() =>
+							onBuild({
+								grade: chosenCourse.grade,
+								subject: chosenCourse.subject,
+								language: chosenCourse.language,
+								label: `${subjectName(chosenCourse.subject, lang)} · ${languageName(chosenCourse.language, lang)}`,
+								hasUnits: (course?.units.length ?? 0) > 0,
+							})
+						}
+					>
+						{(course?.units.length ?? 0) > 0
+							? say("book.update")
+							: say("book.build")}
+					</button>
 					<button
 						type="button"
 						className="btn btn-quiet"
