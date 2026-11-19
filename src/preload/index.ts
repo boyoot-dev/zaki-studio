@@ -6,7 +6,12 @@
 
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
-import type { NotesProgress, ScanProgress, StudioApi } from "../shared/api";
+import type {
+	BookProgress,
+	NotesProgress,
+	ScanProgress,
+	StudioApi,
+} from "../shared/api";
 
 const api: StudioApi = {
 	chooseFolder: (purpose) => ipcRenderer.invoke("studio:chooseFolder", purpose),
@@ -117,6 +122,22 @@ const api: StudioApi = {
 		return () => {
 			ipcRenderer.removeListener("studio:notesProgress", listener);
 		};
+	},
+	bookPlan: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:bookPlan", root, grade, subject, language),
+	prepareBook: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:prepareBook", root, grade, subject, language),
+	collectBook: (root, name) =>
+		ipcRenderer.invoke("studio:collectBook", root, name),
+	buildBook: (root, grade, subject, language) =>
+		ipcRenderer.invoke("studio:buildBook", root, grade, subject, language),
+	onBookProgress: (callback) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			progress: BookProgress,
+		) => callback(progress);
+		ipcRenderer.on("studio:bookProgress", listener);
+		return () => ipcRenderer.removeListener("studio:bookProgress", listener);
 	},
 	aiState: () => ipcRenderer.invoke("studio:aiState"),
 	saveAi: (choice) => ipcRenderer.invoke("studio:saveAi", choice),

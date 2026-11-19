@@ -5,7 +5,8 @@
 // scans the project for files copied in there, and the New material tab says what it found.
 // The tree, the Inbox and every other long list draw only what is on screen (task 168).
 
-import { useCallback, useEffect, useState } from "react";
+import studioSubjects from "virtual:subjects";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
 	FileFields,
@@ -14,6 +15,7 @@ import type {
 	TreeNode,
 } from "../shared/api.ts";
 import { gradeLabel, type Lang, type TextKey } from "../shared/i18n";
+import { languageName } from "../shared/languages";
 import type { ReportMeta } from "../shared/lists.ts";
 import type { FileRow } from "../shared/model.ts";
 import {
@@ -24,6 +26,7 @@ import {
 	SECTION_FOLDERS,
 } from "../shared/project.ts";
 import { failureText } from "./App";
+import { BookPanel, type BookTarget } from "./Book";
 import { Changes } from "./Changes";
 import { LanguageSwitch } from "./Chrome";
 import { Curriculum } from "./Curriculum";
@@ -162,6 +165,14 @@ export function ProjectView({
 }) {
 	const say = useSay();
 	const { openSettings } = useAi();
+	// The course "Build from my book" is open for, or null (task 246).
+	const [book, setBook] = useState<BookTarget | null>(null);
+	const advancedRef = useRef<HTMLDetailsElement>(null);
+	/** Opens one of the Advanced tabs and folds the menu again. */
+	const openAdvanced = (next: "new" | "notes") => {
+		setTab(next);
+		if (advancedRef.current !== null) advancedRef.current.open = false;
+	};
 	const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 	// The page a review link asked for; it applies only while that same file is shown.
 	const [openAt, setOpenAt] = useState<{ rel: string; page: number } | null>(
@@ -310,6 +321,32 @@ export function ProjectView({
 				languageWarnings: result.languageWarnings,
 			});
 		})();
+	};
+
+	/** Opens "Build from my book" for the first course with no unit yet (the checklist). */
+	const buildFirst = async () => {
+		setTab("curriculum");
+		const overview = await window.studio.readModel(root);
+		if (!overview.ok) return;
+		const first =
+			overview.courses.find((entry) => entry.units === 0) ??
+			overview.courses[0];
+		if (first === undefined) return;
+		const subject =
+			studioSubjects.find((entry) => entry.id === first.subject) ?? null;
+		const name =
+			subject === null
+				? first.subject
+				: lang === "ar"
+					? subject.nameAr
+					: subject.nameEn;
+		setBook({
+			grade: first.grade,
+			subject: first.subject,
+			language: first.language,
+			label: `${name} · ${languageName(first.language, lang)}`,
+			hasUnits: first.units > 0,
+		});
 	};
 
 	/** Opens the Curriculum tab at one course, from the export's exam warning line. */
@@ -532,24 +569,6 @@ export function ProjectView({
 						<button
 							type="button"
 							role="tab"
-							aria-selected={tab === "new"}
-							className={tab === "new" ? "tab tab-on" : "tab"}
-							onClick={() => setTab("new")}
-						>
-							{say("project.tab.new")}
-						</button>
-						<button
-							type="button"
-							role="tab"
-							aria-selected={tab === "notes"}
-							className={tab === "notes" ? "tab tab-on" : "tab"}
-							onClick={() => setTab("notes")}
-						>
-							{say("project.tab.notes")}
-						</button>
-						<button
-							type="button"
-							role="tab"
 							aria-selected={tab === "changes"}
 							className={tab === "changes" ? "tab tab-on" : "tab"}
 							onClick={() => setTab("changes")}
@@ -557,6 +576,33 @@ export function ProjectView({
 							{say("project.tab.changes")}
 						</button>
 					</div>
+					{/* New material and Notes are for authors who want them; a teacher builds from
+					    the Curriculum tab (task 246). */}
+					<details className="advanced-menu" ref={advancedRef}>
+						<summary
+							className={
+								tab === "new" || tab === "notes" ? "tab tab-on" : "tab"
+							}
+						>
+							{say("project.advanced")}
+						</summary>
+						<div className="advanced-items">
+							<button
+								type="button"
+								className={tab === "new" ? "tab tab-on" : "tab"}
+								onClick={() => openAdvanced("new")}
+							>
+								{say("project.tab.new")}
+							</button>
+							<button
+								type="button"
+								className={tab === "notes" ? "tab tab-on" : "tab"}
+								onClick={() => openAdvanced("notes")}
+							>
+								{say("project.tab.notes")}
+							</button>
+						</div>
+					</details>
 					<button
 						type="button"
 						className="btn btn-quiet"
@@ -589,6 +635,7 @@ export function ProjectView({
 						reloadKey={reloadKey}
 						openCourse={coursePick}
 						onChanged={reloadProject}
+						onBuild={setBook}
 					/>
 				</div>
 			)}
@@ -770,7 +817,7 @@ export function ProjectView({
 									<FirstStepsList
 										steps={steps}
 										onRead={() => setTab("new")}
-										onBuild={() => setTab("changes")}
+										onBuild={() => void buildFirst()}
 										onExport={exportCurriculum}
 									/>
 									<p className="muted">{say("project.dropHint")}</p>
@@ -783,6 +830,16 @@ export function ProjectView({
 
 			{prompt !== null && (
 				<Prompt spec={prompt} onClose={() => setPrompt(null)} />
+			)}
+			{book !== null && (
+				<BookPanel
+					root={root}
+					course={book}
+					periods={project.periods}
+					onClose={() => setBook(null)}
+					onOpenReview={() => setTab("changes")}
+					onNotify={onNotify}
+				/>
 			)}
 			{exportSpec !== null && (
 				<ExportDialog

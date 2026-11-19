@@ -275,7 +275,19 @@ export function collectJob(input: CollectInput): CollectOutcome | Failure {
 	// link or a junction that leads elsewhere; only real folders the Studio made are read.
 	if (!realFolder(folder) || !realFolder(join(folder, "out")))
 		return failure("unreadable");
+	return collectNotesFrom(input.root, folder, input.today);
+}
 
+/**
+ * Keeps every note in a notes folder's out/ that passes the checks. The folder (and its out/)
+ * must already be known to be real folders of the project's jobs.
+ */
+export function collectNotesFrom(
+	root: string,
+	folder: string,
+	today: Date,
+): CollectOutcome | Failure {
+	const input = { root, today };
 	const record = jobRecord(folder);
 	const known = new Set(record?.ids ?? idsFromFiles(folder));
 	const tool = record?.tool ?? "other";

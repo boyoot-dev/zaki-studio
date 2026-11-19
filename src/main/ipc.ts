@@ -28,6 +28,10 @@ import {
 import type {
 	AiSaved,
 	AiState,
+	BookBuiltView,
+	BookJobCollected,
+	BookJobMade,
+	BookPlanView,
 	BundleChoice,
 	ChangesCollected,
 	ChangesState,
@@ -60,11 +64,13 @@ import type {
 	ScanState,
 	UnitsPlanView,
 } from "../shared/api.ts";
+import { bookMinutes } from "../shared/book.ts";
 import type { ExamTarget } from "../shared/exam-changes.ts";
 import type { JobTool } from "../shared/job.ts";
 import { reportMeta } from "../shared/lists.ts";
 import {
 	type CurriculumModel,
+	emptyCourse,
 	type FileRow,
 	sameCourse,
 } from "../shared/model.ts";
@@ -81,6 +87,14 @@ import {
 } from "../shared/targets.ts";
 import { adoptMaterial } from "./adopt.ts";
 import { readAi, writeAi } from "./ai.ts";
+import {
+	type BookCourse,
+	type BookStage,
+	bookShape,
+	buildWithKey,
+	collectBookJob,
+	prepareBookJob,
+} from "./book.ts";
 import {
 	acceptChange,
 	acceptExamChange,
@@ -688,7 +702,22 @@ export function registerIpc(): void {
 			subject: course.subject,
 			language: course.language,
 			support: [...course.support],
+			units: course.units.length,
 		}));
+		// Every course of the project shows, also one with no unit yet, so it can be built from
+		// its book (task 246).
+		const project = readProject(where);
+		if (project.ok)
+			for (const grade of project.project.grades)
+				for (const entry of grade.subjects) {
+					const head = {
+						grade: grade.grade,
+						subject: entry.subject,
+						language: entry.language,
+					};
+					if (!courses.some((course) => sameCourse(course, head)))
+						courses.push({ ...head, support: [...entry.support], units: 0 });
+				}
 		courses.sort(
 			(a, b) => a.grade - b.grade || a.subject.localeCompare(b.subject),
 		);
@@ -720,9 +749,23 @@ export function registerIpc(): void {
 			const course = model.model.courses.find((entry) =>
 				sameCourse(entry, wanted),
 			);
-			if (course === undefined)
-				return { ok: false as const, code: "missing" as const };
-			return { ok: true as const, course };
+			if (course !== undefined) return { ok: true as const, course };
+			// A course of the project with no unit yet reads as an empty one (task 246).
+			const project = readProject(where);
+			const known =
+				project.ok &&
+				project.project.grades.some(
+					(grade) =>
+						grade.grade === wanted.grade &&
+						grade.subjects.some((entry) =>
+							sameCourse({ ...entry, grade: grade.grade }, wanted),
+						),
+				);
+			if (!known) return { ok: false as const, code: "missing" as const };
+			return {
+				ok: true as const,
+				course: emptyCourse(wanted.grade, wanted.subject, wanted.language),
+			};
 		},
 	);
 
@@ -986,6 +1029,273 @@ export function registerIpc(): void {
 			return problem === ""
 				? { ok: true }
 				: { ok: false, code: "unknown", detail: problem };
+		},
+	);
+
+	// "Build from my book" (task 246): what a build would use, then one job (my AI tool) or
+	// one run (my key), each after a scan so the course's newest files are read first.
+	/** The course a page names, as numbers and ids the model can check. */
+	const bookCourse = (grade: unknown, subject: unknown, language: unknown) => ({
+		grade:
+			typeof grade === "number" && Number.isInteger(grade) ? grade : Number.NaN,
+		subject: text(subject, 60),
+		language: text(language, 3),
+	});
+	/** The periods a course may be built for: the ones the model allows it. */
+	const bookAllowed =
+		(model: CurriculumModel, course: BookCourse) =>
+		(period: string): Target | null =>
+			allowedTarget(
+				model,
+				course.grade,
+				course.subject,
+				course.language,
+				period,
+				SUBJECT_IDS,
+			);
+	/** A scan before a build: the same as "Look for new material", without its panel. */
+	const scanFirst = async (where: string, senderId: number) => {
+		if (scanning.has(senderId)) return false;
+		scanning.add(senderId);
+		stopped.set(senderId, false);
+		const renderer = openRenderer();
+		const ocr = ocrEngine(studioRoot());
+		try {
+			const outcome = await scanProject(where, {
+				studioRoot: studioRoot(),
+				render: (bytes, page) => renderer.render(bytes, page),
+				ocr,
+			});
+			return outcome.ok;
+		} finally {
+			renderer.close();
+			await ocr.close();
+			scanning.delete(senderId);
+			stopped.delete(senderId);
+		}
+	};
+
+	ipcMain.handle(
+		"studio:bookPlan",
+		async (
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		): Promise<BookPlanView> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const course = bookCourse(grade, subject, language);
+			const noted = noteIds(where);
+			const shape = bookShape(
+				model.model,
+				files.files,
+				course,
+				noted,
+				bookAllowed(model.model, course),
+			);
+			const pagesToRead = shape.toRead.reduce(
+				(sum, row) => sum + (row.pages ?? 0),
+				0,
+			);
+			let costUsd: number | null = null;
+			if (readAi(userData())?.way === "key" && shape.targets.length > 0) {
+				const today = new Date();
+				const notes =
+					shape.toRead.length === 0
+						? null
+						: await planNotes(
+								where,
+								files.files,
+								shape.toRead.map((row) => row.id),
+								readNoteSettings(userData()).model,
+								today,
+							).catch(() => null);
+				let units = 0;
+				let priced = true;
+				for (const target of shape.targets) {
+					const plan = await planChangeSet(
+						where,
+						model.model,
+						files.files,
+						target,
+						unitsRulesText(),
+						readUnitsSettings(userData()).model,
+					).catch(() => null);
+					if (plan?.estimateUsd == null) priced = false;
+					else units += plan.estimateUsd;
+				}
+				const notesCost =
+					shape.toRead.length === 0 ? 0 : (notes?.estimateUsd ?? null);
+				costUsd = priced && notesCost !== null ? notesCost + units : null;
+			}
+			return {
+				ok: true,
+				files: shape.rows.slice(0, 200).map((row) => ({
+					path: row.path,
+					kind: row.kind,
+					pages: row.pages ?? 0,
+					noted: noted.has(row.id),
+				})),
+				fileCount: shape.rows.length,
+				toRead: shape.toRead.length,
+				periods: shape.targets.map((target) => target.period),
+				minutes: bookMinutes(pagesToRead, shape.targets.length),
+				noTerm: shape.noTerm,
+				costUsd,
+				jobs: listJobs(where, "book").slice(0, 5),
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:prepareBook",
+		async (
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		): Promise<BookJobMade> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const choice = readAi(userData());
+			if (choice?.way !== "tool") return failure("missing");
+			await scanFirst(where, event.sender.id);
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const noteRules = rulesText();
+			const unitRules = unitsRulesText();
+			if (noteRules === "" || unitRules === "") return failure("missing");
+			const course = bookCourse(grade, subject, language);
+			return prepareBookJob({
+				root: where,
+				model: model.model,
+				rows: files.files,
+				course,
+				allowed: bookAllowed(model.model, course),
+				curriculum: basename(where),
+				noteRules,
+				unitRules,
+				tool: choice.tool,
+				now: new Date(),
+			});
+		},
+	);
+
+	ipcMain.handle(
+		"studio:collectBook",
+		(event, root: unknown, name: unknown): BookJobCollected => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const got = collectBookJob({
+				root: where,
+				model: model.model,
+				files: files.files,
+				name: text(name, 20),
+				today: new Date(),
+			});
+			if (!got.ok) return got;
+			return {
+				ok: true,
+				read: got.notes.collected.length,
+				sets: got.units.collected.length,
+				skipped: got.units.skipped.length,
+				refused: [...got.notes.refused, ...got.units.refused].map((entry) => ({
+					name: entry.name,
+					code: String(entry.code),
+				})),
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:buildBook",
+		async (
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+		): Promise<BookBuiltView> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const sender = event.sender;
+			if (noting.has(sender.id)) return failure();
+			const key = loadKey(userData(), secrets);
+			if (key === null) return { ok: false, code: "noKey" };
+			const noteRules = rulesText();
+			const unitRules = unitsRulesText();
+			if (noteRules === "" || unitRules === "") return failure("missing");
+			const send = (stage: BookStage | { stage: "reading" }) => {
+				if (!sender.isDestroyed()) sender.send("studio:bookProgress", stage);
+			};
+			noting.add(sender.id);
+			try {
+				send({ stage: "reading" });
+				await scanFirst(where, sender.id);
+				const model = readModel(where);
+				if (!model.ok) return model;
+				const files = readFiles(where);
+				if (!files.ok) return files;
+				const course = bookCourse(grade, subject, language);
+				const noteSettings = readNoteSettings(userData());
+				const unitSettings = readUnitsSettings(userData());
+				const notePrices = await modelInfo(noteSettings.model).catch(
+					() => null,
+				);
+				const unitPrices = await modelInfo(unitSettings.model).catch(
+					() => null,
+				);
+				const built = await buildWithKey({
+					root: where,
+					model: model.model,
+					rows: files.files,
+					course,
+					allowed: bookAllowed(model.model, course),
+					curriculum: basename(where),
+					noteRules,
+					unitRules,
+					key,
+					notes: {
+						model: noteSettings.model,
+						limit: noteSettings.limit,
+						priceIn: notePrices?.priceIn ?? null,
+						priceOut: notePrices?.priceOut ?? null,
+						images: notePrices?.readsImages ?? true,
+					},
+					units: {
+						model: unitSettings.model,
+						limit: unitSettings.limit,
+						priceIn: unitPrices?.priceIn ?? null,
+						priceOut: unitPrices?.priceOut ?? null,
+					},
+					today: new Date(),
+					onStage: send,
+				});
+				return {
+					ok: true,
+					read: built.notesWritten,
+					readFailed: built.notesFailed,
+					sets: built.sets,
+					failed: built.failed.length,
+					spent: built.spentUsd,
+					stopped: built.stopped,
+				};
+			} finally {
+				noting.delete(sender.id);
+			}
 		},
 	);
 

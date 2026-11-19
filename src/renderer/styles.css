@@ -1802,3 +1802,51 @@ details.notes-actions > summary {
 	margin: 12px 0 6px;
 	font-size: 0.95rem;
 }
+
+/* The Advanced menu beside the tabs, and the "Build from my book" panel (task 246). */
+.advanced-menu {
+	position: relative;
+}
+
+.advanced-menu > summary {
+	list-style: none;
+	cursor: pointer;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+}
+
+.advanced-menu > summary::-webkit-details-marker {
+	display: none;
+}
+
+.advanced-items {
+	position: absolute;
+	inset-inline-end: 0;
+	top: calc(100% + 6px);
+	z-index: 20;
+	display: grid;
+	gap: 4px;
+	padding: 6px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+	min-width: 12rem;
+}
+
+.advanced-items .tab {
+	text-align: start;
+}
+
+.book-dialog {
+	width: min(44rem, 100%);
+	max-height: 90vh;
+	overflow-y: auto;
+	display: grid;
+	gap: 12px;
+}
+
+.book-files {
+	max-height: 14rem;
+	overflow-y: auto;
+}
