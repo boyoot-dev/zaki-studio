@@ -139,6 +139,43 @@ const api: StudioApi = {
 		ipcRenderer.on("studio:bookProgress", listener);
 		return () => ipcRenderer.removeListener("studio:bookProgress", listener);
 	},
+	roundsState: (root, grade, subject, language, period) =>
+		ipcRenderer.invoke(
+			"studio:roundsState",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+		),
+	startRounds: (root, grade, subject, language, period) =>
+		ipcRenderer.invoke(
+			"studio:startRounds",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+		),
+	answerRound: (root, grade, subject, language, period, answer) =>
+		ipcRenderer.invoke(
+			"studio:answerRound",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+			answer,
+		),
+	showRoundFile: (root, grade, subject, language, period) =>
+		ipcRenderer.invoke(
+			"studio:showRoundFile",
+			root,
+			grade,
+			subject,
+			language,
+			period,
+		),
 	aiState: () => ipcRenderer.invoke("studio:aiState"),
 	saveAi: (choice) => ipcRenderer.invoke("studio:saveAi", choice),
 	saveKey: (key) => ipcRenderer.invoke("studio:saveKey", key),

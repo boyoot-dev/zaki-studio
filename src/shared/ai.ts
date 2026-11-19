@@ -1,13 +1,17 @@
 // How the author uses AI, chosen once per computer in Settings (task 244): their own AI tool
 // (the Studio prepares a job folder and a message) or an OpenRouter key (the Studio sends the
-// request itself). Task 245 adds a third way, Claude or Gemini in the browser; until then an
-// unknown way reads as "not chosen yet", so a newer file never breaks an older Studio.
+// request itself), and since task 245 Claude or Gemini in the browser (the Studio prepares a
+// file per round; the author uploads it and pastes the answer). An unknown way reads as "not
+// chosen yet", so a newer file never breaks an older Studio.
 
 import { type Lang, t } from "./i18n.ts";
 import type { JobTool } from "./job.ts";
 
 /** The author's choice: a tool with its name, or the key. */
-export type AiChoice = { way: "tool"; tool: JobTool } | { way: "key" };
+export type AiChoice =
+	| { way: "tool"; tool: JobTool }
+	| { way: "key" }
+	| { way: "browser" };
 
 /** The file in the app's user-data folder that keeps the choice. */
 export const AI_FILE = "ai.json";
@@ -18,6 +22,7 @@ export function cleanAi(value: unknown): AiChoice | null {
 		return null;
 	const raw = value as Record<string, unknown>;
 	if (raw.way === "key") return { way: "key" };
+	if (raw.way === "browser") return { way: "browser" };
 	if (raw.way === "tool")
 		return {
 			way: "tool",

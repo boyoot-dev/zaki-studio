@@ -1850,3 +1850,21 @@ details.notes-actions > summary {
 	max-height: 14rem;
 	overflow-y: auto;
 }
+
+/* The browser rounds inside the build panel (task 245). */
+.rounds {
+	display: grid;
+	gap: 10px;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+
+.rounds h3 {
+	margin: 0;
+}
+
+.rounds textarea {
+	width: 100%;
+	font: inherit;
+}

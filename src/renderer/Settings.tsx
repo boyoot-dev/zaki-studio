@@ -122,6 +122,18 @@ export function AiWayPicker({ heading }: { heading: string }) {
 				<input
 					type="radio"
 					name="ai-way"
+					checked={choice?.way === "browser"}
+					onChange={() => void choose({ way: "browser" })}
+				/>
+				<span>
+					<span className="ai-way-title">{say("ai.browser")}</span>
+					<span className="muted">{say("ai.browserHint")}</span>
+				</span>
+			</label>
+			<label className="ai-way">
+				<input
+					type="radio"
+					name="ai-way"
 					checked={choice?.way === "key"}
 					onChange={() => void choose({ way: "key" })}
 				/>
@@ -152,7 +164,9 @@ export function AiLine() {
 			? say("ai.usingTool", {
 					tool: say(`notes.tool.${ai.choice.tool}`),
 				})
-			: say("ai.usingKey");
+			: ai.choice.way === "browser"
+				? say("ai.usingBrowser")
+				: say("ai.usingKey");
 	return (
 		<div className="ai-line">
 			<p className="muted">

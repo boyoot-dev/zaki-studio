@@ -394,6 +394,37 @@ export type BookBuiltView =
 	  }
 	| Failure;
 
+/** Where a course period's browser rounds are (task 245); null when none were started. */
+export type RoundsReply =
+	| {
+			ok: true;
+			view: {
+				round: number;
+				total: number;
+				outlineDone: boolean;
+				unit: {
+					number: number;
+					title: string;
+					part: number;
+					parts: number;
+				} | null;
+				file: string;
+				message: string;
+				done: boolean;
+			} | null;
+	  }
+	| Failure;
+
+/** What a pasted answer gave: kept (and the next round), or refused with its reason. */
+export type RoundAnswered =
+	| {
+			ok: true;
+			accepted: boolean;
+			issue: string;
+			view: Extract<RoundsReply, { ok: true }>["view"];
+	  }
+	| Failure;
+
 /** How far a build with a key is. */
 export type BookProgress =
 	| { stage: "reading" }
@@ -671,6 +702,39 @@ export type StudioApi = {
 		subject: string,
 		language: string,
 	): Promise<BookBuiltView>;
+	/** Where a course period's browser rounds are. */
+	roundsState(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+		period: string,
+	): Promise<RoundsReply>;
+	/** Scans, then starts a course period's rounds from the outline. */
+	startRounds(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+		period: string,
+	): Promise<RoundsReply>;
+	/** Checks a pasted answer for the round the period is at. */
+	answerRound(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+		period: string,
+		answer: string,
+	): Promise<RoundAnswered>;
+	/** Shows the current round's file in Explorer. */
+	showRoundFile(
+		root: string,
+		grade: number,
+		subject: string,
+		language: string,
+		period: string,
+	): Promise<Done>;
 	/** Tells the page how far a build with a key has got. */
 	onBookProgress(callback: (progress: BookProgress) => void): () => void;
 	/** How the author uses AI on this computer, and the settings the Settings screen shows. */

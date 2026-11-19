@@ -60,6 +60,8 @@ import type {
 	NoteText,
 	ProjectOpen,
 	RecentProject,
+	RoundAnswered,
+	RoundsReply,
 	Scanned,
 	ScanState,
 	UnitsPlanView,
@@ -185,6 +187,7 @@ import { ocrEngine } from "./ocr.ts";
 import { modelInfo, testKey } from "./openrouter.ts";
 import { openRenderer } from "./render.ts";
 import { studioRootPath } from "./root.ts";
+import { answerRound, readRounds, roundsView, startRounds } from "./rounds.ts";
 import { scanProject } from "./scan.ts";
 import { firstSteps } from "./steps.ts";
 import { planChangeSet, writeChangeSet } from "./units.ts";
@@ -1150,6 +1153,199 @@ export function registerIpc(): void {
 				costUsd,
 				jobs: listJobs(where, "book").slice(0, 5),
 			};
+		},
+	);
+
+	// Claude or Gemini in the browser (task 245): rounds for one course period, kept on disk.
+	/** The course period a page names, when the model allows it. */
+	const roundsTarget = (
+		model: CurriculumModel,
+		grade: unknown,
+		subject: unknown,
+		language: unknown,
+		period: unknown,
+	): Target | null => {
+		const course = bookCourse(grade, subject, language);
+		return bookAllowed(model, course)(text(period, 40));
+	};
+	/** The pages of a course period, for the guess of how many rounds it takes. */
+	const periodPages = (
+		rows: readonly FileRow[],
+		target: Target,
+		model: CurriculumModel,
+	) =>
+		targetRows(rows, target, model.curriculum.periods).reduce(
+			(sum, row) => sum + (row.pages ?? 0),
+			0,
+		);
+
+	ipcMain.handle(
+		"studio:roundsState",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+			period: unknown,
+		): RoundsReply => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const target = roundsTarget(
+				model.model,
+				grade,
+				subject,
+				language,
+				period,
+			);
+			if (target === null) return failure("missing");
+			const state = readRounds(where, target);
+			return {
+				ok: true,
+				view:
+					state === null
+						? null
+						: roundsView(
+								where,
+								state,
+								periodPages(files.files, target, model.model),
+							),
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:startRounds",
+		async (
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+			period: unknown,
+		): Promise<RoundsReply> => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			await scanFirst(where, event.sender.id);
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const target = roundsTarget(
+				model.model,
+				grade,
+				subject,
+				language,
+				period,
+			);
+			if (target === null) return failure("missing");
+			const unitRules = unitsRulesText();
+			if (unitRules === "") return failure("missing");
+			const state = startRounds({
+				root: where,
+				model: model.model,
+				rows: files.files,
+				target,
+				unitRules,
+				now: new Date(),
+			});
+			if (state === null) return failure("missing");
+			return {
+				ok: true,
+				view: roundsView(
+					where,
+					state,
+					periodPages(files.files, target, model.model),
+				),
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:answerRound",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+			period: unknown,
+			answer: unknown,
+		): RoundAnswered => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const files = readFiles(where);
+			if (!files.ok) return files;
+			const target = roundsTarget(
+				model.model,
+				grade,
+				subject,
+				language,
+				period,
+			);
+			if (target === null) return failure("missing");
+			// An answer is a few tens of thousands of characters; anything far larger is not one.
+			const pasted =
+				typeof answer === "string" ? answer.slice(0, 2_000_000) : "";
+			const got = answerRound({
+				root: where,
+				model: model.model,
+				rows: files.files,
+				target,
+				text: pasted,
+				unitRules: unitsRulesText(),
+				today: new Date(),
+			});
+			if (!got.ok)
+				return { ok: true, accepted: false, issue: got.issue, view: null };
+			return {
+				ok: true,
+				accepted: true,
+				issue: "",
+				view: roundsView(
+					where,
+					got.state,
+					periodPages(files.files, target, model.model),
+				),
+			};
+		},
+	);
+
+	ipcMain.handle(
+		"studio:showRoundFile",
+		(
+			event,
+			root: unknown,
+			grade: unknown,
+			subject: unknown,
+			language: unknown,
+			period: unknown,
+		): Done => {
+			const where = text(root, 400);
+			if (!allowed(event, where)) return notOpen();
+			const model = readModel(where);
+			if (!model.ok) return model;
+			const target = roundsTarget(
+				model.model,
+				grade,
+				subject,
+				language,
+				period,
+			);
+			if (target === null) return failure("missing");
+			const state = readRounds(where, target);
+			if (state === null) return failure("missing");
+			// The path comes from the Studio's own record, never from the page.
+			const file = roundsView(where, state, 0).file;
+			if (file === "") return failure("missing");
+			shell.showItemInFolder(file);
+			return { ok: true };
 		},
 	);
 

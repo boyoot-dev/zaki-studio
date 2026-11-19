@@ -18,6 +18,7 @@ describe("the AI choice", () => {
 			tool: "claude-code",
 		});
 		expect(cleanAi({ way: "key", tool: "other" })).toEqual({ way: "key" });
+		expect(cleanAi({ way: "browser" })).toEqual({ way: "browser" });
 		for (const bad of [undefined, null, "key", [], {}, { way: "magic" }])
 			expect(cleanAi(bad)).toBeNull();
 	});
